@@ -106,7 +106,12 @@ def main():
     require("if not exploit_flag" in agent, "exploit should not decay training epsilon")
     require("if exploit_flag or np.random.rand() >= self._eps" in agent, "exploit should force greedy prediction")
     require("if not os.path.exists(model_file_path)" in agent, "load_model should handle missing latest model")
-    require("except RuntimeError as err" in agent, "load_model should handle incompatible latest checkpoints")
+    require("unreadable checkpoint" in agent, "load_model should skip unreadable latest checkpoints")
+    require("invalid checkpoint" in agent, "load_model should skip invalid latest checkpoint payloads")
+    require(
+        "except (RuntimeError, TypeError, ValueError) as err" in agent,
+        "load_model should handle incompatible latest checkpoints",
+    )
     require("incompatible checkpoint" in agent, "load_model should log incompatible latest checkpoints")
     require("self.algorithm.update_target_q()" in agent, "load_model should sync target network")
 

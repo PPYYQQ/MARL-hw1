@@ -298,6 +298,11 @@ def main():
         agent.load_model(path=model_dir, id="smoke")
         agent.save_model(path=model_dir, id="latest")
         agent.load_model(path=model_dir, id="latest")
+        latest_path = Path(model_dir) / "model.ckpt-latest.pkl"
+        latest_path.write_text("not a checkpoint", encoding="utf-8")
+        agent.load_model(path=model_dir, id="latest")
+        torch.save(["bad"], latest_path)
+        agent.load_model(path=model_dir, id="latest")
 
 
 if __name__ == "__main__":

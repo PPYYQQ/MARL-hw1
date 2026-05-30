@@ -166,3 +166,18 @@
   - 已运行 `git diff --check`，未发现空白错误。
 - 下一步：
   - 再检查训练 workflow 指标记录和异常日志。
+
+### Step 10 - 训练 reward 统计和样本容灾
+
+- 状态：完成
+- 内容：
+  - `sample_process()` 对 `rew=None` 的容灾轨迹补零奖励，避免样本转换后训练崩溃。
+  - `sample_process()` 对缺失 `legal_action` 做保守默认值。
+  - `train_workflow` 同时统计 phase reward、duration reward 和总 reward。
+  - 监控上报使用数值类型，不再把平均 reward 格式化成字符串。
+- 验证：
+  - 已运行 `python -m compileall agent_target_dqn tests`，语法编译通过。
+  - 已运行 `python tests/test_target_dqn_smoke.py`，当前本地缺少 `torch`，脚本明确 skip。
+  - 已运行 `git diff --check`，未发现空白错误。
+- 下一步：
+  - 检查 `train_workflow` 是否还需要对 `logger` 为空做防御。

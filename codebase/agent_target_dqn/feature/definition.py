@@ -40,12 +40,14 @@ ActData = create_cls("ActData", junction_id=None, phase_index=None, duration=Non
 def sample_process(list_game_data):
     sample_datas = []
     for data in list_game_data:
-        legal_action = [data.legal_action[0], data.legal_action[0], data.legal_action[0], data.legal_action[0]]
+        legal_action_value = data.legal_action[0] if getattr(data, "legal_action", None) is not None else 1
+        legal_action = [legal_action_value, legal_action_value, legal_action_value, legal_action_value]
+        reward = data.rew if data.rew is not None else (0.0, 0.0)
         sample_data = SampleData(
             obs=data.obs,
             _obs=None,
             act=data.act,
-            rew=data.rew,
+            rew=reward,
             done=1 if data.done == 0 else 0,
             legal_action=legal_action,
         )

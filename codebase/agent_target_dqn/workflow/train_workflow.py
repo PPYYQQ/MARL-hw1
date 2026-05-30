@@ -27,6 +27,9 @@ def workflow(envs, agents, logger=None, monitor=None, *args, **kwargs):
     # 监控数据初始化
     monitor_data = {
         "reward": 0,
+        "phase_reward": 0,
+        "duration_reward": 0,
+        "data_length": 0,
     }
     last_report_monitor_time = time.time()
 
@@ -39,22 +42,28 @@ def workflow(envs, agents, logger=None, monitor=None, *args, **kwargs):
 
     for epoch in range(epoch_num):
         epoch_total_rew = 0
+        epoch_phase_rew = 0
+        epoch_duration_rew = 0
 
         data_length = 0
         for g_data in run_episodes(episode_num_every_epoch, env, agent, usr_conf, logger):
             data_length += len(g_data)
-            total_rew = []
             for data in g_data:
-                total_rew.append(data.rew[0])
+                phase_rew, duration_rew = _reward_components(data.rew)
+                epoch_phase_rew += phase_rew
+                epoch_duration_rew += duration_rew
 
-            total_rew = sum(total_rew)
-            epoch_total_rew += total_rew
+            epoch_total_rew = epoch_phase_rew + epoch_duration_rew
             agent.send_sample_data(g_data)
             g_data.clear()
 
-        avg_step_reward = 0
+        avg_step_reward = 0.0
+        avg_phase_reward = 0.0
+        avg_duration_reward = 0.0
         if data_length:
-            avg_step_reward = f"{(epoch_total_rew/data_length):.2f}"
+            avg_step_reward = round(epoch_total_rew / data_length, 4)
+            avg_phase_reward = round(epoch_phase_rew / data_length, 4)
+            avg_duration_reward = round(epoch_duration_rew / data_length, 4)
 
         # save model file
         # 保存model文件
@@ -67,11 +76,17 @@ def workflow(envs, agents, logger=None, monitor=None, *args, **kwargs):
         # 上报训练进度
         if now - last_report_monitor_time > 60:
             monitor_data["reward"] = avg_step_reward
+            monitor_data["phase_reward"] = avg_phase_reward
+            monitor_data["duration_reward"] = avg_duration_reward
+            monitor_data["data_length"] = data_length
             if monitor:
                 monitor.put_data({os.getpid(): monitor_data})
                 last_report_monitor_time = now
 
-        logger.info(f"Avg Step Reward: {avg_step_reward}, Epoch: {epoch}, Data Length: {data_length}")
+        logger.info(
+            f"Avg Step Reward: {avg_step_reward}, Avg Phase Reward: {avg_phase_reward}, "
+            f"Avg Duration Reward: {avg_duration_reward}, Epoch: {epoch}, Data Length: {data_length}"
+        )
 
 
 def run_episodes(n_episode, env, agent, usr_conf, logger):
@@ -197,3 +212,11 @@ def run_episodes(n_episode, env, agent, usr_conf, logger):
     except Exception as e:
         logger.error(f"run_episodes error")
         raise RuntimeError(f"run_episodes error")
+
+
+def _reward_components(reward):
+    if reward is None:
+        return 0.0, 0.0
+    phase_reward = float(reward[0])
+    duration_reward = float(reward[1]) if len(reward) > 1 else 0.0
+    return phase_reward, duration_reward

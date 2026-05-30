@@ -598,3 +598,18 @@
   - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
 - 下一步：
   - 平台环境可用后用真实异常 observation 日志确认观测编码不再中断 episode。
+
+### Step 40 - 样本转换边界容错
+
+- 状态：完成
+- Commit：`fd8a391`
+- 内容：
+  - `sample_process()` 对空轨迹、全无效轨迹、缺失 observation/action 的帧保守返回空样本或跳过，避免边界输入触发 `IndexError`。
+  - `sample_process()` 对缺失 reward 补零，并继续把下一状态合法相位 mask 写入当前 transition。
+  - `reward_shaping()` 对异常动作、异常 `frame_no`、非 list `vehicles` 和畸形车辆记录保守返回零奖励或跳过。
+  - 将 `tests/test_target_dqn_features.py` 扩展为无 `torch` 也会执行的样本转换和 reward 边界测试。
+  - 修正 smoke 中终局 transition 的测试期望：终局样本会保留，训练时 `done=0` 表示 `not_done=0`。
+- 验证：
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 平台环境可用后确认样本生产消费比稳定，且终局 transition 不再触发 shape 或空列表异常。

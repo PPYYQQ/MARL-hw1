@@ -83,6 +83,7 @@ Target-DQN 关键文件：
 - `FeatureProcess.update_traffic_info()` 对缺失 `frame_state`、缺失 `vehicles` 或畸形车辆记录会保守跳过，避免异常帧中断特征处理。
 - `observation_process()`、`rule_based_action()` 和共享交通统计工具会保守处理缺失 `frame_state`、缺失 `vehicles`、缺失 `obs` 包装和畸形车辆/相位记录。
 - `action_process()` 已将 duration index 映射为实际秒数。
+- `predict()` 对空 observation batch 会返回空列表；`action_process()` 会固定 `junction_id=0` 并清洗异常相位/时长索引，确保输出合法动作。
 - 训练时已将 `[phase_idx, duration_seconds]` 转换为 80 维联合动作索引，避免 Q head gather 越界。
 - 观测处理已兼容 `position_in_lane["y"]` 的米/毫米单位。
 - optimizer 重复初始化已清理，当前使用 Adam。

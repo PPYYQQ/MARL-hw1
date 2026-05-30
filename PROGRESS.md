@@ -656,3 +656,18 @@
   - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
 - 下一步：
   - 平台环境可用后确认真实 `env.reset()` / `env.step()` 返回形态均能进入同一训练路径。
+
+### Step 44 - agent 动作输出兜底
+
+- 状态：完成
+- Commit：`f6670de`
+- 内容：
+  - `predict()` 对空 observation batch 或缺失 feature 的条目直接返回空列表，避免空 batch 进入模型推理。
+  - `predict()` 读取 `legal_action` 时使用缺失默认值，交给合法动作归一化逻辑兜底。
+  - `exploit()` 在贪心预测返回空动作时回退到规则基线。
+  - `action_process()` 固定单路口 `junction_id=0`，并通过 `_safe_action_index()` 清洗异常 phase/duration index。
+  - smoke 与静态测试增加空预测、畸形动作、NaN/Inf 动作索引和单路口动作输出覆盖。
+- 验证：
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 平台环境可用后确认动作输出不再出现非法 `junction_id`、越界相位或低于最小绿灯时长。

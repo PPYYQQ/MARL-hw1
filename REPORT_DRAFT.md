@@ -116,6 +116,8 @@ duration_seconds = MIN_GREEN_DURATION + duration_index
 
 当前 `MIN_GREEN_DURATION = 8`，所以模型输出的持续时间范围为 `8-27` 秒。训练时，算法会将环境动作中的 `[phase_idx, duration_seconds]` 转换为联合动作索引，避免直接用秒数索引 Q head。
 
+动作输出阶段会固定 `junction_id=0`，并对相位索引和持续时间索引做数值清洗与裁剪；当模型或外部调用传入空预测批次、缺失字段、NaN/Inf 或非数值动作时，代码会返回空预测或保守合法动作，避免向环境提交非法控制指令。
+
 `legal_action` 会被归一化为 4 维相位 mask：
 
 - 如果平台只提供标量门控，非零值表示四个相位都可选。

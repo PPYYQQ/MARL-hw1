@@ -90,6 +90,7 @@ Target-DQN 关键文件：
 - `exploit()` 已有规则基线兜底。
 - `save_model()` / `load_model()` 已支持默认 checkpoint 路径和首次训练无 latest 模型的情况。
 - 训练 workflow 定期保存 `model.ckpt-latest.pkl`，与每局开始的 `load_model(id="latest")` 保持一致。
+- `save_model()` 会先写临时 checkpoint，再用 `os.replace()` 原子发布，降低中断时留下半写 `latest` 的风险。
 - `load_model(id="latest")` 会跳过缺失、不可读、payload 非 dict 或结构不兼容的 checkpoint，避免坏 `latest` 卡住每局加载。
 - 四个 agent 入口已对 `torch.set_num_threads()` 和 `torch.set_num_interop_threads()` 的 `RuntimeError` 做容错，避免平台预先启动 Torch 并行后导入 agent 崩溃。
 - Target-DQN 已将 `legal_action` 归一化为 4 维相位 mask，用于贪心预测、随机探索和规则兜底选相位。

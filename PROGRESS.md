@@ -699,3 +699,16 @@
   - 已额外运行 `python -m compileall agent_dqn agent_ppo agent_diy`，确认非主线模板 agent 仍能编译。
 - 下一步：
   - 平台环境可用后确认 `train_test.py` 或框架算法列表校验不会因 Torch 线程设置在导入阶段失败。
+
+### Step 47 - Target-DQN checkpoint 原子保存
+
+- 状态：完成
+- Commit：`44031f1`
+- 内容：
+  - `Agent.save_model()` 先写 `model.ckpt-*.pkl.tmp` 临时文件，再通过 `os.replace()` 原子替换正式 checkpoint。
+  - 保存失败时清理临时 checkpoint，避免失败残留进入后续打包或误判。
+  - 静态测试增加临时文件写入、原子发布和失败清理锚点；smoke 测试增加保存后 `.tmp` 文件不存在的断言。
+- 验证：
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 平台环境可用后确认长时间训练或中断恢复时不会产生半写 `model.ckpt-latest.pkl`。

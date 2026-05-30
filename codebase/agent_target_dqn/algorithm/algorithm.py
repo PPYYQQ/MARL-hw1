@@ -40,6 +40,9 @@ class Algorithm:
     def learn(self, list_sample_data):
         # Convert list of SampleData to tensor batch
         # 将 SampleData 数组 转换为 tensor batch
+        if not list_sample_data:
+            return
+
         batch_size = len(list_sample_data)
         obs = self._stack_tensor([frame.obs for frame in list_sample_data], dtype=torch.float32).view(batch_size, -1)
         action = self._stack_tensor([frame.act for frame in list_sample_data], dtype=torch.float32).view(batch_size, -1)
@@ -115,8 +118,13 @@ class Algorithm:
         self.target_model.eval()
 
     def _stack_tensor(self, values, dtype):
-        tensors = [torch.as_tensor(value, dtype=dtype, device=self.device) for value in values]
+        tensors = [self._as_tensor(value, dtype=dtype) for value in values]
         return torch.stack(tensors)
+
+    def _as_tensor(self, value, dtype):
+        if self.device is None:
+            return torch.as_tensor(value, dtype=dtype)
+        return torch.as_tensor(value, dtype=dtype, device=self.device)
 
     def _action_to_head_indices(self, action):
         phase_index = action[:, 1].long().clamp(0, Config.DIM_OF_ACTION_PHASE - 1)

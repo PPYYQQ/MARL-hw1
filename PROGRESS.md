@@ -211,3 +211,19 @@
   - 已运行 `git diff --check`，未发现空白错误。
 - 下一步：
   - 汇总当前剩余受阻项：真实 KaiwuDRL 训练验证需要平台依赖。
+
+### Step 13 - 离线静态验证和平台运行手册
+
+- 状态：完成
+- 内容：
+  - `Algorithm.learn()` 对空 batch 直接返回，避免边界输入崩溃。
+  - `_stack_tensor()` 不再向 `torch.as_tensor()` 传入 `device=None`，兼容不同 PyTorch 版本。
+  - 新增 `codebase/tests/test_target_dqn_static.py`，在无 `torch` / `kaiwudrl` 环境中检查关键源码约束。
+  - 新增 `RUNBOOK.md`，记录本地检查、平台验证步骤、监控指标和实验回填格式。
+- 验证：
+  - 已运行 `python -m compileall agent_target_dqn tests`，语法编译通过。
+  - 已运行 `python tests/test_target_dqn_static.py`，静态约束检查通过。
+  - 已运行 `python tests/test_target_dqn_smoke.py`，当前本地缺少 `torch`，脚本明确 skip。
+  - 已运行 `git diff --check`，未发现空白错误。
+- 下一步：
+  - 平台环境可用后运行 `python train_test.py` 并回填真实结果。

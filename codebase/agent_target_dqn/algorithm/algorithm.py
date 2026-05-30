@@ -27,12 +27,12 @@ class Algorithm:
         self.num_head = Config.NUMB_HEAD
         self._gamma = Config.GAMMA
 
-        # ========== TODO 2 ==========
-        # Initialize the Target DQN target network properly.
-        # Hint: Create a target network that is independent from the online network and can be synchronized later.
-        # 实现 Target DQN 目标网络初始化。
-        # 提示：创建一个与在线网络相互独立的目标网络，并保证后续可以进行参数同步。
-        self.target_model = self.model
+        self.target_model = deepcopy(self.model)
+        if self.device is not None:
+            self.target_model.to(self.device)
+        self.target_model.eval()
+        for param in self.target_model.parameters():
+            param.requires_grad = False
 
         self.last_report_monitor_time = 0
         self.train_step = 0
@@ -79,12 +79,9 @@ class Algorithm:
         model_grad_norm = torch.nn.utils.clip_grad_norm_(self.model.parameters(), 1.0).item()
         self.optim.step()
         self.train_step += 1
-        
-        # ========== TODO 3 ==========
-        # Add the periodic target network update logic.
-        # Hint: Decide when the target network should be synchronized during training, and update it at a fixed interval.
-        # 补充目标网络定期更新逻辑。
-        # 提示：思考训练过程中应在什么时机同步目标网络，并按固定间隔更新。
+
+        if Config.TARGET_UPDATE_FREQ > 0 and self.train_step % Config.TARGET_UPDATE_FREQ == 0:
+            self.update_target_q()
 
         value_loss = loss.detach().item()
         target_q_value = q_targets.mean().detach().item()
@@ -100,16 +97,16 @@ class Algorithm:
                 "q_value": q_value,
                 "model_grad_norm": model_grad_norm,
             }
-            self.monitor.put_data({os.getpid(): monitor_data})
-            self.logger.info(
-                f"value_loss: {value_loss}, target_q_value: {target_q_value},\
-                                q_value: {q_value},\
-                                model_grad_norm: {model_grad_norm}"
-            )
+            if self.monitor:
+                self.monitor.put_data({os.getpid(): monitor_data})
+            if self.logger:
+                self.logger.info(
+                    f"value_loss: {value_loss}, target_q_value: {target_q_value},\
+                                    q_value: {q_value},\
+                                    model_grad_norm: {model_grad_norm}"
+                )
             self.last_report_monitor_time = now
-    
-    # ========== TODO 4 ==========
-    # Add the update_target_q(self) method.
-    # Hint: This method should copy the latest parameters from the online network to the target network.
-    # 补充 update_target_q(self) 方法。
-    # 提示：该方法需要把在线网络的最新参数同步到目标网络。
+
+    def update_target_q(self):
+        self.target_model.load_state_dict(self.model.state_dict())
+        self.target_model.eval()

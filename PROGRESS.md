@@ -26,3 +26,19 @@
   - 已执行 `git push -u origin main`，GitHub `main` 分支已创建。
 - 下一步：
   - 修复 `agent_target_dqn` 的目标网络、奖励、动作时长映射和基础健壮性。
+
+### Step 1 - Target-DQN 目标网络和模型骨干
+
+- 状态：完成
+- 内容：
+  - 将 `agent_target_dqn` 的目标网络改为独立 `deepcopy`，避免与在线网络共享参数对象。
+  - 增加 `update_target_q()`，按 `TARGET_UPDATE_FREQ` 定期同步目标网络。
+  - 将 Q 网络骨干从过小的 `560-16-32-16` 调整为 `560-256-128-64`。
+  - 将优化器改为单个 Adam，去掉重复初始化。
+  - 将学习率降到 `5e-4`，epsilon 下限降到 `0.05`，放慢 epsilon 衰减。
+  - 增加 `monitor` / `logger` 空值防御，方便本地测试。
+  - 修正 `.gitignore`，避免误忽略平台源码目录 `agent_*/model/`。
+- 验证：
+  - 已运行 `python -m compileall agent_target_dqn`，语法编译通过。
+- 下一步：
+  - 修复动作 duration 映射和观测坐标单位。

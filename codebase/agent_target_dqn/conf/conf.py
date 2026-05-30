@@ -24,16 +24,11 @@ class Config:
     GAMMA = 0.9
     EPSILON = 0.1
 
-    # ========== TODO 13 ==========
-    # Tune the Target DQN hyperparameters.
-    # Hint: Focus on learning rate, epsilon range, epsilon decay, and target update frequency.
-    # 调优 Target DQN 超参数。
-    # 提示：可重点尝试学习率、epsilon 起止值、epsilon 衰减率和目标网络更新频率。
-    LR = 1e-3
+    LR = 5e-4
 
     START_EPSILON_GREEDY = 1.0
-    END_EPSILON_GREEDY = 0.3
-    EPSILON_DECAY = 0.995
+    END_EPSILON_GREEDY = 0.05
+    EPSILON_DECAY = 0.999
     LAMBDA = 0.75
     NUMB_HEAD = 2
     TARGET_UPDATE_FREQ = 500

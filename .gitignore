@@ -11,7 +11,7 @@ __pycache__/
 codebase/log/
 codebase/**/ckpt/
 codebase/**/models/
-codebase/**/model/
+codebase/**/saved_models/
 *.log
 *.pkl
 model.ckpt-*.pkl

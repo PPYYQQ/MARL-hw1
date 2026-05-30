@@ -480,7 +480,7 @@
 ### Step 31 - workflow 合法动作门控兼容
 
 - 状态：完成
-- Commit：待回填
+- Commit：`d33bd28`
 - 内容：
   - 将训练 workflow 的是否决策判断从直接读取 `legal_action[0]` 改为 `_need_to_predict()`。
   - `_need_to_predict()` 复用 `normalize_phase_legal_action()`，兼容平台文档中的 `int32` 标量门控和相位级 mask。

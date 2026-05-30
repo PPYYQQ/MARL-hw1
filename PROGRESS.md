@@ -546,7 +546,7 @@
 ### Step 36 - 评估推理不衰减 epsilon
 
 - 状态：完成
-- Commit：待回填
+- Commit：`39ef749`
 - 内容：
   - 将 `_eps` 衰减限制在训练 `predict()` 路径，`exploit()` 不再改变训练探索率。
   - `exploit_flag=True` 时直接进入贪心动作选择，避免多余随机分支判断。

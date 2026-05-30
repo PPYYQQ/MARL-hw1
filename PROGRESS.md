@@ -186,6 +186,7 @@
 ### Step 11 - workflow 日志限流和 logger 防御
 
 - 状态：完成
+- Commit：`a303b63 Reduce Target-DQN workflow log noise`
 - 内容：
   - 为 `train_workflow` 增加 `_log_info()` 和 `_log_error()`，避免本地或测试环境 `logger=None` 时崩溃。
   - 将逐帧日志改为每 20 次预测或 episode 结束时记录一次，降低平台日志限流风险。

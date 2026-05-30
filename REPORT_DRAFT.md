@@ -181,7 +181,7 @@ duration reward 主要考虑：
 6. 调用 `env.step()` 推进环境。
 7. 使用 `reward_shaping()` 计算训练奖励。
 8. episode 结束后调用 `sample_process()`。
-9. 发送样本到训练组件。
+9. 发送样本浅拷贝到训练组件，再清理本地 collector。
 10. 定期保存 `latest` checkpoint，供后续 episode 或训练进程恢复。
 
 workflow 当前监控：

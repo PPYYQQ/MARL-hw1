@@ -105,6 +105,7 @@ def main():
     require("run_episodes error: {e}" in workflow, "workflow should log the original episode exception")
     require("from e" in workflow, "workflow should preserve exception cause for platform debugging")
     require('agent.save_model(id="latest")' in workflow, "workflow should save the checkpoint name it later loads")
+    require("agent.send_sample_data(list(g_data))" in workflow, "workflow should not clear the list object sent to learner")
     require("predict_cnt % 20" in workflow, "workflow should not log every frame")
 
     require(package_script.exists(), "submission package script is required")

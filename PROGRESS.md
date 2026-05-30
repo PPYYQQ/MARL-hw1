@@ -516,3 +516,16 @@
   - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
 - 下一步：
   - 平台环境可用后确认 `agent_target_dqn/ckpt/model.ckpt-latest.pkl` 能被后续 episode 正常加载。
+
+### Step 34 - 样本发送列表引用隔离
+
+- 状态：完成
+- Commit：待回填
+- 内容：
+  - 将 `agent.send_sample_data(g_data)` 改为 `agent.send_sample_data(list(g_data))`。
+  - 保留后续 `g_data.clear()` 释放本地列表，但避免平台发送实现异步持有原列表引用时样本被清空。
+  - 更新静态测试、`AGENTS.md` 和 `REPORT_DRAFT.md`。
+- 验证：
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 平台环境可用后观察 `data_length` 与样本生产消费比是否正常。

@@ -56,7 +56,7 @@ def workflow(envs, agents, logger=None, monitor=None, *args, **kwargs):
                 epoch_duration_rew += duration_rew
 
             epoch_total_rew = epoch_phase_rew + epoch_duration_rew
-            agent.send_sample_data(g_data)
+            agent.send_sample_data(list(g_data))
             g_data.clear()
 
         avg_step_reward = 0.0

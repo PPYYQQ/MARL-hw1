@@ -212,7 +212,7 @@ workflow 当前监控：
 - target q value。
 - gradient norm。
 
-训练张量进入 `Algorithm.learn()` 后会统一清洗 NaN/Inf：`obs`、`_obs`、`rew`、`act`、`done`、`legal_action` 和 TD target 中的非有限值都会归零，`done` 还会裁剪到 `[0, 1]`。workflow 统计 reward 分量时同样会把 NaN/Inf 归零，避免监控数据污染。
+训练张量进入 `Algorithm.learn()` 后会统一清洗 NaN/Inf：`obs`、`_obs`、`rew`、`act`、`done`、`legal_action` 和 TD target 中的非有限值都会归零，`done` 还会裁剪到 `[0, 1]`。如果 loss 或梯度范数仍为 NaN/Inf，本次 optimizer step 会被跳过，避免把异常数值写入模型参数。workflow 统计 reward 分量时同样会把 NaN/Inf 归零，避免监控数据污染。
 
 ## 本地验证
 

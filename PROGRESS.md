@@ -712,3 +712,16 @@
   - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
 - 下一步：
   - 平台环境可用后确认长时间训练或中断恢复时不会产生半写 `model.ckpt-latest.pkl`。
+
+### Step 48 - 非有限 loss/梯度更新保护
+
+- 状态：完成
+- Commit：`81b5dbf`
+- 内容：
+  - `Algorithm.learn()` 在计算 Huber loss 后检查 `torch.isfinite(loss)`，遇到 NaN/Inf 时记录日志并跳过本次更新。
+  - 梯度裁剪后将 grad norm 转成 float，并用 `math.isfinite()` 检查；非有限时清空梯度并跳过 `optimizer.step()`。
+  - 静态测试增加非有限 loss、非有限梯度日志和跳过更新锚点；smoke 测试增加一次正常 learn 和一次 NaN/Inf 样本 learn 后参数仍有限的断言。
+- 验证：
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 平台环境可用后观察 `value_loss`、`model_grad_norm` 和 checkpoint 参数是否仍出现 NaN/Inf。

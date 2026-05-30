@@ -170,6 +170,7 @@
 ### Step 10 - 训练 reward 统计和样本容灾
 
 - 状态：完成
+- Commit：`7d6779e Improve Target-DQN training reward metrics`
 - 内容：
   - `sample_process()` 对 `rew=None` 的容灾轨迹补零奖励，避免样本转换后训练崩溃。
   - `sample_process()` 对缺失 `legal_action` 做保守默认值。

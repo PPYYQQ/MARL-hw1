@@ -16,11 +16,18 @@ def require(condition, message):
 
 
 def main():
+    root = ROOT.parent
     algorithm = read("agent_target_dqn/algorithm/algorithm.py")
     agent = read("agent_target_dqn/agent.py")
+    conf = read("agent_target_dqn/conf/conf.py")
     definition = read("agent_target_dqn/feature/definition.py")
     traffic_utils = read("agent_target_dqn/feature/traffic_utils.py")
     workflow = read("agent_target_dqn/workflow/train_workflow.py")
+    package_script = root / "scripts" / "package_submission.sh"
+    check_script = root / "scripts" / "check_offline.sh"
+
+    require("DIM_OF_OBSERVATION = 568" in conf, "observation dim should include 560 grid + 8 phase features")
+    require("PHASE_FEATURE_DIM = 8" in conf, "phase feature dimension should stay explicit")
 
     require("target_model = self.model" not in algorithm, "target model must not alias online model")
     require("deepcopy(self.model)" in algorithm, "target model should be an independent copy")
@@ -45,6 +52,11 @@ def main():
 
     require("phase_reward" in workflow and "duration_reward" in workflow, "workflow should monitor reward components")
     require("predict_cnt % 20" in workflow, "workflow should not log every frame")
+
+    require(package_script.exists(), "submission package script is required")
+    require(check_script.exists(), "offline check script is required")
+    require(package_script.stat().st_mode & 0o111, "submission package script should be executable")
+    require(check_script.stat().st_mode & 0o111, "offline check script should be executable")
 
 
 if __name__ == "__main__":

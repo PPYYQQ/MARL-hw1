@@ -318,3 +318,14 @@
   - 已运行 `./scripts/check_offline.sh`，编译、静态检查、smoke skip、空白检查、打包和压缩包内容检查完成。
 - 下一步：
   - 继续维护平台实验台账。
+
+### Step 20 - 静态约束补强
+
+- 状态：完成
+- 内容：
+  - `test_target_dqn_static.py` 增加 `DIM_OF_OBSERVATION = 568` 和 `PHASE_FEATURE_DIM = 8` 约束检查。
+  - 静态测试检查 `package_submission.sh` 和 `check_offline.sh` 存在且可执行。
+- 验证：
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 平台环境可用后运行真实 `train_test.py`。

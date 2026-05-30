@@ -87,13 +87,14 @@ Target-DQN 关键文件：
 - `save_model()` / `load_model()` 已支持默认 checkpoint 路径和首次训练无 latest 模型的情况。
 - `load_model(id="latest")` 会跳过结构不兼容的旧 checkpoint，避免联合动作架构迁移后从旧模型恢复时崩溃。
 - Target-DQN 已将 `legal_action` 归一化为 4 维相位 mask，用于贪心预测、随机探索和规则兜底选相位。
+- 训练 workflow 已用同一归一化逻辑判断是否需要决策，兼容平台文档中的 `int32` 标量门控和 4 维相位 mask。
 - `sample_process()` 会把训练样本中的 `legal_action` 设置为下一状态相位 mask，供 Double DQN target 选择下一相位时使用。
 - 观测和 reward 已加入相位服务年龄，用于降低高压相位长期不被服务的风险。
 - Target-DQN 已从 phase/duration 双头改为 80 维联合动作 Q 头，可表达相位和时长组合价值。
 
 仍需关注的问题：
 
-- 平台文档中 `legal_action` 更像是否需要决策的标量门控；当前 Target-DQN 已保守兼容标量门控和 4 维相位 mask，但仍需在真实平台 observation 上确认格式。
+- 平台文档中 `legal_action` 更像是否需要决策的标量门控；当前 Target-DQN 已保守兼容标量门控和 4 维相位 mask，但仍需在真实平台 observation 上确认是否存在相位级 mask 语义。
 - `agent_dqn`、`agent_ppo`、`agent_diy` 仍基本保留模板状态，不是当前主线。
 - 当前状态特征包含占用/速度网格、当前相位、相位服务年龄、持续时间、剩余时间、相位压力、全局等待/延误统计、一帧交通趋势、4 帧滚动交通历史和逐车道车辆/排队/等待统计。
 - reward 权重尚未经过平台训练调优。
@@ -176,6 +177,7 @@ coding agent 无法单独保证：
 - `phase_idx` 必须落在 `0-3`。
 - `duration_idx` 必须映射为环境接受的秒数；保守建议从 `8 + duration_idx` 或离散档位开始，避免低于 8 秒的切灯惩罚。
 - `legal_action` 需要先通过 `normalize_phase_legal_action()` 转为 4 维相位 mask；如果真实平台只给标量门控，则非零表示四个相位都可选。
+- 训练 workflow 判断是否调用 `predict()` 时也必须走 `normalize_phase_legal_action()`，不要直接写 `legal_action[0]`。
 - 训练样本里的 `legal_action` 代表 `_obs` 对应的下一状态相位 mask，不是当前已执行动作的 mask。
 - 相位级 mask 会展开成 80 维 joint mask，训练和预测都只在合法相位对应的动作组合中选动作。
 - `exploit()` 必须使用贪心或规则兜底，不应使用随机探索。

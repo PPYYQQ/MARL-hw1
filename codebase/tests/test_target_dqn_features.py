@@ -20,6 +20,8 @@ def main():
 
     assert normalize_phase_legal_action(None) == [1, 1, 1, 1]
     assert normalize_phase_legal_action([]) == [1, 1, 1, 1]
+    assert normalize_phase_legal_action(1) == [1, 1, 1, 1]
+    assert normalize_phase_legal_action(0) == [0, 0, 0, 0]
     assert normalize_phase_legal_action([1]) == [1, 1, 1, 1]
     assert normalize_phase_legal_action([0]) == [0, 0, 0, 0]
     assert normalize_phase_legal_action([1, 0, 2, -1]) == [1, 0, 1, 0]

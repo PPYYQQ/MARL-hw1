@@ -99,6 +99,9 @@ def main():
     require("np.flatnonzero" in agent, "random exploration should sample only legal phase actions")
 
     require("phase_reward" in workflow and "duration_reward" in workflow, "workflow should monitor reward components")
+    require("def _need_to_predict" in workflow, "workflow should normalize legal_action before prediction gating")
+    require('obs["legal_action"][0]' not in workflow, "workflow should not assume legal_action is always a list")
+    require("_need_to_predict(obs)" in workflow, "workflow should use the robust prediction gate")
     require("predict_cnt % 20" in workflow, "workflow should not log every frame")
 
     require(package_script.exists(), "submission package script is required")

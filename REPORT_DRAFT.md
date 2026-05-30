@@ -117,6 +117,7 @@ duration_seconds = MIN_GREEN_DURATION + duration_index
 
 - 如果平台只提供标量门控，非零值表示四个相位都可选。
 - 如果平台提供相位级 mask，则预测和随机探索只在合法相位对应的联合动作中选择。
+- 训练 workflow 也使用同一归一化逻辑判断当前帧是否需要调用 `predict()`，避免平台给标量 `int32` 时因下标访问崩溃。
 - 训练样本中的 `legal_action` 保存 `_obs` 对应的下一状态 mask，用于 TD target 的下一联合动作选择。
 - 如果 mask 全零，推理侧会回退为四个相位都可选，避免无可选动作导致崩溃。
 

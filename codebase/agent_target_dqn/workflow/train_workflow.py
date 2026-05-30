@@ -10,7 +10,9 @@ Author: Tencent AI Arena Authors
 
 import os
 import time
+from agent_target_dqn.conf.conf import Config
 from agent_target_dqn.feature.definition import *
+from agent_target_dqn.feature.traffic_utils import normalize_phase_legal_action
 from common_python.utils.common_func import Frame
 from tools.train_env_conf_validate import read_usr_conf
 from tools.metrics_utils import get_training_metrics
@@ -125,7 +127,7 @@ def run_episodes(n_episode, env, agent, usr_conf, logger):
 
             done = False
             while not done:
-                need_to_predict = obs["legal_action"][0] != 0
+                need_to_predict = _need_to_predict(obs)
                 if need_to_predict:
                     if len(collector) > 0:
                         # Calculate reward Rewards
@@ -221,6 +223,12 @@ def _reward_components(reward):
     phase_reward = float(reward[0])
     duration_reward = float(reward[1]) if len(reward) > 1 else 0.0
     return phase_reward, duration_reward
+
+
+def _need_to_predict(obs):
+    legal_action = obs.get("legal_action") if isinstance(obs, dict) else None
+    phase_mask = normalize_phase_legal_action(legal_action, Config.DIM_OF_ACTION_PHASE)
+    return any(phase_mask)
 
 
 def _log_info(logger, message):

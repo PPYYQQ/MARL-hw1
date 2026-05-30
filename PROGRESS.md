@@ -476,3 +476,17 @@
   - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；新增无平台依赖滚动历史测试通过，smoke 因当前本地缺少 `torch` 明确 skip。
 - 下一步：
   - 平台环境可用后观察历史摘要是否改善对持续拥堵趋势的响应。
+
+### Step 31 - workflow 合法动作门控兼容
+
+- 状态：完成
+- Commit：待回填
+- 内容：
+  - 将训练 workflow 的是否决策判断从直接读取 `legal_action[0]` 改为 `_need_to_predict()`。
+  - `_need_to_predict()` 复用 `normalize_phase_legal_action()`，兼容平台文档中的 `int32` 标量门控和相位级 mask。
+  - 为 `normalize_phase_legal_action()` 补充标量 `0/1` 离线测试。
+  - 更新静态测试、`AGENTS.md`、`RUNBOOK.md` 和 `REPORT_DRAFT.md`。
+- 验证：
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；新增标量 `legal_action` 测试通过，smoke 因当前本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 平台环境可用后用真实 observation 日志确认 `legal_action` 是否包含相位级约束。

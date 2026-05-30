@@ -244,6 +244,8 @@ def main():
     with tempfile.TemporaryDirectory() as model_dir:
         agent.save_model(path=model_dir, id="smoke")
         agent.load_model(path=model_dir, id="smoke")
+        agent.save_model(path=model_dir, id="latest")
+        agent.load_model(path=model_dir, id="latest")
 
 
 if __name__ == "__main__":

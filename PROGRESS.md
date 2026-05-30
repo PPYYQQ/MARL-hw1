@@ -503,3 +503,16 @@
   - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
 - 下一步：
   - 平台环境可用后如仍崩溃，优先根据 chained traceback 修复首个真实异常。
+
+### Step 33 - latest checkpoint 保存加载闭环
+
+- 状态：完成
+- Commit：待回填
+- 内容：
+  - 将 Target-DQN workflow 的周期保存从默认 `model.ckpt-1.pkl` 改为 `model.ckpt-latest.pkl`。
+  - 保持每局开始的 `load_model(id="latest")` 与周期保存文件名一致，避免跨 episode 或进程恢复时一直找不到刚保存的模型。
+  - 更新静态测试、smoke 保存加载测试、`AGENTS.md`、`RUNBOOK.md` 和 `REPORT_DRAFT.md`。
+- 验证：
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 平台环境可用后确认 `agent_target_dqn/ckpt/model.ckpt-latest.pkl` 能被后续 episode 正常加载。

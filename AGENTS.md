@@ -85,6 +85,7 @@ Target-DQN 关键文件：
 - optimizer 重复初始化已清理，当前使用 Adam。
 - `exploit()` 已有规则基线兜底。
 - `save_model()` / `load_model()` 已支持默认 checkpoint 路径和首次训练无 latest 模型的情况。
+- 训练 workflow 定期保存 `model.ckpt-latest.pkl`，与每局开始的 `load_model(id="latest")` 保持一致。
 - `load_model(id="latest")` 会跳过结构不兼容的旧 checkpoint，避免联合动作架构迁移后从旧模型恢复时崩溃。
 - Target-DQN 已将 `legal_action` 归一化为 4 维相位 mask，用于贪心预测、随机探索和规则兜底选相位。
 - 训练 workflow 已用同一归一化逻辑判断是否需要决策，兼容平台文档中的 `int32` 标量门控和 4 维相位 mask。

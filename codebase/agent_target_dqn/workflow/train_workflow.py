@@ -71,7 +71,7 @@ def workflow(envs, agents, logger=None, monitor=None, *args, **kwargs):
         # 保存model文件
         now = time.time()
         if now - last_save_model_time >= 1800:
-            agent.save_model()
+            agent.save_model(id="latest")
             last_save_model_time = now
 
         # Reporting training progress

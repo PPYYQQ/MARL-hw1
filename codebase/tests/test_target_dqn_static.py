@@ -57,6 +57,11 @@ def main():
     require("total_reward = rew.sum" in algorithm, "joint Q target should train on total reward")
     require("Config.MIN_GREEN_DURATION" in algorithm, "duration seconds must be converted to duration index")
     require("if not list_sample_data" in algorithm, "learn should handle empty batches")
+    require("def _finite_tensor" in algorithm, "learn should sanitize non-finite tensors")
+    require("obs = self._finite_tensor(obs)" in algorithm, "learn should sanitize observations")
+    require("rew = self._finite_tensor(rew)" in algorithm, "learn should sanitize rewards")
+    require("legal_action = self._finite_tensor(legal_action)" in algorithm, "learn should sanitize legal action masks")
+    require("q_targets = self._finite_tensor(q_targets)" in algorithm, "learn should sanitize TD targets")
 
     require('act=3' in definition, "SampleData.act should match [junction, phase, duration_seconds]")
     require("return 0, 0" not in definition, "reward_shaping must not return all-zero rewards")
@@ -123,6 +128,8 @@ def main():
 
     require("phase_reward" in workflow and "duration_reward" in workflow, "workflow should monitor reward components")
     require("def _need_to_predict" in workflow, "workflow should normalize legal_action before prediction gating")
+    require("def _finite_float" in workflow, "workflow reward monitor should sanitize non-finite rewards")
+    require("math.isfinite" in workflow, "workflow reward monitor should reject NaN/Inf values")
     require('obs["legal_action"][0]' not in workflow, "workflow should not assume legal_action is always a list")
     require("_need_to_predict(obs)" in workflow, "workflow should use the robust prediction gate")
     require("run_episodes error: {e}" in workflow, "workflow should log the original episode exception")

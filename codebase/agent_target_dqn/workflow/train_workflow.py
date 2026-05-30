@@ -10,6 +10,7 @@ Author: Tencent AI Arena Authors
 
 import os
 import time
+import math
 from agent_target_dqn.conf.conf import Config
 from agent_target_dqn.feature.definition import *
 from agent_target_dqn.feature.traffic_utils import normalize_phase_legal_action
@@ -220,9 +221,19 @@ def run_episodes(n_episode, env, agent, usr_conf, logger):
 def _reward_components(reward):
     if reward is None:
         return 0.0, 0.0
-    phase_reward = float(reward[0])
-    duration_reward = float(reward[1]) if len(reward) > 1 else 0.0
+    try:
+        phase_reward = _finite_float(reward[0])
+        duration_reward = _finite_float(reward[1]) if len(reward) > 1 else 0.0
+    except (TypeError, ValueError, IndexError):
+        return 0.0, 0.0
     return phase_reward, duration_reward
+
+
+def _finite_float(value):
+    value = float(value)
+    if not math.isfinite(value):
+        return 0.0
+    return value
 
 
 def _need_to_predict(obs):

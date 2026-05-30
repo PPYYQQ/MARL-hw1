@@ -24,7 +24,13 @@ def install_common_python_stub():
         Data.__name__ = name
         return Data
 
+    class Frame:
+        def __init__(self, **kwargs):
+            for key, value in kwargs.items():
+                setattr(self, key, value)
+
     common_func.create_cls = create_cls
+    common_func.Frame = Frame
     common_utils.common_func = common_func
     common_python.utils = common_utils
     sys.modules["common_python"] = common_python
@@ -32,8 +38,25 @@ def install_common_python_stub():
     sys.modules["common_python.utils.common_func"] = common_func
 
 
+def install_workflow_stubs():
+    tools = types.ModuleType("tools")
+    train_env_conf_validate = types.ModuleType("tools.train_env_conf_validate")
+    metrics_utils = types.ModuleType("tools.metrics_utils")
+    workflow_disaster_recovery = types.ModuleType("common_python.utils.workflow_disaster_recovery")
+
+    train_env_conf_validate.read_usr_conf = lambda *args, **kwargs: {}
+    metrics_utils.get_training_metrics = lambda: {}
+    workflow_disaster_recovery.handle_disaster_recovery = lambda *args, **kwargs: False
+
+    sys.modules["tools"] = tools
+    sys.modules["tools.train_env_conf_validate"] = train_env_conf_validate
+    sys.modules["tools.metrics_utils"] = metrics_utils
+    sys.modules["common_python.utils.workflow_disaster_recovery"] = workflow_disaster_recovery
+
+
 def main():
     install_common_python_stub()
+    install_workflow_stubs()
 
     from agent_target_dqn.conf.conf import Config
     from agent_target_dqn.feature.definition import SampleData, reward_shaping, sample_process
@@ -44,6 +67,7 @@ def main():
         get_traffic_trend,
         normalize_phase_legal_action,
     )
+    from agent_target_dqn.workflow.train_workflow import _need_to_predict, _reward_components, _should_log_progress
 
     assert normalize_phase_legal_action(None) == [1, 1, 1, 1]
     assert normalize_phase_legal_action([]) == [1, 1, 1, 1]
@@ -158,6 +182,16 @@ def main():
         0.0,
         0.0,
     )
+
+    assert _reward_components(None) == (0.0, 0.0)
+    assert _reward_components((1.5, float("nan"))) == (1.5, 0.0)
+    assert _reward_components((float("inf"), 2.0)) == (0.0, 2.0)
+    assert _reward_components("bad") == (0.0, 0.0)
+    assert _need_to_predict({"legal_action": 0}) is False
+    assert _need_to_predict({"legal_action": [0, 1, 0, 0]}) is True
+    assert _should_log_progress(0, False, False) is False
+    assert _should_log_progress(20, False, True) is True
+    assert _should_log_progress(0, True, False) is True
 
 
 if __name__ == "__main__":

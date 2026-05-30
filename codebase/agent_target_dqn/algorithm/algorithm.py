@@ -52,9 +52,14 @@ class Algorithm:
             [frame.legal_action for frame in list_sample_data],
             dtype=torch.float32,
         ).view(batch_size, -1)
+        obs = self._finite_tensor(obs)
+        _obs = self._finite_tensor(_obs)
+        rew = self._finite_tensor(rew)
+        action = self._finite_tensor(action)
+        not_done = self._finite_tensor(not_done).clamp(0.0, 1.0)
+        legal_action = self._finite_tensor(legal_action)
         phase_legal_mask = self._phase_legal_mask(legal_action)
         joint_legal_mask = self._joint_legal_mask(phase_legal_mask)
-        action = torch.nan_to_num(action, nan=0.0, posinf=0.0, neginf=0.0)
         action_indices = self._action_to_joint_index(action)
         total_reward = rew.sum(dim=1, keepdim=True)
 
@@ -71,6 +76,7 @@ class Algorithm:
             next_action = next_q_for_action.argmax(dim=1, keepdim=True)
             next_q_value = target_outputs[0].gather(1, next_action)
             q_targets = total_reward + self._gamma * next_q_value * not_done.unsqueeze(1)
+            q_targets = self._finite_tensor(q_targets)
 
         # Calculate the Q-value for the executed joint action
         # 计算实际执行联合动作的q值
@@ -119,6 +125,9 @@ class Algorithm:
     def _stack_tensor(self, values, dtype):
         tensors = [self._as_tensor(value, dtype=dtype) for value in values]
         return torch.stack(tensors)
+
+    def _finite_tensor(self, tensor):
+        return torch.nan_to_num(tensor, nan=0.0, posinf=0.0, neginf=0.0)
 
     def _as_tensor(self, value, dtype):
         if self.device is None:

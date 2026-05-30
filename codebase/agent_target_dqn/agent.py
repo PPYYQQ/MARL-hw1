@@ -243,6 +243,7 @@ class Agent(BaseAgent):
         # Integrate all state quantities into the observation
         # 将所有状态量整合在observation中
         phase_feature = self._phase_feature(frame_state)
+        phase_age_feature = self._phase_age_feature(frame_state)
         traffic_summary = get_traffic_summary(
             vehicles,
             waiting_speed_threshold=Config.WAITING_SPEED_THRESHOLD,
@@ -251,7 +252,15 @@ class Agent(BaseAgent):
         traffic_feature = self._traffic_feature(traffic_summary)
         traffic_trend_feature = self._traffic_trend_feature(traffic_summary)
         lane_stat_feature = self._lane_stat_feature(vehicles)
-        observation = position + speed + phase_feature + traffic_feature + traffic_trend_feature + lane_stat_feature
+        observation = (
+            position
+            + speed
+            + phase_feature
+            + phase_age_feature
+            + traffic_feature
+            + traffic_trend_feature
+            + lane_stat_feature
+        )
 
         return ObsData(
             feature=observation,
@@ -279,8 +288,10 @@ class Agent(BaseAgent):
             waiting_speed_threshold=Config.WAITING_SPEED_THRESHOLD,
             phase_count=Config.DIM_OF_ACTION_PHASE,
         )
+        phase_age_feature = np.asarray(self._phase_age_feature(frame_state), dtype=np.float32)
+        fair_pressure = phase_pressure * (1.0 + Config.FAIRNESS_BONUS_SCALE * phase_age_feature)
         legal_mask = self._phase_action_mask(raw_obs.get("legal_action"))
-        masked_pressure = np.where(legal_mask, phase_pressure, -1.0)
+        masked_pressure = np.where(legal_mask, fair_pressure, -1.0)
         phase_index = int(np.argmax(masked_pressure))
         duration_index = int(np.clip(round(float(phase_pressure[phase_index])), 0, Config.DIM_OF_ACTION_DURATION - 1))
         return [
@@ -327,6 +338,39 @@ class Agent(BaseAgent):
             float(np.clip(elapsed_duration / Config.MAX_GREEN_DURATION, 0.0, 1.0)),
             1.0,
         ]
+
+    def _phase_age_feature(self, frame_state):
+        frame_no = int(frame_state.get("frame_no", 0) or 0)
+        phase_info = self._current_phase_info(frame_state)
+        last_served = self.preprocess.phase_last_served_frame
+        if len(last_served) != Config.DIM_OF_ACTION_PHASE:
+            last_served = [None] * Config.DIM_OF_ACTION_PHASE
+            self.preprocess.phase_last_served_frame = last_served
+        if all(served_frame is None for served_frame in last_served):
+            for phase_idx in range(Config.DIM_OF_ACTION_PHASE):
+                last_served[phase_idx] = frame_no
+        if phase_info:
+            phase_id = int(
+                np.clip(
+                    phase_info.get("phase_id", phase_info.get("phase_idx", 0)),
+                    0,
+                    Config.DIM_OF_ACTION_PHASE - 1,
+                )
+            )
+            last_served[phase_id] = frame_no
+        return [
+            float(np.clip((frame_no - (served_frame or frame_no)) / Config.PHASE_AGE_SCALE, 0.0, 1.0))
+            for served_frame in last_served
+        ]
+
+    def _current_phase_info(self, frame_state):
+        phases = frame_state.get("phases", [])
+        for candidate in phases:
+            if candidate.get("s_id", 0) == 0:
+                return candidate
+        if phases:
+            return phases[0]
+        return {}
 
     def _traffic_feature(self, traffic_summary):
         traffic_feature = [

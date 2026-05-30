@@ -28,13 +28,15 @@ def main():
     check_script = root / "scripts" / "check_offline.sh"
 
     require(
-        "DIM_OF_OBSERVATION = 626" in conf,
-        "observation dim should include 560 grid + 8 phase + 8 traffic + 8 trend + 42 lane stats",
+        "DIM_OF_OBSERVATION = 630" in conf,
+        "observation dim should include 560 grid + 8 phase + 4 age + 8 traffic + 8 trend + 42 lane stats",
     )
     require("PHASE_FEATURE_DIM = 8" in conf, "phase feature dimension should stay explicit")
+    require("PHASE_AGE_FEATURE_DIM = 4" in conf, "phase age feature dimension should stay explicit")
     require("TRAFFIC_FEATURE_DIM = 8" in conf, "traffic feature dimension should stay explicit")
     require("TRAFFIC_TREND_FEATURE_DIM = 8" in conf, "traffic trend feature dimension should stay explicit")
     require("LANE_STAT_FEATURE_DIM = 42" in conf, "lane stat feature dimension should stay explicit")
+    require("FAIRNESS_BONUS_SCALE" in conf, "fairness reward scale should stay explicit")
 
     require("target_model = self.model" not in algorithm, "target model must not alias online model")
     require("deepcopy(self.model)" in algorithm, "target model should be an independent copy")
@@ -53,15 +55,18 @@ def main():
     require("get_phase_pressure" in definition, "reward should use shared phase pressure")
     require("rew is not None" in definition, "sample_process should handle missing rewards")
     require("sample_datas[i].legal_action = sample_datas[i + 1].legal_action" in definition, "samples should carry next-state phase legality")
+    require("def _fairness_reward" in definition, "reward should include phase fairness term")
+    require("def _mark_phase_served" in definition, "reward should update phase service bookkeeping")
 
     require("MIN_GREEN_DURATION + duration_index" in agent, "action_process must map duration index to seconds")
     require("def _phase_feature" in agent, "observation should include traffic signal phase features")
+    require("def _phase_age_feature" in agent, "observation should include phase service age features")
     require("def _traffic_feature" in agent, "observation should include traffic pressure features")
     require("def _traffic_trend_feature" in agent, "observation should include traffic trend features")
     require("def _lane_stat_feature" in agent, "observation should include per-lane statistics")
     require(
-        "phase_feature + traffic_feature + traffic_trend_feature + lane_stat_feature" in agent,
-        "observation should append phase, traffic, trend, and lane-stat features",
+        "+ phase_age_feature" in agent and "+ traffic_feature" in agent,
+        "observation should append phase, phase-age, traffic, trend, and lane-stat features",
     )
     require("def rule_based_action" in agent, "exploit should have a rule-based fallback")
     require("if not os.path.exists(model_file_path)" in agent, "load_model should handle missing latest model")
@@ -74,6 +79,7 @@ def main():
     require("get_lane_position_meters" in traffic_utils, "lane coordinate normalization helper is required")
     require("def normalize_phase_legal_action" in traffic_utils, "phase legal action normalizer is required")
     require("last_traffic_summary = None" in preprocessor, "traffic trend state should reset each episode")
+    require("phase_last_served_frame" in preprocessor, "phase service state should reset each episode")
     require("masked_fill" in agent, "phase Q-values should be masked before greedy selection")
     require("np.flatnonzero" in agent, "random exploration should sample only legal phase actions")
 

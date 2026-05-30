@@ -53,6 +53,7 @@ class FeatureProcess:
         self.old_waiting_time = 0
         self.last_phase_index = None
         self.last_traffic_summary = None
+        self.phase_last_served_frame = [None, None, None, None]
 
     def init_road_info(self, start_info):
         """

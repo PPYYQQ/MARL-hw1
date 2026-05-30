@@ -106,6 +106,7 @@ def reward_shaping(_obs, act, agent):
     phase_reward, duration_reward = 0.0, 0.0
 
     frame_state = _obs["frame_state"]
+    frame_no = int(frame_state.get("frame_no", 0) or 0)
     vehicles = frame_state["vehicles"]
 
     phase_pressure, pressure_totals = get_phase_pressure(
@@ -117,6 +118,7 @@ def reward_shaping(_obs, act, agent):
 
     if enter_vehicle_count == 0:
         agent.preprocess.old_waiting_time = 0.0
+        _mark_phase_served(agent, phase_index, frame_no)
         agent.preprocess.last_phase_index = phase_index
         return 0.0, 0.0
 
@@ -136,6 +138,7 @@ def reward_shaping(_obs, act, agent):
     phase_reward += 0.03 * float(np.clip(waiting_delta, -20.0, 20.0))
     phase_reward -= 0.02 * pressure_totals["queue"]
     phase_reward -= 0.002 * avg_delay
+    phase_reward += _fairness_reward(agent, phase_index, frame_no, phase_pressure)
 
     target_duration = int(
         np.clip(
@@ -154,6 +157,42 @@ def reward_shaping(_obs, act, agent):
     if last_phase_index is not None and phase_index != last_phase_index and duration < Config.MIN_GREEN_DURATION:
         phase_reward -= 0.5
         duration_reward -= 0.5
+    _mark_phase_served(agent, phase_index, frame_no)
     agent.preprocess.last_phase_index = phase_index
 
     return float(phase_reward), float(duration_reward)
+
+
+def _fairness_reward(agent, phase_index, frame_no, phase_pressure):
+    last_served = _ensure_phase_served(agent)
+    phase_ages = np.array(
+        [
+            frame_no - served_frame if served_frame is not None else 0.0
+            for served_frame in last_served
+        ],
+        dtype=np.float32,
+    )
+    normalized_age = np.clip(phase_ages / Config.PHASE_AGE_SCALE, 0.0, 1.0)
+    fairness_pressure = np.asarray(phase_pressure, dtype=np.float32) * normalized_age
+    starved_phase = int(np.argmax(fairness_pressure))
+    starved_score = float(fairness_pressure[starved_phase])
+    if starved_score <= 0.0:
+        return 0.0
+    selected_age = float(normalized_age[phase_index])
+    if phase_index == starved_phase:
+        return Config.FAIRNESS_BONUS_SCALE * selected_age
+    return -Config.FAIRNESS_BONUS_SCALE * float(normalized_age[starved_phase])
+
+
+def _mark_phase_served(agent, phase_index, frame_no):
+    last_served = _ensure_phase_served(agent)
+    phase_index = int(np.clip(phase_index, 0, Config.DIM_OF_ACTION_PHASE - 1))
+    last_served[phase_index] = frame_no
+
+
+def _ensure_phase_served(agent):
+    last_served = getattr(agent.preprocess, "phase_last_served_frame", None)
+    if last_served is None or len(last_served) != Config.DIM_OF_ACTION_PHASE:
+        last_served = [None] * Config.DIM_OF_ACTION_PHASE
+        agent.preprocess.phase_last_served_frame = last_served
+    return last_served

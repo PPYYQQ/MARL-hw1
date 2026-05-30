@@ -141,7 +141,17 @@ def main():
     phase_feature_start = Config.GRID_WIDTH * Config.GRID_NUM * 2
     assert obs_data.feature[phase_feature_start] == 1.0
     assert obs_data.feature[phase_feature_start + Config.PHASE_FEATURE_DIM - 1] == 1.0
-    traffic_feature_start = phase_feature_start + Config.PHASE_FEATURE_DIM
+    phase_age_start = phase_feature_start + Config.PHASE_FEATURE_DIM
+    assert (
+        sum(
+            abs(value)
+            for value in obs_data.feature[
+                phase_age_start : phase_age_start + Config.PHASE_AGE_FEATURE_DIM
+            ]
+        )
+        == 0.0
+    )
+    traffic_feature_start = phase_age_start + Config.PHASE_AGE_FEATURE_DIM
     assert obs_data.feature[traffic_feature_start] > 0.0
     assert obs_data.feature[traffic_feature_start + 2] > 0.0
     assert abs(obs_data.feature[traffic_feature_start + 4] - 0.02) < 1e-6
@@ -180,6 +190,7 @@ def main():
     assert isinstance(phase_reward, float)
     assert isinstance(duration_reward, float)
     assert abs(phase_reward) > 0 or abs(duration_reward) > 0
+    assert agent.preprocess.phase_last_served_frame[0] == 1
 
     algorithm = Algorithm(agent.model, agent.optim, device="cpu", logger=NullLogger(), monitor=None)
     assert algorithm.target_model is not agent.model

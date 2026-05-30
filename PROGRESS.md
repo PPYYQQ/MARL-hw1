@@ -725,3 +725,17 @@
   - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
 - 下一步：
   - 平台环境可用后观察 `value_loss`、`model_grad_norm` 和 checkpoint 参数是否仍出现 NaN/Inf。
+
+### Step 49 - workflow 预测动作兜底
+
+- 状态：完成
+- Commit：`7443d0d`
+- 内容：
+  - 新增 `_predict_action()`，集中处理训练 workflow 中的 `predict()`、`action_process()` 和兜底动作生成。
+  - 当模型预测返回空列表或抛出异常时，workflow 会记录日志并回退到 `rule_based_action()`。
+  - 如果规则策略也异常，workflow 使用 `[0, 0, Config.MIN_GREEN_DURATION]` 作为最终合法动作，避免单次推理异常中断 episode。
+  - 无平台依赖测试覆盖正常预测、空预测、预测异常和规则兜底异常四种路径；静态测试增加对应锚点。
+- 验证：
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 平台环境可用后确认训练 episode 不再因偶发空预测或模型推理异常直接失败。

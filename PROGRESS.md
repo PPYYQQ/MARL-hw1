@@ -419,7 +419,7 @@
 ### Step 27 - 相位服务年龄和公平性奖励
 
 - 状态：完成
-- Commit：待回填
+- Commit：`b181a8c Add phase fairness reward and age features`
 - 内容：
   - 将 `agent_target_dqn` 观测维度从 `626` 扩展为 `630`。
   - `FeatureProcess.reset()` 初始化四个相位的上次服务帧。

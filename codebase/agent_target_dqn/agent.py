@@ -244,7 +244,8 @@ class Agent(BaseAgent):
         # 将所有状态量整合在observation中
         phase_feature = self._phase_feature(frame_state)
         traffic_feature = self._traffic_feature(vehicles)
-        observation = position + speed + phase_feature + traffic_feature
+        lane_stat_feature = self._lane_stat_feature(vehicles)
+        observation = position + speed + phase_feature + traffic_feature + lane_stat_feature
 
         return ObsData(
             feature=observation,
@@ -344,6 +345,24 @@ class Agent(BaseAgent):
             ]
         )
         return traffic_feature
+
+    def _lane_stat_feature(self, vehicles):
+        lane_stats = get_lane_statistics(
+            vehicles,
+            waiting_speed_threshold=Config.WAITING_SPEED_THRESHOLD,
+            lane_count=Config.GRID_WIDTH,
+        )
+        lane_feature = [
+            float(np.clip(count / Config.LANE_COUNT_SCALE, 0.0, 1.0)) for count in lane_stats["counts"]
+        ]
+        lane_feature.extend(
+            float(np.clip(queue / Config.LANE_COUNT_SCALE, 0.0, 1.0)) for queue in lane_stats["queues"]
+        )
+        lane_feature.extend(
+            float(np.clip(wait / Config.TRAFFIC_TIME_SCALE, 0.0, 1.0))
+            for wait in lane_stats["avg_waiting_times"]
+        )
+        return lane_feature
 
     def _phase_action_mask(self, legal_action):
         mask = np.asarray(

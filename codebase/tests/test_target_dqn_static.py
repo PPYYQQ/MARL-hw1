@@ -27,11 +27,12 @@ def main():
     check_script = root / "scripts" / "check_offline.sh"
 
     require(
-        "DIM_OF_OBSERVATION = 576" in conf,
-        "observation dim should include 560 grid + 8 phase features + 8 traffic features",
+        "DIM_OF_OBSERVATION = 618" in conf,
+        "observation dim should include 560 grid + 8 phase + 8 traffic + 42 lane stats",
     )
     require("PHASE_FEATURE_DIM = 8" in conf, "phase feature dimension should stay explicit")
     require("TRAFFIC_FEATURE_DIM = 8" in conf, "traffic feature dimension should stay explicit")
+    require("LANE_STAT_FEATURE_DIM = 42" in conf, "lane stat feature dimension should stay explicit")
 
     require("target_model = self.model" not in algorithm, "target model must not alias online model")
     require("deepcopy(self.model)" in algorithm, "target model should be an independent copy")
@@ -54,12 +55,17 @@ def main():
     require("MIN_GREEN_DURATION + duration_index" in agent, "action_process must map duration index to seconds")
     require("def _phase_feature" in agent, "observation should include traffic signal phase features")
     require("def _traffic_feature" in agent, "observation should include traffic pressure features")
-    require("phase_feature + traffic_feature" in agent, "observation should append phase and traffic features")
+    require("def _lane_stat_feature" in agent, "observation should include per-lane statistics")
+    require(
+        "phase_feature + traffic_feature + lane_stat_feature" in agent,
+        "observation should append phase, traffic, and lane-stat features",
+    )
     require("def rule_based_action" in agent, "exploit should have a rule-based fallback")
     require("if not os.path.exists(model_file_path)" in agent, "load_model should handle missing latest model")
     require("self.algorithm.update_target_q()" in agent, "load_model should sync target network")
 
     require("def get_phase_pressure" in traffic_utils, "shared phase pressure helper is required")
+    require("def get_lane_statistics" in traffic_utils, "shared lane statistics helper is required")
     require("get_lane_position_meters" in traffic_utils, "lane coordinate normalization helper is required")
     require("def normalize_phase_legal_action" in traffic_utils, "phase legal action normalizer is required")
     require("masked_fill" in agent, "phase Q-values should be masked before greedy selection")

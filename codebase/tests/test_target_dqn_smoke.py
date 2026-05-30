@@ -146,6 +146,12 @@ def main():
     assert obs_data.feature[traffic_feature_start + 2] > 0.0
     assert abs(obs_data.feature[traffic_feature_start + 4] - 0.02) < 1e-6
     assert abs(obs_data.feature[traffic_feature_start + 5] - 0.5) < 1e-6
+    lane_stat_start = traffic_feature_start + Config.TRAFFIC_FEATURE_DIM
+    assert abs(obs_data.feature[lane_stat_start] - 0.05) < 1e-6
+    assert abs(obs_data.feature[lane_stat_start + 4] - 0.05) < 1e-6
+    assert abs(obs_data.feature[lane_stat_start + Config.GRID_WIDTH] - 0.05) < 1e-6
+    assert obs_data.feature[lane_stat_start + Config.GRID_WIDTH + 4] == 0.0
+    assert abs(obs_data.feature[lane_stat_start + Config.GRID_WIDTH * 2] - (20.0 / 120.0)) < 1e-6
     obs_data_without_extra = agent.observation_process(make_fake_obs(), None)
     assert len(obs_data_without_extra.feature) == Config.DIM_OF_OBSERVATION
 

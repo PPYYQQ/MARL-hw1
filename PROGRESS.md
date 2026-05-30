@@ -386,3 +386,17 @@
   - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
 - 下一步：
   - 平台环境可用后确认真实 `legal_action` 是否可作为相位级 mask；若只是标量门控，则当前逻辑等价于全相位可选。
+
+### Step 25 - 逐车道统计特征并入观测
+
+- 状态：完成
+- Commit：待回填
+- 内容：
+  - 将 `agent_target_dqn` 观测维度从 `576` 扩展为 `618`。
+  - 新增 `get_lane_statistics()`，统计 14 条进口车道的车辆数、排队数和平均等待时间。
+  - 在观测末尾追加 42 维逐车道统计特征。
+  - 更新无平台依赖特征测试、静态测试、smoke 测试、`AGENTS.md` 和 `REPORT_DRAFT.md`。
+- 验证：
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；新增无平台依赖逐车道统计测试通过，smoke 因当前本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 平台环境可用后观察逐车道统计是否改善排队和等待指标。

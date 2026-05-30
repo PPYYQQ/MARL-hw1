@@ -159,6 +159,38 @@ def get_lane_position_meters(vehicle):
     return y_pos
 
 
+def get_lane_statistics(vehicles, waiting_speed_threshold=0.1, lane_count=14):
+    counts = np.zeros(lane_count, dtype=np.float32)
+    queues = np.zeros(lane_count, dtype=np.float32)
+    waiting_times = np.zeros(lane_count, dtype=np.float32)
+
+    for vehicle in vehicles:
+        try:
+            if not on_enter_lane(vehicle):
+                continue
+        except KeyError:
+            continue
+
+        lane_code = get_lane_code(vehicle)
+        if lane_code is None or lane_code < 0 or lane_code >= lane_count:
+            continue
+
+        speed = float(vehicle.get("speed", 0.0))
+        waiting_time = float(vehicle.get("waiting_time", 0.0))
+        is_waiting = 1.0 if speed <= waiting_speed_threshold else 0.0
+
+        counts[lane_code] += 1.0
+        queues[lane_code] += is_waiting
+        waiting_times[lane_code] += waiting_time
+
+    avg_waiting_times = np.divide(waiting_times, counts, out=np.zeros_like(waiting_times), where=counts > 0)
+    return {
+        "counts": counts,
+        "queues": queues,
+        "avg_waiting_times": avg_waiting_times,
+    }
+
+
 def get_webster_lane_group():
     """
     Classify according to the green light phase corresponding to each import lane,

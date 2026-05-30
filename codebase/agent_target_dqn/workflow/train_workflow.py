@@ -141,11 +141,7 @@ def run_episodes(n_episode, env, agent, usr_conf, logger):
                     obs_data = agent.observation_process(obs, extra_info)
                     # Agent makes a prediction to get the next frame's action
                     # Agent 进行推理, 获取下一帧的预测动作
-                    act_data = agent.predict(list_obs_data=[obs_data])
-
-                    # Unpack ActData into actions
-                    # ActData 解包成动作
-                    act = agent.action_process(act_data[0])
+                    act = _predict_action(agent, obs_data, obs, logger)
                     predict_cnt += 1
                 else:
                     # No need to predict
@@ -311,6 +307,22 @@ def _need_to_predict(obs):
 
 def _should_log_progress(predict_cnt, done, need_to_predict):
     return done or (need_to_predict and predict_cnt > 0 and predict_cnt % 20 == 0)
+
+
+def _predict_action(agent, obs_data, obs, logger):
+    try:
+        act_data = agent.predict(list_obs_data=[obs_data])
+        if act_data:
+            return agent.action_process(act_data[0])
+        _log_error(logger, "predict returned empty action, fallback to rule_based_action")
+    except Exception as err:
+        _log_error(logger, f"predict fallback to rule_based_action: {err}")
+
+    try:
+        return agent.rule_based_action(obs)
+    except Exception as err:
+        _log_error(logger, f"rule_based_action failed, use default action: {err}")
+        return [0, 0, Config.MIN_GREEN_DURATION]
 
 
 def _log_info(logger, message):

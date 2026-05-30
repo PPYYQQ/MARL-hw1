@@ -71,6 +71,7 @@ def main():
         _need_to_predict,
         _normalize_reset_result,
         _normalize_step_result,
+        _predict_action,
         _reward_components,
         _safe_done_flag,
         _safe_extra_info,
@@ -231,6 +232,45 @@ def main():
     assert _should_log_progress(0, False, False) is False
     assert _should_log_progress(20, False, True) is True
     assert _should_log_progress(0, True, False) is True
+
+    class PredictingAgent:
+        def predict(self, list_obs_data):
+            return ["action-data"]
+
+        def action_process(self, act_data):
+            return [0, 3, Config.MIN_GREEN_DURATION + 2]
+
+        def rule_based_action(self, obs):
+            raise AssertionError("rule fallback should not run")
+
+    class EmptyPredictAgent:
+        def predict(self, list_obs_data):
+            return []
+
+        def action_process(self, act_data):
+            raise AssertionError("empty predictions should not be processed")
+
+        def rule_based_action(self, obs):
+            return [0, 2, Config.MIN_GREEN_DURATION + 1]
+
+    class FailingPredictAgent:
+        def predict(self, list_obs_data):
+            raise RuntimeError("model failed")
+
+        def rule_based_action(self, obs):
+            return [0, 1, Config.MIN_GREEN_DURATION]
+
+    class FailingFallbackAgent:
+        def predict(self, list_obs_data):
+            return []
+
+        def rule_based_action(self, obs):
+            raise RuntimeError("rule failed")
+
+    assert _predict_action(PredictingAgent(), object(), {}, None) == [0, 3, Config.MIN_GREEN_DURATION + 2]
+    assert _predict_action(EmptyPredictAgent(), object(), {}, None) == [0, 2, Config.MIN_GREEN_DURATION + 1]
+    assert _predict_action(FailingPredictAgent(), object(), {}, None) == [0, 1, Config.MIN_GREEN_DURATION]
+    assert _predict_action(FailingFallbackAgent(), object(), {}, None) == [0, 0, Config.MIN_GREEN_DURATION]
 
 
 if __name__ == "__main__":

@@ -361,7 +361,7 @@
 ### Step 23 - 合法动作相位掩码
 
 - 状态：完成
-- Commit：待回填
+- Commit：`fcf6836 Apply phase legal action masks`
 - 内容：
   - 新增 `normalize_phase_legal_action()`，兼容平台标量门控和 4 维相位 mask 两种格式。
   - Target-DQN 贪心预测在 phase Q 值上应用 mask，随机探索只从合法相位采样。

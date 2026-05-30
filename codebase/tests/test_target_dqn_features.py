@@ -67,7 +67,16 @@ def main():
         get_traffic_trend,
         normalize_phase_legal_action,
     )
-    from agent_target_dqn.workflow.train_workflow import _need_to_predict, _reward_components, _should_log_progress
+    from agent_target_dqn.workflow.train_workflow import (
+        _need_to_predict,
+        _reward_components,
+        _safe_done_flag,
+        _safe_extra_info,
+        _safe_frame_no,
+        _safe_legal_action,
+        _safe_observation,
+        _should_log_progress,
+    )
 
     assert normalize_phase_legal_action(None) == [1, 1, 1, 1]
     assert normalize_phase_legal_action([]) == [1, 1, 1, 1]
@@ -187,6 +196,16 @@ def main():
     assert _reward_components((1.5, float("nan"))) == (1.5, 0.0)
     assert _reward_components((float("inf"), 2.0)) == (0.0, 2.0)
     assert _reward_components("bad") == (0.0, 0.0)
+    assert _safe_observation({"observation": {"legal_action": 1}}) == {"legal_action": 1}
+    assert _safe_observation({"observation": None}) == {}
+    assert _safe_extra_info({"extra_info": {"init_state": {}}}) == {"init_state": {}}
+    assert _safe_extra_info({"extra_info": None}) == {}
+    assert _safe_frame_no({"frame_no": "bad"}) == 0
+    assert _safe_frame_no({"frame_no": 7}) == 7
+    assert _safe_done_flag({"terminated": 1}, "terminated") is True
+    assert _safe_done_flag({}, "terminated") is False
+    assert _safe_legal_action({"legal_action": [1, 0, 0, 0]}) == [1, 0, 0, 0]
+    assert _safe_legal_action(None) is None
     assert _need_to_predict({"legal_action": 0}) is False
     assert _need_to_predict({"legal_action": [0, 1, 0, 0]}) is True
     assert _should_log_progress(0, False, False) is False

@@ -119,8 +119,8 @@ def run_episodes(n_episode, env, agent, usr_conf, logger):
                 break
 
             agent.reset(env_obs)
-            obs = env_obs["observation"]
-            extra_info = env_obs["extra_info"]
+            obs = _safe_observation(env_obs)
+            extra_info = _safe_extra_info(env_obs)
 
             # Record the last_predict_act
             # 记录上次预测的动作
@@ -164,11 +164,11 @@ def run_episodes(n_episode, env, agent, usr_conf, logger):
                         yield collector
                     break
 
-                frame_no = env_obs["frame_no"]
-                _obs = env_obs["observation"]
-                terminated = env_obs["terminated"]
-                truncated = env_obs["truncated"]
-                extra_info = env_obs["extra_info"]
+                frame_no = _safe_frame_no(env_obs)
+                _obs = _safe_observation(env_obs)
+                terminated = _safe_done_flag(env_obs, "terminated")
+                truncated = _safe_done_flag(env_obs, "truncated")
+                extra_info = _safe_extra_info(env_obs)
                 # Determine if the environment is over
                 # 判断环境结束
                 done = terminated or truncated or (train_test_quick_stop and len(collector) > 1)
@@ -189,7 +189,7 @@ def run_episodes(n_episode, env, agent, usr_conf, logger):
                         act=act,
                         rew=None,
                         done=0,
-                        legal_action=obs["legal_action"],
+                        legal_action=_safe_legal_action(obs),
                     )
 
                     collector.append(frame)
@@ -234,6 +234,43 @@ def _finite_float(value):
     if not math.isfinite(value):
         return 0.0
     return value
+
+
+def _safe_env_value(env_obs, key, default):
+    if isinstance(env_obs, dict):
+        return env_obs.get(key, default)
+    return default
+
+
+def _safe_observation(env_obs):
+    observation = _safe_env_value(env_obs, "observation", {})
+    if isinstance(observation, dict):
+        return observation
+    return {}
+
+
+def _safe_extra_info(env_obs):
+    extra_info = _safe_env_value(env_obs, "extra_info", {})
+    if isinstance(extra_info, dict):
+        return extra_info
+    return {}
+
+
+def _safe_frame_no(env_obs):
+    try:
+        return int(_safe_env_value(env_obs, "frame_no", 0) or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
+def _safe_done_flag(env_obs, key):
+    return bool(_safe_env_value(env_obs, key, False))
+
+
+def _safe_legal_action(obs):
+    if isinstance(obs, dict):
+        return obs.get("legal_action")
+    return None
 
 
 def _need_to_predict(obs):

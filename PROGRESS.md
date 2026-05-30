@@ -215,6 +215,7 @@
 ### Step 13 - 离线静态验证和平台运行手册
 
 - 状态：完成
+- Commit：`3b873da Add offline validation and platform runbook`
 - 内容：
   - `Algorithm.learn()` 对空 batch 直接返回，避免边界输入崩溃。
   - `_stack_tensor()` 不再向 `torch.as_tensor()` 传入 `device=None`，兼容不同 PyTorch 版本。

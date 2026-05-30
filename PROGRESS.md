@@ -322,6 +322,7 @@
 ### Step 20 - 静态约束补强
 
 - 状态：完成
+- Commit：`964825f Strengthen offline static checks`
 - 内容：
   - `test_target_dqn_static.py` 增加 `DIM_OF_OBSERVATION = 568` 和 `PHASE_FEATURE_DIM = 8` 约束检查。
   - 静态测试检查 `package_submission.sh` 和 `check_offline.sh` 存在且可执行。

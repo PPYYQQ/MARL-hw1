@@ -136,6 +136,7 @@
 ### Step 8 - 训练动作索引和样本形状修复
 
 - 状态：完成
+- Commit：`024b55b Fix Target-DQN training action indices`
 - 内容：
   - 将 `SampleData.act` 从 4 维修正为实际使用的 3 维 `[junction_id, phase_index, duration_seconds]`。
   - 简化 `sample_process()`，直接遍历轨迹列表，避免 `np.array(...).squeeze()` 在边界长度下改变结构。

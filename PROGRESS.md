@@ -78,6 +78,7 @@
 ### Step 4 - 本地依赖和平台入口检查
 
 - 状态：完成
+- Commit：`f81d8ca Record local dependency check`
 - 内容：
   - 运行 `python train_test.py` 检查平台训练入口。
   - 运行 `python -m pip show torch kaiwudrl common_python` 检查本地依赖。

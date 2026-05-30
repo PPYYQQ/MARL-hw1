@@ -372,3 +372,17 @@
   - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；新增无平台依赖特征工具测试通过，smoke 因当前本地缺少 `torch` 明确 skip。
 - 下一步：
   - 平台环境可用后用真实 observation 确认 `legal_action` 的实际格式。
+
+### Step 24 - Double DQN 目标动作掩码
+
+- 状态：完成
+- Commit：待回填
+- 内容：
+  - `sample_process()` 将训练样本里的 `legal_action` 更新为 `_obs` 对应的下一状态相位 mask。
+  - `Algorithm.learn()` 在 Double DQN 选择下一相位时应用合法相位 mask。
+  - 新增 `_phase_legal_mask()`，兼容标量门控、短 mask 和全零 mask。
+  - 更新静态测试、smoke 测试、`AGENTS.md` 和 `REPORT_DRAFT.md`。
+- 验证：
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 平台环境可用后确认真实 `legal_action` 是否可作为相位级 mask；若只是标量门控，则当前逻辑等价于全相位可选。

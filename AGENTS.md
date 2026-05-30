@@ -86,6 +86,7 @@ Target-DQN 关键文件：
 - `exploit()` 已有规则基线兜底。
 - `save_model()` / `load_model()` 已支持默认 checkpoint 路径和首次训练无 latest 模型的情况。
 - Target-DQN 已将 `legal_action` 归一化为 4 维相位 mask，用于贪心预测、随机探索和规则兜底选相位。
+- `sample_process()` 会把训练样本中的 `legal_action` 设置为下一状态相位 mask，供 Double DQN target 选择下一相位时使用。
 
 仍需关注的问题：
 
@@ -173,6 +174,7 @@ coding agent 无法单独保证：
 - `phase_idx` 必须落在 `0-3`。
 - `duration_idx` 必须映射为环境接受的秒数；保守建议从 `8 + duration_idx` 或离散档位开始，避免低于 8 秒的切灯惩罚。
 - `legal_action` 需要先通过 `normalize_phase_legal_action()` 转为 4 维相位 mask；如果真实平台只给标量门控，则非零表示四个相位都可选。
+- 训练样本里的 `legal_action` 代表 `_obs` 对应的下一状态相位 mask，不是当前已执行动作的 mask。
 - 如果改为联合动作，使用 `action_id = phase_idx * 20 + duration_idx`，输出 80 维 Q 值。
 - `exploit()` 必须使用贪心或规则兜底，不应使用随机探索。
 

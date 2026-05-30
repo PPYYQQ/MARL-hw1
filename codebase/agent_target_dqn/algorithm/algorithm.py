@@ -49,6 +49,11 @@ class Algorithm:
         rew = self._stack_tensor([frame.rew for frame in list_sample_data], dtype=torch.float32).view(batch_size, -1)
         _obs = self._stack_tensor([frame._obs for frame in list_sample_data], dtype=torch.float32).view(batch_size, -1)
         not_done = self._stack_tensor([frame.done for frame in list_sample_data], dtype=torch.float32).view(batch_size)
+        legal_action = self._stack_tensor(
+            [frame.legal_action for frame in list_sample_data],
+            dtype=torch.float32,
+        ).view(batch_size, -1)
+        phase_legal_mask = self._phase_legal_mask(legal_action)
         action = torch.nan_to_num(action, nan=0.0, posinf=0.0, neginf=0.0)
         action_indices = self._action_to_head_indices(action)
 
@@ -63,7 +68,10 @@ class Algorithm:
             # 计算各个头的目标q值
             q_targets = []
             for head_idx in range(self.num_head):
-                next_action = online_next_outputs[head_idx].argmax(dim=1, keepdim=True)
+                next_q_for_action = online_next_outputs[head_idx]
+                if head_idx == 0:
+                    next_q_for_action = next_q_for_action.masked_fill(~phase_legal_mask, -1e9)
+                next_action = next_q_for_action.argmax(dim=1, keepdim=True)
                 next_q_value = target_outputs[head_idx].gather(1, next_action)
                 q_targets_head = (
                     rew[:, head_idx].unsqueeze(1)
@@ -134,3 +142,26 @@ class Algorithm:
         duration_index = (action[:, 2] - Config.MIN_GREEN_DURATION).long()
         duration_index = duration_index.clamp(0, Config.DIM_OF_ACTION_DURATION - 1)
         return torch.stack([phase_index, duration_index], dim=1)
+
+    def _phase_legal_mask(self, legal_action):
+        if legal_action.dim() == 1:
+            legal_action = legal_action.view(-1, 1)
+
+        phase_count = Config.DIM_OF_ACTION_PHASE
+        if legal_action.size(1) == 1:
+            mask = (legal_action[:, :1] > 0).repeat(1, phase_count)
+        else:
+            mask = legal_action[:, :phase_count] > 0
+            if mask.size(1) < phase_count:
+                padding = torch.ones(
+                    mask.size(0),
+                    phase_count - mask.size(1),
+                    dtype=torch.bool,
+                    device=mask.device,
+                )
+                mask = torch.cat([mask, padding], dim=1)
+
+        empty_rows = ~mask.any(dim=1, keepdim=True)
+        if empty_rows.any():
+            mask = torch.where(empty_rows, torch.ones_like(mask), mask)
+        return mask

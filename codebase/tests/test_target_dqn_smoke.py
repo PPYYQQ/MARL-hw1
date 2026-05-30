@@ -170,6 +170,8 @@ def main():
     action_tensor = torch.tensor([[0, 2, Config.MIN_GREEN_DURATION + 5], [0, 99, 999]], dtype=torch.float32)
     action_indices = algorithm._action_to_head_indices(action_tensor)
     assert action_indices.tolist() == [[2, 5], [Config.DIM_OF_ACTION_PHASE - 1, Config.DIM_OF_ACTION_DURATION - 1]]
+    phase_mask = algorithm._phase_legal_mask(torch.tensor([[1, 0, 1, 0], [0, 0, 0, 0]], dtype=torch.float32))
+    assert phase_mask.tolist() == [[True, False, True, False], [True, True, True, True]]
     algorithm.update_target_q()
 
     frame_type = type("Frame", (), {})
@@ -184,12 +186,12 @@ def main():
     second.act = [0, 1, Config.MIN_GREEN_DURATION + 1]
     second.rew = (0.5, 0.25)
     second.done = 1
-    second.legal_action = [1]
+    second.legal_action = [0, 1, 0, 1]
     samples = sample_process([first, second])
     assert len(samples) == 1
     assert isinstance(samples[0], SampleData)
     assert samples[0].act == [0, 0, Config.MIN_GREEN_DURATION]
-    assert samples[0].legal_action == [1, 0, 1, 0]
+    assert samples[0].legal_action == [0, 1, 0, 1]
 
     agent.load_model(id="latest")
     with tempfile.TemporaryDirectory() as model_dir:

@@ -32,7 +32,7 @@
 - Huber loss，降低异常 TD error 对训练的冲击。
 - phase 和 duration 两个输出 head。
 - epsilon-greedy 训练探索。
-- `legal_action` 相位 mask，在贪心预测、随机探索和规则兜底中避免选择明确非法的相位。
+- `legal_action` 相位 mask，在贪心预测、随机探索、规则兜底和 Double DQN 下一动作选择中避免选择明确非法的相位。
 - 固定频率目标网络同步。
 - 规则策略兜底，保证评估阶段即使模型异常也能输出合法动作。
 
@@ -96,6 +96,7 @@ duration_seconds = MIN_GREEN_DURATION + duration_index
 
 - 如果平台只提供标量门控，非零值表示四个相位都可选。
 - 如果平台提供相位级 mask，则预测和随机探索只在合法相位中选择。
+- 训练样本中的 `legal_action` 保存 `_obs` 对应的下一状态 mask，用于 TD target 的下一相位选择。
 - 如果 mask 全零，推理侧会回退为四个相位都可选，避免无可选动作导致崩溃。
 
 ## 奖励设计

@@ -58,6 +58,7 @@ def sample_process(list_game_data):
 
     for i in range(len(sample_datas) - 1):
         sample_datas[i]._obs = sample_datas[i + 1].obs
+        sample_datas[i].legal_action = sample_datas[i + 1].legal_action
     sample_datas[-1]._obs = sample_datas[-1].obs
 
     if sample_datas[-1].done:

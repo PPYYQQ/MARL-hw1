@@ -40,6 +40,8 @@ def main():
     require("next_q_value = target_outputs" in algorithm, "target network should evaluate selected next action")
     require("smooth_l1_loss" in algorithm, "TD loss should use Huber loss for stability")
     require("_action_to_head_indices" in algorithm, "training must map env action to Q-head indices")
+    require("def _phase_legal_mask" in algorithm, "training should normalize legal phase masks")
+    require("phase_legal_mask" in algorithm, "Double DQN phase target should use legal action mask")
     require("Config.MIN_GREEN_DURATION" in algorithm, "duration seconds must be converted to duration index")
     require("if not list_sample_data" in algorithm, "learn should handle empty batches")
 
@@ -47,6 +49,7 @@ def main():
     require("return 0, 0" not in definition, "reward_shaping must not return all-zero rewards")
     require("get_phase_pressure" in definition, "reward should use shared phase pressure")
     require("rew is not None" in definition, "sample_process should handle missing rewards")
+    require("sample_datas[i].legal_action = sample_datas[i + 1].legal_action" in definition, "samples should carry next-state phase legality")
 
     require("MIN_GREEN_DURATION + duration_index" in agent, "action_process must map duration index to seconds")
     require("def _phase_feature" in agent, "observation should include traffic signal phase features")

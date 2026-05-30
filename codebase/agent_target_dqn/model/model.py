@@ -57,9 +57,11 @@ class Model(nn.Module):
                 dtype=torch.float32,
             )
         else:
-            s = s.to(torch.float32)
+            if self.device is None:
+                s = s.to(dtype=torch.float32)
+            else:
+                s = s.to(device=self.device, dtype=torch.float32)
 
-        batch = s.shape[0]
         s = self.model(s)
 
         if Config.SOFTMAX:

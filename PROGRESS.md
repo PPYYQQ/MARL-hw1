@@ -117,3 +117,16 @@
   - 已运行 `git diff --check`，未发现空白错误。
 - 下一步：
   - 检查训练 workflow 和 sample 结构是否还存在明显形状风险。
+
+### Step 7 - 模型 forward 设备一致性
+
+- 状态：完成
+- 内容：
+  - 修正 `Model.forward()` 中输入已经是 tensor 时只转 dtype、不转 device 的问题。
+  - 移除未使用的 `batch` 局部变量。
+- 验证：
+  - 已运行 `python -m compileall agent_target_dqn tests`，语法编译通过。
+  - 已运行 `python tests/test_target_dqn_smoke.py`，当前本地缺少 `torch`，脚本明确 skip。
+  - 已运行 `git diff --check`，未发现空白错误。
+- 下一步：
+  - 继续检查 workflow/sample 的训练形状风险。

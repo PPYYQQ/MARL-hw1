@@ -65,8 +65,8 @@ class Agent(BaseAgent):
                     junction_id,
                 ] * len(list_obs_data)
                 res = model(feature)[0]
-                list_phase = torch.argmax(res[0], dim=1).cpu().view(-1, 1).tolist()[0]
-                list_duration = torch.argmax(res[1], dim=1).cpu().view(-1, 1).tolist()[0]
+                list_phase = torch.argmax(res[0], dim=1).cpu().view(-1).tolist()
+                list_duration = torch.argmax(res[1], dim=1).cpu().view(-1).tolist()
         else:
             list_junction = [
                 junction_id,
@@ -173,13 +173,13 @@ class Agent(BaseAgent):
         # 沿车道方向和车辆行驶方向将车道划分为数个栅格
         speed_dict = {}
         position_dict = {}
-        for junction_id in self.preprocess.junction_dict.keys():
-            speed_dict[junction_id] = np.zeros((Config.GRID_WIDTH, Config.GRID_NUM))
-            position_dict[junction_id] = np.zeros((Config.GRID_WIDTH, Config.GRID_NUM))
-
         # The default value of junction_id in a single intersection scenario is 0
         # 单交叉口场景junction_id默认为0
         junction_id = 0
+        junction_ids = list(self.preprocess.junction_dict.keys()) or [junction_id]
+        for current_junction_id in junction_ids:
+            speed_dict[current_junction_id] = np.zeros((Config.GRID_WIDTH, Config.GRID_NUM))
+            position_dict[current_junction_id] = np.zeros((Config.GRID_WIDTH, Config.GRID_NUM))
 
         # Initialize state-related variables to prevent errors when there are no vehicles in the traffic scenario
         # 初始化状态相关变量, 防止交通场景内车辆为空时报错
@@ -194,15 +194,22 @@ class Agent(BaseAgent):
                 # get_lane_code maps the lane number to integers 0-13, corresponding to 14 import lanes
                 # 将车辆x,y坐标转化为栅格坐标, 此处get_lane_code将车道编号映射至整数0-13, 对应14条进口车道
                 x_pos = get_lane_code(vehicle)
-                y_pos = int((vehicle["position_in_lane"]["y"] / 1) // Config.GRID_LENGTH)
+                if x_pos is None:
+                    continue
+                y_pos = int(get_lane_position_meters(vehicle) // Config.GRID_LENGTH)
 
-                if y_pos >= Config.GRID_NUM:
+                if y_pos < 0 or y_pos >= Config.GRID_NUM:
                     continue
 
-                speed_dict[vehicle["target_junction"]][x_pos, y_pos] = float(
-                    vehicle["speed"] / self.preprocess.vehicle_configs_dict[vehicle["v_config_id"]]["max_speed"]
+                vehicle_config = self.preprocess.vehicle_configs_dict.get(vehicle.get("v_config_id"), {})
+                max_speed = max(float(vehicle_config.get("max_speed", Config.DEFAULT_MAX_SPEED)), 1.0)
+                target_junction = vehicle.get("target_junction", junction_id)
+                if target_junction not in speed_dict:
+                    target_junction = junction_id
+                speed_dict[target_junction][x_pos, y_pos] = float(
+                    max(0.0, min(float(vehicle.get("speed", 0.0)) / max_speed, 1.0))
                 )
-                position_dict[vehicle["target_junction"]][x_pos, y_pos] = 1
+                position_dict[target_junction][x_pos, y_pos] = 1
             else:
                 continue
 
@@ -216,7 +223,14 @@ class Agent(BaseAgent):
         return ObsData(feature=observation)
 
     def action_process(self, act_data):
-        junction_id = act_data.junction_id
-        phase_index = act_data.phase_index
-        duration = act_data.duration
+        junction_id = int(act_data.junction_id)
+        phase_index = int(np.clip(act_data.phase_index, 0, Config.DIM_OF_ACTION_PHASE - 1))
+        duration_index = int(np.clip(act_data.duration, 0, Config.DIM_OF_ACTION_DURATION - 1))
+        duration = int(
+            np.clip(
+                Config.MIN_GREEN_DURATION + duration_index,
+                Config.MIN_GREEN_DURATION,
+                Config.MAX_GREEN_DURATION,
+            )
+        )
         return [junction_id, phase_index, duration]

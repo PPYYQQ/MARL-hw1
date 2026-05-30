@@ -128,6 +128,13 @@ def get_lane_code(vehicle):
     return lane_code.get(lane_id)
 
 
+def get_lane_position_meters(vehicle):
+    y_pos = float(vehicle["position_in_lane"]["y"])
+    if abs(y_pos) > 200:
+        y_pos /= 1000.0
+    return y_pos
+
+
 def get_webster_lane_group():
     """
     Classify according to the green light phase corresponding to each import lane,

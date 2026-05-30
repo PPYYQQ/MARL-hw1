@@ -43,3 +43,19 @@
   - 已运行 `python -m compileall agent_target_dqn`，语法编译通过。
 - 下一步：
   - 修复动作 duration 映射和观测坐标单位。
+
+### Step 2 - 动作映射、观测健壮性和奖励函数
+
+- 状态：完成
+- 内容：
+  - 修正 Target-DQN batch 预测，只取第一条结果的问题。
+  - 将 duration head 的 `0-19` 输出映射为 `8-27` 秒区间内的实际绿灯持续时间。
+  - 增加 `MIN_GREEN_DURATION`、默认最大速度和等待速度阈值配置。
+  - 增加 `get_lane_position_meters()`，兼容 `position_in_lane["y"]` 以毫米或米表示的情况。
+  - 观测处理在无 `init_state` 时默认初始化单路口网格，并防御缺失车辆配置。
+  - 实现基于相位压力、等待时间变化、排队、延误和 duration 匹配的非零奖励。
+- 验证：
+  - 已运行 `python -m compileall agent_target_dqn`，语法编译通过。
+  - 已运行 `git diff --check`，未发现空白错误。
+- 下一步：
+  - 补充可脱离 KaiwuDRL 的本地验证脚本。

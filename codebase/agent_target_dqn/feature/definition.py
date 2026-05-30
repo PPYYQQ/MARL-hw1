@@ -95,16 +95,86 @@ def reward_shaping(_obs, act, agent):
         - phase reward: 对应相位编号动作的奖励
         - duration reward: 对应相位持续时间动作的奖励
     """
-    junction_id = 0
-    phase_reward, duration_reward = 0, 0
+    if not act or act[0] is None:
+        return 0.0, 0.0
+
+    phase_index = int(act[1])
+    duration = int(act[2])
+    phase_reward, duration_reward = 0.0, 0.0
 
     frame_state = _obs["frame_state"]
     vehicles = frame_state["vehicles"]
 
-    # ========== TODO 12 ==========
-    # Improve the reward function design.
-    # Hint: Design phase_reward and duration_reward with waiting-time change, best phase matching, and switching penalties.
-    # 完善奖励函数设计。
-    # 提示：可结合等待时间变化、最佳相位匹配和切换惩罚设计 phase_reward 与 duration_reward。
+    lane_to_phase = {}
+    for phase, lanes in get_webster_lane_group().items():
+        for lane in lanes:
+            lane_to_phase[lane] = int(phase)
 
-    return 0, 0
+    phase_pressure = np.zeros(Config.DIM_OF_ACTION_PHASE, dtype=np.float32)
+    total_waiting_time = 0.0
+    total_delay = 0.0
+    total_queue = 0.0
+    enter_vehicle_count = 0
+
+    for vehicle in vehicles:
+        if not on_enter_lane(vehicle):
+            continue
+
+        lane_phase = lane_to_phase.get(vehicle["lane"])
+        if lane_phase is None:
+            continue
+
+        speed = float(vehicle.get("speed", 0.0))
+        waiting_time = float(vehicle.get("waiting_time", 0.0))
+        delay = float(vehicle.get("delay", 0.0))
+        is_waiting = 1.0 if speed <= Config.WAITING_SPEED_THRESHOLD else 0.0
+
+        pressure = 1.0 + 2.0 * is_waiting + min(waiting_time, 300.0) / 30.0 + min(delay, 300.0) / 60.0
+        phase_pressure[lane_phase] += pressure
+        total_waiting_time += waiting_time
+        total_delay += delay
+        total_queue += is_waiting
+        enter_vehicle_count += 1
+
+    if enter_vehicle_count == 0:
+        agent.preprocess.old_waiting_time = 0.0
+        agent.preprocess.last_phase_index = phase_index
+        return 0.0, 0.0
+
+    avg_waiting_time = total_waiting_time / enter_vehicle_count
+    avg_delay = total_delay / enter_vehicle_count
+    waiting_delta = agent.preprocess.old_waiting_time - avg_waiting_time
+    agent.preprocess.old_waiting_time = avg_waiting_time
+
+    total_pressure = float(np.sum(phase_pressure))
+    best_phase = int(np.argmax(phase_pressure))
+    selected_pressure = float(phase_pressure[phase_index])
+    mean_pressure = total_pressure / Config.DIM_OF_ACTION_PHASE
+
+    if total_pressure > 0:
+        phase_reward += (selected_pressure - mean_pressure) / total_pressure
+    phase_reward += 0.4 if phase_index == best_phase else -0.2
+    phase_reward += 0.03 * float(np.clip(waiting_delta, -20.0, 20.0))
+    phase_reward -= 0.02 * total_queue
+    phase_reward -= 0.002 * avg_delay
+
+    target_duration = int(
+        np.clip(
+            Config.MIN_GREEN_DURATION + selected_pressure,
+            Config.MIN_GREEN_DURATION,
+            Config.MAX_GREEN_DURATION,
+        )
+    )
+    duration_reward -= abs(duration - target_duration) / Config.MAX_GREEN_DURATION
+    duration_reward += 0.02 * float(np.clip(waiting_delta, -20.0, 20.0))
+
+    if duration < Config.MIN_GREEN_DURATION:
+        duration_reward -= 1.0
+
+    last_phase_index = agent.preprocess.last_phase_index
+    if last_phase_index is not None and phase_index != last_phase_index and duration < Config.MIN_GREEN_DURATION:
+        phase_reward -= 0.5
+        duration_reward -= 0.5
+    agent.preprocess.last_phase_index = phase_index
+
+    return float(phase_reward), float(duration_reward)

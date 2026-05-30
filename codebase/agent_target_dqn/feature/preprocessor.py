@@ -51,6 +51,7 @@ class FeatureProcess:
         # User-defined variable
         # 用户自定义变量
         self.old_waiting_time = 0
+        self.last_phase_index = None
 
     def init_road_info(self, start_info):
         """

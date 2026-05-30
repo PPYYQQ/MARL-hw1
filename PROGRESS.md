@@ -182,3 +182,17 @@
   - 已运行 `git diff --check`，未发现空白错误。
 - 下一步：
   - 检查 `train_workflow` 是否还需要对 `logger` 为空做防御。
+
+### Step 11 - workflow 日志限流和 logger 防御
+
+- 状态：完成
+- 内容：
+  - 为 `train_workflow` 增加 `_log_info()` 和 `_log_error()`，避免本地或测试环境 `logger=None` 时崩溃。
+  - 将逐帧日志改为每 20 次预测或 episode 结束时记录一次，降低平台日志限流风险。
+  - 保留训练指标、截断和终止日志。
+- 验证：
+  - 已运行 `python -m compileall agent_target_dqn tests`，语法编译通过。
+  - 已运行 `python tests/test_target_dqn_smoke.py`，当前本地缺少 `torch`，脚本明确 skip。
+  - 已运行 `git diff --check`，未发现空白错误。
+- 下一步：
+  - 做一次 Target-DQN 当前 TODO/风险复扫。

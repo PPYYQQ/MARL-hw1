@@ -37,7 +37,7 @@ def workflow(envs, agents, logger=None, monitor=None, *args, **kwargs):
     # 配置文件读取和校验
     usr_conf = read_usr_conf("agent_target_dqn/conf/train_env_conf.toml", logger)
     if usr_conf is None:
-        logger.error(f"usr_conf is None, please check agent_target_dqn/conf/train_env_conf.toml")
+        _log_error(logger, "usr_conf is None, please check agent_target_dqn/conf/train_env_conf.toml")
         return
 
     for epoch in range(epoch_num):
@@ -83,9 +83,10 @@ def workflow(envs, agents, logger=None, monitor=None, *args, **kwargs):
                 monitor.put_data({os.getpid(): monitor_data})
                 last_report_monitor_time = now
 
-        logger.info(
+        _log_info(
+            logger,
             f"Avg Step Reward: {avg_step_reward}, Avg Phase Reward: {avg_phase_reward}, "
-            f"Avg Duration Reward: {avg_duration_reward}, Epoch: {epoch}, Data Length: {data_length}"
+            f"Avg Duration Reward: {avg_duration_reward}, Epoch: {epoch}, Data Length: {data_length}",
         )
 
 
@@ -100,7 +101,7 @@ def run_episodes(n_episode, env, agent, usr_conf, logger):
             # 获取训练中的指标
             training_metrics = get_training_metrics()
             if training_metrics:
-                logger.info(f"training_metrics is {training_metrics}")
+                _log_info(logger, f"training_metrics is {training_metrics}")
 
             # At the start of each environment, loading the latest model file
             # 每次对局开始时, 加载最新model文件
@@ -165,15 +166,15 @@ def run_episodes(n_episode, env, agent, usr_conf, logger):
                 terminated = env_obs["terminated"]
                 truncated = env_obs["truncated"]
                 extra_info = env_obs["extra_info"]
-                logger.info(f"current frame_no is {frame_no}, predict_cnt is {predict_cnt}")
-
                 # Determine if the environment is over
                 # 判断环境结束
                 done = terminated or truncated or (train_test_quick_stop and len(collector) > 1)
+                if predict_cnt % 20 == 0 or done:
+                    _log_info(logger, f"current frame_no is {frame_no}, predict_cnt is {predict_cnt}")
                 if truncated:
-                    logger.info(f"truncated is True, frame_no is {frame_no}, so this episode timeout")
+                    _log_info(logger, f"truncated is True, frame_no is {frame_no}, so this episode timeout")
                 elif terminated:
-                    logger.info(f"terminated is True, frame_no is {frame_no}, so this episode reach the end")
+                    _log_info(logger, f"terminated is True, frame_no is {frame_no}, so this episode reach the end")
 
                 # Save samples only when predicting
                 # 只有预测步才保存样本
@@ -210,7 +211,7 @@ def run_episodes(n_episode, env, agent, usr_conf, logger):
                     break
 
     except Exception as e:
-        logger.error(f"run_episodes error")
+        _log_error(logger, "run_episodes error")
         raise RuntimeError(f"run_episodes error")
 
 
@@ -220,3 +221,13 @@ def _reward_components(reward):
     phase_reward = float(reward[0])
     duration_reward = float(reward[1]) if len(reward) > 1 else 0.0
     return phase_reward, duration_reward
+
+
+def _log_info(logger, message):
+    if logger:
+        logger.info(message)
+
+
+def _log_error(logger, message):
+    if logger:
+        logger.error(message)

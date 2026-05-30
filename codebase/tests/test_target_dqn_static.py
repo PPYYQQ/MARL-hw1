@@ -99,6 +99,10 @@ def main():
     require("last_traffic_summary = None" in preprocessor, "traffic trend state should reset each episode")
     require("traffic_history = []" in preprocessor, "traffic history state should reset each episode")
     require("phase_last_served_frame" in preprocessor, "phase service state should reset each episode")
+    require('start_info.get("junctions", [])' in preprocessor, "road init should tolerate partial init_state")
+    require('frame_state = raw_obs.get("frame_state")' in preprocessor, "traffic update should tolerate missing frame_state")
+    require('frame_state.get("vehicles", [])' in preprocessor, "traffic update should tolerate missing vehicles")
+    require('vehicle_id = vehicle.get("v_id")' in preprocessor, "traffic update should skip malformed vehicles")
     require("masked_fill" in agent, "joint Q-values should be masked before greedy selection")
     require("np.flatnonzero" in agent, "random exploration should sample only legal phase actions")
 

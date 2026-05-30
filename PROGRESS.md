@@ -569,3 +569,17 @@
   - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
 - 下一步：
   - 平台环境可用后确认终局 reward 计算不再因缺字段中断训练循环。
+
+### Step 38 - 特征预处理缺字段容错
+
+- 状态：完成
+- Commit：待回填
+- 内容：
+  - `FeatureProcess.init_road_info()` 对缺失路网字段或非 dict `init_state` 保守跳过。
+  - `FeatureProcess.update_traffic_info()` 对缺失 `frame_state` 或 `vehicles` 的 observation 保守返回。
+  - 预处理车辆历史时跳过缺失 `v_id` 或字段不完整的畸形车辆记录，避免异常帧中断训练循环。
+  - 更新静态测试、smoke 测试、`AGENTS.md` 和 `REPORT_DRAFT.md`。
+- 验证：
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 平台环境可用后确认特征预处理不会因偶发不完整 observation 中断。

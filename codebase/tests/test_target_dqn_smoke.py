@@ -133,6 +133,12 @@ def main():
     from agent_target_dqn.feature.definition import ActData, SampleData, reward_shaping, sample_process
 
     agent = Agent(device="cpu", logger=NullLogger(), monitor=None)
+    agent.preprocess.update_traffic_info({}, None)
+    agent.preprocess.update_traffic_info({"frame_state": {"frame_no": 1, "frame_time": 0}}, {"init_state": {}})
+    agent.preprocess.update_traffic_info(
+        {"frame_state": {"frame_no": 2, "frame_time": 0, "vehicles": [{"bad": "vehicle"}]}},
+        None,
+    )
     obs_data = agent.observation_process(make_fake_obs(), make_extra_info())
     assert len(obs_data.feature) == Config.DIM_OF_OBSERVATION
     assert obs_data.legal_action == [1, 0, 1, 0]

@@ -63,35 +63,48 @@ class FeatureProcess:
         """
         获取道路结构等信息固定的变量
         """
+        if not isinstance(start_info, dict):
+            return
         junctions, signals, edges = (
-            start_info["junctions"],
-            start_info["signals"],
-            start_info["edges"],
+            start_info.get("junctions", []),
+            start_info.get("signals", []),
+            start_info.get("edges", []),
         )
         lane_configs, vehicle_configs = (
-            start_info["lane_configs"],
-            start_info["vehicle_configs"],
+            start_info.get("lane_configs", []),
+            start_info.get("vehicle_configs", []),
         )
         # Store road structure information in various variables
         # 将道路结构信息存储到各个变量
         for junction in junctions:
-            self.junction_dict[junction["j_id"]] = junction
-            self.l_id_to_index[junction["j_id"]] = {}
+            junction_id = junction.get("j_id")
+            if junction_id is None:
+                continue
+            self.junction_dict[junction_id] = junction
+            self.l_id_to_index[junction_id] = {}
 
             index = 0
-            for approaching_edges in junction["enter_lanes_on_directions"]:
-                for lane in approaching_edges["lanes"]:
-                    self.l_id_to_index[junction["j_id"]][lane] = index
+            for approaching_edges in junction.get("enter_lanes_on_directions", []):
+                for lane in approaching_edges.get("lanes", []):
+                    self.l_id_to_index[junction_id][lane] = index
                     index += 1
 
             for edge in edges:
-                self.edge_dict[edge["e_id"]] = edge
+                edge_id = edge.get("e_id")
+                if edge_id is not None:
+                    self.edge_dict[edge_id] = edge
             for lane in lane_configs:
-                self.lane_dict[lane["l_id"]] = lane
+                lane_id = lane.get("l_id")
+                if lane_id is not None:
+                    self.lane_dict[lane_id] = lane
             for vehicle_config in vehicle_configs:
-                self.vehicle_configs_dict[vehicle_config["v_config_id"]] = vehicle_config
+                vehicle_config_id = vehicle_config.get("v_config_id")
+                if vehicle_config_id is not None:
+                    self.vehicle_configs_dict[vehicle_config_id] = vehicle_config
             for lane in lane_configs:
-                self.lane_volume[lane["l_id"]] = []
+                lane_id = lane.get("l_id")
+                if lane_id is not None:
+                    self.lane_volume[lane_id] = []
 
     def update_traffic_info(self, raw_obs, extra_info):
         """
@@ -101,9 +114,12 @@ class FeatureProcess:
         更新车辆历史信息, 计算各项动态交通变量
         """
         extra_info = extra_info or {}
-        frame_state = raw_obs["frame_state"]
-        frame_no = frame_state["frame_no"]
-        frame_time, vehicles = frame_state["frame_time"], frame_state["vehicles"]
+        frame_state = raw_obs.get("frame_state") if isinstance(raw_obs, dict) else None
+        if not isinstance(frame_state, dict):
+            return
+        frame_no = int(frame_state.get("frame_no", 0) or 0)
+        frame_time = frame_state.get("frame_time", 0) or 0
+        vehicles = frame_state.get("vehicles", []) or []
 
         if frame_no <= 1:
             # Initial frame loads road structure information
@@ -113,27 +129,40 @@ class FeatureProcess:
                 self.init_road_info(game_info)
 
         for vehicle in vehicles:
+            if not isinstance(vehicle, dict):
+                continue
+            vehicle_id = vehicle.get("v_id")
+            if vehicle_id is None:
+                continue
+            vehicle_junction = vehicle.get("junction", -1)
+            try:
+                is_enter_lane = on_enter_lane(vehicle)
+            except KeyError:
+                is_enter_lane = False
             # If the vehicle appears for the first time, initialize the vehicle's historical intersection information
             # 如果车辆第一次出现，则初始化车辆的历史交叉口信息
-            if vehicle["v_id"] not in self.vehicle_prev_junction:
-                self.vehicle_prev_junction[vehicle["v_id"]] = vehicle["junction"]
+            if vehicle_id not in self.vehicle_prev_junction:
+                self.vehicle_prev_junction[vehicle_id] = vehicle_junction
             # For vehicles that appear for the first time, if they are on the lane, record their appearance time
             # 对于首次出现的车辆, 若在车道上则记录其出现时间
             if (
-                self.vehicle_prev_junction[vehicle["v_id"]] == -1
-                and on_enter_lane(vehicle)
-                and vehicle["v_id"] not in self.enter_lane_time
+                self.vehicle_prev_junction[vehicle_id] == -1
+                and is_enter_lane
+                and vehicle_id not in self.enter_lane_time
             ):
-                self.enter_lane_time[vehicle["v_id"]] = frame_time
+                self.enter_lane_time[vehicle_id] = frame_time
             # When a vehicle enters another entrance lane from the intersection, recalculate its appearance time
             # 当车辆从交叉口驶入另一进口车道时, 重新统计其出现时间
-            elif self.vehicle_prev_junction[vehicle["v_id"]] != vehicle["junction"]:
-                if self.vehicle_prev_junction[vehicle["v_id"]] != -1 and on_enter_lane(vehicle):
-                    self.enter_lane_time[vehicle["v_id"]] = frame_time
+            elif self.vehicle_prev_junction[vehicle_id] != vehicle_junction:
+                if self.vehicle_prev_junction[vehicle_id] != -1 and is_enter_lane:
+                    self.enter_lane_time[vehicle_id] = frame_time
 
-            self.cal_waiting_time(frame_time, vehicle)
-            self.cal_travel_distance(vehicle)
-            self.cal_v_num_in_lane(vehicle)
+            try:
+                self.cal_waiting_time(frame_time, vehicle)
+                self.cal_travel_distance(vehicle)
+                self.cal_v_num_in_lane(vehicle)
+            except (KeyError, TypeError, ValueError):
+                continue
 
     def cal_waiting_time(self, frame_time, vehicle):
         """

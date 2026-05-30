@@ -294,6 +294,7 @@
 ### Step 18 - 实验台账模板
 
 - 状态：完成
+- Commit：`d986957 Add platform experiment ledger`
 - 内容：
   - 新增 `EXPERIMENTS.md`，将平台实验记录从开发进度中拆出来。
   - 增加首次平台 smoke 的实验模板，覆盖 commit、代码包、环境配置、监控、评分和错误日志。

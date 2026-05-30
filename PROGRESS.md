@@ -47,6 +47,7 @@
 ### Step 2 - 动作映射、观测健壮性和奖励函数
 
 - 状态：完成
+- Commit：`cbf0f19 Add Target-DQN action mapping and rewards`
 - 内容：
   - 修正 Target-DQN batch 预测，只取第一条结果的问题。
   - 将 duration head 的 `0-19` 输出映射为 `8-27` 秒区间内的实际绿灯持续时间。

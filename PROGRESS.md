@@ -246,6 +246,7 @@
 ### Step 15 - 平台提交打包脚本
 
 - 状态：完成
+- Commit：`d399f83 Add platform submission package script`
 - 内容：
   - 新增 `scripts/package_submission.sh`，将 `codebase/` 打包为平台上传压缩包。
   - 打包时排除日志、`__pycache__`、checkpoint、模型 pkl 和其他运行产物。

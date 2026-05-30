@@ -1,0 +1,21 @@
+.DS_Store
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Runtime outputs from KaiwuDRL/platform runs
+codebase/log/
+codebase/**/ckpt/
+codebase/**/models/
+codebase/**/model/
+*.log
+*.pkl
+model.ckpt-*.pkl
+
+# Large source/reference artifacts kept locally
+screenshot/
+icml2022.zip

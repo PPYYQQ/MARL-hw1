@@ -260,6 +260,7 @@ class Agent(BaseAgent):
         )
         traffic_feature = self._traffic_feature(traffic_summary)
         traffic_trend_feature = self._traffic_trend_feature(traffic_summary)
+        traffic_history_feature = self._traffic_history_feature(traffic_summary)
         lane_stat_feature = self._lane_stat_feature(vehicles)
         observation = (
             position
@@ -268,6 +269,7 @@ class Agent(BaseAgent):
             + phase_age_feature
             + traffic_feature
             + traffic_trend_feature
+            + traffic_history_feature
             + lane_stat_feature
         )
 
@@ -406,6 +408,19 @@ class Agent(BaseAgent):
         )
         self.preprocess.last_traffic_summary = traffic_summary
         return trend_feature
+
+    def _traffic_history_feature(self, traffic_summary):
+        history_feature = get_traffic_history_feature(
+            self.preprocess.traffic_history,
+            phase_count=Config.DIM_OF_ACTION_PHASE,
+            pressure_scale=Config.TRAFFIC_PRESSURE_SCALE,
+            count_scale=Config.TRAFFIC_COUNT_SCALE,
+            time_scale=Config.TRAFFIC_TIME_SCALE,
+        )
+        self.preprocess.traffic_history.append(traffic_summary)
+        if len(self.preprocess.traffic_history) > Config.TRAFFIC_HISTORY_SIZE:
+            del self.preprocess.traffic_history[0 : len(self.preprocess.traffic_history) - Config.TRAFFIC_HISTORY_SIZE]
+        return history_feature
 
     def _lane_stat_feature(self, vehicles):
         lane_stats = get_lane_statistics(

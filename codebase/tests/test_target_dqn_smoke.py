@@ -166,7 +166,17 @@ def main():
         )
         == 0.0
     )
-    lane_stat_start = traffic_trend_start + Config.TRAFFIC_TREND_FEATURE_DIM
+    traffic_history_start = traffic_trend_start + Config.TRAFFIC_TREND_FEATURE_DIM
+    assert (
+        sum(
+            abs(value)
+            for value in obs_data.feature[
+                traffic_history_start : traffic_history_start + Config.TRAFFIC_HISTORY_FEATURE_DIM
+            ]
+        )
+        == 0.0
+    )
+    lane_stat_start = traffic_history_start + Config.TRAFFIC_HISTORY_FEATURE_DIM
     assert abs(obs_data.feature[lane_stat_start] - 0.05) < 1e-6
     assert abs(obs_data.feature[lane_stat_start + 4] - 0.05) < 1e-6
     assert abs(obs_data.feature[lane_stat_start + Config.GRID_WIDTH] - 0.05) < 1e-6
@@ -174,6 +184,7 @@ def main():
     assert abs(obs_data.feature[lane_stat_start + Config.GRID_WIDTH * 2] - (20.0 / 120.0)) < 1e-6
     obs_data_without_extra = agent.observation_process(make_fake_obs(), None)
     assert len(obs_data_without_extra.feature) == Config.DIM_OF_OBSERVATION
+    assert len(agent.preprocess.traffic_history) == 2
 
     low_duration_action = agent.action_process(ActData(junction_id=0, phase_index=0, duration=0))
     high_duration_action = agent.action_process(ActData(junction_id=0, phase_index=99, duration=99))

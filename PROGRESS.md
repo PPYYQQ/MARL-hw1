@@ -461,3 +461,18 @@
   - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
 - 下一步：
   - 平台环境可用后确认旧双头 `latest` checkpoint 不会阻断新联合动作模型训练。
+
+### Step 30 - 4 帧滚动交通历史特征
+
+- 状态：完成
+- Commit：待回填
+- 内容：
+  - 将 `agent_target_dqn` 观测维度从 `630` 扩展为 `638`。
+  - 新增 `get_traffic_history_feature()`，把最近 4 帧交通摘要压缩为 8 维历史特征。
+  - `FeatureProcess.reset()` 清空 `traffic_history`，避免跨 episode 泄漏。
+  - 观测中追加最近 4 帧平均相位压力、进口车辆数、排队比例、平均等待时间和平均延误。
+  - 更新无平台依赖特征测试、静态测试、smoke 测试、`AGENTS.md` 和 `REPORT_DRAFT.md`。
+- 验证：
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；新增无平台依赖滚动历史测试通过，smoke 因当前本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 平台环境可用后观察历史摘要是否改善对持续拥堵趋势的响应。

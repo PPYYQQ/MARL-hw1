@@ -29,13 +29,15 @@ def main():
     check_script = root / "scripts" / "check_offline.sh"
 
     require(
-        "DIM_OF_OBSERVATION = 630" in conf,
-        "observation dim should include 560 grid + 8 phase + 4 age + 8 traffic + 8 trend + 42 lane stats",
+        "DIM_OF_OBSERVATION = 638" in conf,
+        "observation dim should include 560 grid + 8 phase + 4 age + 8 traffic + 8 trend + 8 history + 42 lane stats",
     )
     require("PHASE_FEATURE_DIM = 8" in conf, "phase feature dimension should stay explicit")
     require("PHASE_AGE_FEATURE_DIM = 4" in conf, "phase age feature dimension should stay explicit")
     require("TRAFFIC_FEATURE_DIM = 8" in conf, "traffic feature dimension should stay explicit")
     require("TRAFFIC_TREND_FEATURE_DIM = 8" in conf, "traffic trend feature dimension should stay explicit")
+    require("TRAFFIC_HISTORY_FEATURE_DIM = 8" in conf, "traffic history feature dimension should stay explicit")
+    require("TRAFFIC_HISTORY_SIZE = 4" in conf, "traffic history window should stay explicit")
     require("LANE_STAT_FEATURE_DIM = 42" in conf, "lane stat feature dimension should stay explicit")
     require("DIM_OF_ACTION = DIM_OF_ACTION_PHASE * DIM_OF_ACTION_DURATION" in conf, "joint action dimension should be explicit")
     require("NUMB_HEAD = 1" in conf, "Target-DQN should use one joint action Q head")
@@ -69,10 +71,11 @@ def main():
     require("def _phase_age_feature" in agent, "observation should include phase service age features")
     require("def _traffic_feature" in agent, "observation should include traffic pressure features")
     require("def _traffic_trend_feature" in agent, "observation should include traffic trend features")
+    require("def _traffic_history_feature" in agent, "observation should include traffic history features")
     require("def _lane_stat_feature" in agent, "observation should include per-lane statistics")
     require(
-        "+ phase_age_feature" in agent and "+ traffic_feature" in agent,
-        "observation should append phase, phase-age, traffic, trend, and lane-stat features",
+        "+ traffic_history_feature" in agent and "+ lane_stat_feature" in agent,
+        "observation should append phase, phase-age, traffic, trend, history, and lane-stat features",
     )
     require("def rule_based_action" in agent, "exploit should have a rule-based fallback")
     require("def _joint_action_mask" in agent, "prediction should expand phase legality to joint actions")
@@ -86,9 +89,11 @@ def main():
     require("def get_lane_statistics" in traffic_utils, "shared lane statistics helper is required")
     require("def get_traffic_summary" in traffic_utils, "shared traffic summary helper is required")
     require("def get_traffic_trend" in traffic_utils, "shared traffic trend helper is required")
+    require("def get_traffic_history_feature" in traffic_utils, "shared traffic history helper is required")
     require("get_lane_position_meters" in traffic_utils, "lane coordinate normalization helper is required")
     require("def normalize_phase_legal_action" in traffic_utils, "phase legal action normalizer is required")
     require("last_traffic_summary = None" in preprocessor, "traffic trend state should reset each episode")
+    require("traffic_history = []" in preprocessor, "traffic history state should reset each episode")
     require("phase_last_served_frame" in preprocessor, "phase service state should reset each episode")
     require("masked_fill" in agent, "joint Q-values should be masked before greedy selection")
     require("np.flatnonzero" in agent, "random exploration should sample only legal phase actions")

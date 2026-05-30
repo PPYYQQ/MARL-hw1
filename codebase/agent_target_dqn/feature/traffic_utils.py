@@ -270,6 +270,40 @@ def get_traffic_trend(
     return trend
 
 
+def get_traffic_history_feature(
+    traffic_history,
+    phase_count=4,
+    pressure_scale=50.0,
+    count_scale=100.0,
+    time_scale=120.0,
+):
+    if not traffic_history:
+        return [0.0] * (phase_count + 4)
+
+    phase_pressures = [
+        np.asarray(summary.get("phase_pressure", np.zeros(phase_count)), dtype=np.float32)[:phase_count]
+        for summary in traffic_history
+    ]
+    avg_phase_pressure = np.mean(phase_pressures, axis=0)
+    avg_vehicle_count = float(np.mean([summary.get("vehicle_count", 0.0) for summary in traffic_history]))
+    avg_queue_ratio = float(np.mean([summary.get("queue_ratio", 0.0) for summary in traffic_history]))
+    avg_waiting_time = float(np.mean([summary.get("avg_waiting_time", 0.0) for summary in traffic_history]))
+    avg_delay = float(np.mean([summary.get("avg_delay", 0.0) for summary in traffic_history]))
+
+    history_feature = [
+        float(np.clip(pressure / pressure_scale, 0.0, 1.0)) for pressure in avg_phase_pressure
+    ]
+    history_feature.extend(
+        [
+            float(np.clip(avg_vehicle_count / count_scale, 0.0, 1.0)),
+            float(np.clip(avg_queue_ratio, 0.0, 1.0)),
+            float(np.clip(avg_waiting_time / time_scale, 0.0, 1.0)),
+            float(np.clip(avg_delay / time_scale, 0.0, 1.0)),
+        ]
+    )
+    return history_feature
+
+
 def get_webster_lane_group():
     """
     Classify according to the green light phase corresponding to each import lane,

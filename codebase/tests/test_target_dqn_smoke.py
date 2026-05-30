@@ -140,6 +140,7 @@ def main():
     high_duration_action = agent.action_process(ActData(junction_id=0, phase_index=99, duration=99))
     assert low_duration_action == [0, 0, Config.MIN_GREEN_DURATION]
     assert high_duration_action == [0, Config.DIM_OF_ACTION_PHASE - 1, Config.MIN_GREEN_DURATION + 19]
+    assert agent.rule_based_action(make_fake_obs())[1] == 0
 
     predictions = agent.predict([obs_data, obs_data])
     assert len(predictions) == 2

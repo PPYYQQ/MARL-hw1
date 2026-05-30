@@ -86,3 +86,18 @@
   - 当前本地 Python 未安装 `torch`、`kaiwudrl`、`common_python`。
 - 结论：
   - 本地只能做语法编译和 stub smoke；真实训练检查需要腾讯开悟/KaiwuDRL 环境或用户提供依赖安装方式。
+
+### Step 5 - 规则基线兜底策略
+
+- 状态：完成
+- 内容：
+  - 在 `agent_target_dqn.Agent` 中新增 `rule_based_action()`。
+  - 规则策略按四个相位对应进口车道的车辆数、低速排队、等待时间和延误估计压力。
+  - `exploit()` 在模型推理或特征处理异常时回退到规则动作，避免评估阶段直接崩溃。
+  - smoke 测试增加规则动作断言。
+- 验证：
+  - 已运行 `python -m compileall agent_target_dqn tests`，语法编译通过。
+  - 已运行 `python tests/test_target_dqn_smoke.py`，当前本地缺少 `torch`，脚本明确 skip。
+  - 已运行 `git diff --check`，未发现空白错误。
+- 下一步：
+  - 考虑把 reward 和规则基线的压力计算抽为共享工具，减少后续调参分叉。

@@ -91,12 +91,17 @@ class Agent(BaseAgent):
         return self.__predict_detail(list_obs_data, exploit_flag=False)
 
     def exploit(self, observation):
-        obs_data = self.observation_process(observation["obs"], observation["extra_info"])
-        if not obs_data:
-            return [[None, None, None]]
-        act_data = self.__predict_detail([obs_data], exploit_flag=True)
-        act = self.action_process(act_data[0])
-        return act
+        raw_obs = observation["obs"]
+        try:
+            obs_data = self.observation_process(raw_obs, observation["extra_info"])
+            if not obs_data:
+                return self.rule_based_action(raw_obs)
+            act_data = self.__predict_detail([obs_data], exploit_flag=True)
+            return self.action_process(act_data[0])
+        except Exception as err:
+            if self.logger:
+                self.logger.error(f"exploit fallback to rule_based_action: {err}")
+            return self.rule_based_action(raw_obs)
 
     def learn(self, list_sample_data):
         return self.algorithm.learn(list_sample_data)
@@ -234,3 +239,45 @@ class Agent(BaseAgent):
             )
         )
         return [junction_id, phase_index, duration]
+
+    def rule_based_action(self, raw_obs):
+        frame_state = raw_obs.get("frame_state", {})
+        vehicles = frame_state.get("vehicles", [])
+        lane_to_phase = {}
+        for phase, lanes in get_webster_lane_group().items():
+            for lane in lanes:
+                lane_to_phase[lane] = int(phase)
+
+        phase_pressure = np.zeros(Config.DIM_OF_ACTION_PHASE, dtype=np.float32)
+        for vehicle in vehicles:
+            try:
+                if not on_enter_lane(vehicle):
+                    continue
+            except KeyError:
+                continue
+
+            lane_phase = lane_to_phase.get(vehicle.get("lane"))
+            if lane_phase is None:
+                continue
+
+            speed = float(vehicle.get("speed", 0.0))
+            waiting_time = float(vehicle.get("waiting_time", 0.0))
+            delay = float(vehicle.get("delay", 0.0))
+            is_waiting = 1.0 if speed <= Config.WAITING_SPEED_THRESHOLD else 0.0
+            phase_pressure[lane_phase] += (
+                1.0 + 2.0 * is_waiting + min(waiting_time, 300.0) / 30.0 + min(delay, 300.0) / 60.0
+            )
+
+        phase_index = int(np.argmax(phase_pressure))
+        duration_index = int(np.clip(round(float(phase_pressure[phase_index])), 0, Config.DIM_OF_ACTION_DURATION - 1))
+        return [
+            0,
+            phase_index,
+            int(
+                np.clip(
+                    Config.MIN_GREEN_DURATION + duration_index,
+                    Config.MIN_GREEN_DURATION,
+                    Config.MAX_GREEN_DURATION,
+                )
+            ),
+        ]

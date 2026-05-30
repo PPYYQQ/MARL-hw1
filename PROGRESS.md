@@ -263,6 +263,7 @@
 ### Step 16 - 更新 AGENTS 当前状态
 
 - 状态：完成
+- Commit：`a596f96 Refresh agent instructions for current state`
 - 内容：
   - 修正 `AGENTS.md` 中“当前目录不是 git 仓库”的过期描述。
   - 将早期代码审阅风险拆分为“已处理问题”和“仍需关注问题”。

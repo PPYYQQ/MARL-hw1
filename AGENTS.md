@@ -81,6 +81,7 @@ Target-DQN 关键文件：
 - `reward_shaping()` 已返回非零奖励，基于相位压力、等待时间变化、排队和延误。
 - `reward_shaping()` 对终局或异常 observation 缺失 `frame_state` / `vehicles` 的情况保守返回零奖励，避免训练循环崩溃。
 - `FeatureProcess.update_traffic_info()` 对缺失 `frame_state`、缺失 `vehicles` 或畸形车辆记录会保守跳过，避免异常帧中断特征处理。
+- `observation_process()`、`rule_based_action()` 和共享交通统计工具会保守处理缺失 `frame_state`、缺失 `vehicles`、缺失 `obs` 包装和畸形车辆/相位记录。
 - `action_process()` 已将 duration index 映射为实际秒数。
 - 训练时已将 `[phase_idx, duration_seconds]` 转换为 80 维联合动作索引，避免 Q head gather 越界。
 - 观测处理已兼容 `position_in_lane["y"]` 的米/毫米单位。

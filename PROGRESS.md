@@ -583,3 +583,18 @@
   - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
 - 下一步：
   - 平台环境可用后确认特征预处理不会因偶发不完整 observation 中断。
+
+### Step 39 - 观测编码异常帧容错
+
+- 状态：完成
+- Commit：`f1c2f8a`
+- 内容：
+  - `Agent.exploit()` 对缺失 `obs` 包装的评估 observation 使用原始 dict 兜底，避免 fallback 之前直接崩溃。
+  - `Agent.observation_process()` 对缺失 `frame_state`、缺失 `vehicles`、非 list 车辆字段和畸形车辆记录使用空特征或跳过策略。
+  - 相位特征解析对非 dict 相位、异常 `phase_id` / `duration` 字段使用默认值，规则基线也能处理空 observation。
+  - 共享交通统计工具跳过缺字段、非 dict 或数值异常的车辆记录，降低 reward、规则基线和车道统计的同类崩溃风险。
+  - 更新静态测试、smoke 测试、`AGENTS.md` 和 `REPORT_DRAFT.md`。
+- 验证：
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 平台环境可用后用真实异常 observation 日志确认观测编码不再中断 episode。

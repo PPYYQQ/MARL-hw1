@@ -309,6 +309,7 @@
 ### Step 19 - 一键离线检查脚本
 
 - 状态：完成
+- Commit：`27ccce5 Add offline check script`
 - 内容：
   - 新增 `scripts/check_offline.sh`，串联编译检查、静态约束检查、smoke、空白检查、打包和压缩包内容检查。
   - 修正 `scripts/package_submission.sh` 可执行权限，保证 `RUNBOOK.md` 中的 `./scripts/package_submission.sh` 可直接运行。

@@ -559,7 +559,7 @@
 ### Step 37 - reward 终局缺字段容错
 
 - 状态：完成
-- Commit：待回填
+- Commit：`8fd7443`
 - 内容：
   - `reward_shaping()` 对缺失 `frame_state` 的 observation 保守返回 `(0.0, 0.0)`。
   - `reward_shaping()` 对缺失 `vehicles` 的帧按空车流处理，避免 episode 结束或异常帧字段不完整时崩溃。

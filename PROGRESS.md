@@ -529,3 +529,16 @@
   - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
 - 下一步：
   - 平台环境可用后观察 `data_length` 与样本生产消费比是否正常。
+
+### Step 35 - 训练进度日志门控
+
+- 状态：完成
+- Commit：待回填
+- 内容：
+  - 将 `predict_cnt % 20 == 0 or done` 改为 `_should_log_progress(predict_cnt, done, need_to_predict)`。
+  - 进度日志只在 episode 结束或真实预测计数达到 20 的倍数时打印，避免无决策帧里 `predict_cnt == 0` 导致每帧刷屏。
+  - 更新静态测试、`AGENTS.md` 和 `RUNBOOK.md`。
+- 验证：
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 平台环境可用后观察训练日志体量和关键指标是否更容易读取。

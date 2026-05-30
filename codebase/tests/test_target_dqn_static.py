@@ -106,7 +106,9 @@ def main():
     require("from e" in workflow, "workflow should preserve exception cause for platform debugging")
     require('agent.save_model(id="latest")' in workflow, "workflow should save the checkpoint name it later loads")
     require("agent.send_sample_data(list(g_data))" in workflow, "workflow should not clear the list object sent to learner")
-    require("predict_cnt % 20" in workflow, "workflow should not log every frame")
+    require("def _should_log_progress" in workflow, "workflow should centralize progress log gating")
+    require("need_to_predict and predict_cnt > 0 and predict_cnt % 20 == 0" in workflow, "workflow should not log every non-prediction frame")
+    require("_should_log_progress(predict_cnt, done, need_to_predict)" in workflow, "workflow should use robust progress log gating")
 
     require(package_script.exists(), "submission package script is required")
     require(check_script.exists(), "offline check script is required")

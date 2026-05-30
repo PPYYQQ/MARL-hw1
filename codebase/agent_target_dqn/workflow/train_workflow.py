@@ -171,7 +171,7 @@ def run_episodes(n_episode, env, agent, usr_conf, logger):
                 # Determine if the environment is over
                 # 判断环境结束
                 done = terminated or truncated or (train_test_quick_stop and len(collector) > 1)
-                if predict_cnt % 20 == 0 or done:
+                if _should_log_progress(predict_cnt, done, need_to_predict):
                     _log_info(logger, f"current frame_no is {frame_no}, predict_cnt is {predict_cnt}")
                 if truncated:
                     _log_info(logger, f"truncated is True, frame_no is {frame_no}, so this episode timeout")
@@ -229,6 +229,10 @@ def _need_to_predict(obs):
     legal_action = obs.get("legal_action") if isinstance(obs, dict) else None
     phase_mask = normalize_phase_legal_action(legal_action, Config.DIM_OF_ACTION_PHASE)
     return any(phase_mask)
+
+
+def _should_log_progress(predict_cnt, done, need_to_predict):
+    return done or (need_to_predict and predict_cnt > 0 and predict_cnt % 20 == 0)
 
 
 def _log_info(logger, message):

@@ -91,6 +91,7 @@ Target-DQN 关键文件：
 - 训练 workflow 已用同一归一化逻辑判断是否需要决策，兼容平台文档中的 `int32` 标量门控和 4 维相位 mask。
 - 训练 workflow 抛错时会保留原始异常信息和异常链，便于平台日志定位真实崩溃点。
 - 训练 workflow 发送样本时会传递 `g_data` 的浅拷贝，再清理本地列表，避免异步消费时引用被清空。
+- 训练 workflow 的进度日志只在 episode 结束或真实预测计数达到间隔时打印，避免无决策帧刷屏。
 - `sample_process()` 会把训练样本中的 `legal_action` 设置为下一状态相位 mask，供 Double DQN target 选择下一相位时使用。
 - 观测和 reward 已加入相位服务年龄，用于降低高压相位长期不被服务的风险。
 - Target-DQN 已从 phase/duration 双头改为 80 维联合动作 Q 头，可表达相位和时长组合价值。

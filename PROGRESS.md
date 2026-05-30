@@ -232,6 +232,7 @@
 ### Step 14 - 报告草稿整理
 
 - 状态：完成
+- Commit：`a8495ee Add Target-DQN report draft`
 - 内容：
   - 新增 `REPORT_DRAFT.md`，整理问题定义、Target-DQN 方法、状态特征、动作映射、奖励设计、规则兜底、训练流程、本地验证、平台实验表和后续改进方向。
   - 报告草稿可迁移到 `icml2022.zip` 模板继续排版。

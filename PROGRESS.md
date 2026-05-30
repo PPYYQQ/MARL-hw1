@@ -153,6 +153,7 @@
 ### Step 9 - 模型保存加载默认路径修复
 
 - 状态：完成
+- Commit：`e29d7f9 Make Target-DQN model loading robust`
 - 内容：
   - 为 `save_model()` 和 `load_model()` 增加默认 checkpoint 目录 `agent_target_dqn/ckpt`。
   - `save_model()` 自动创建 checkpoint 目录，并防御 logger 为空。

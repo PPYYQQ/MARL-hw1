@@ -62,8 +62,9 @@ class Agent(BaseAgent):
 
         junction_id = 0
 
-        self._eps = max(self.end_eps, self._eps * self.eps_decay)
-        if np.random.rand() >= self._eps or exploit_flag:
+        if not exploit_flag:
+            self._eps = max(self.end_eps, self._eps * self.eps_decay)
+        if exploit_flag or np.random.rand() >= self._eps:
             with torch.no_grad():
                 list_junction = [
                     junction_id,

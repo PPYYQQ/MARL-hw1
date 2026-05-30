@@ -93,6 +93,7 @@ Target-DQN 关键文件：
 - 训练 workflow 发送样本时会传递 `g_data` 的浅拷贝，再清理本地列表，避免异步消费时引用被清空。
 - 训练 workflow 的进度日志只在 episode 结束或真实预测计数达到间隔时打印，避免无决策帧刷屏。
 - `sample_process()` 会把训练样本中的 `legal_action` 设置为下一状态相位 mask，供 Double DQN target 选择下一相位时使用。
+- `exploit()` 强制走贪心推理且不衰减训练用 `_eps`，避免评估调用改变训练探索状态。
 - 观测和 reward 已加入相位服务年龄，用于降低高压相位长期不被服务的风险。
 - Target-DQN 已从 phase/duration 双头改为 80 维联合动作 Q 头，可表达相位和时长组合价值。
 
@@ -184,7 +185,7 @@ coding agent 无法单独保证：
 - 训练 workflow 判断是否调用 `predict()` 时也必须走 `normalize_phase_legal_action()`，不要直接写 `legal_action[0]`。
 - 训练样本里的 `legal_action` 代表 `_obs` 对应的下一状态相位 mask，不是当前已执行动作的 mask。
 - 相位级 mask 会展开成 80 维 joint mask，训练和预测都只在合法相位对应的动作组合中选动作。
-- `exploit()` 必须使用贪心或规则兜底，不应使用随机探索。
+- `exploit()` 必须使用贪心或规则兜底，不应使用随机探索，也不应修改训练 epsilon 状态。
 
 特征设计：
 

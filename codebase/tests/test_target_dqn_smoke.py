@@ -196,6 +196,9 @@ def main():
     predictions = agent.predict([obs_data, obs_data])
     assert len(predictions) == 2
     assert all(prediction.phase_index in [0, 2] for prediction in predictions)
+    training_eps = agent._eps
+    agent.exploit({"obs": make_fake_obs(), "extra_info": make_extra_info()})
+    assert agent._eps == training_eps
 
     phase_reward, duration_reward = reward_shaping(make_fake_obs(), [0, 0, Config.MIN_GREEN_DURATION], agent)
     assert isinstance(phase_reward, float)

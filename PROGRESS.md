@@ -542,3 +542,16 @@
   - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
 - 下一步：
   - 平台环境可用后观察训练日志体量和关键指标是否更容易读取。
+
+### Step 36 - 评估推理不衰减 epsilon
+
+- 状态：完成
+- Commit：待回填
+- 内容：
+  - 将 `_eps` 衰减限制在训练 `predict()` 路径，`exploit()` 不再改变训练探索率。
+  - `exploit_flag=True` 时直接进入贪心动作选择，避免多余随机分支判断。
+  - 更新静态测试、smoke 测试、`AGENTS.md` 和 `REPORT_DRAFT.md`。
+- 验证：
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 平台环境可用后确认评估调用不会影响后续训练探索曲线。

@@ -50,9 +50,15 @@ class Agent(BaseAgent):
         self.preprocess.reset()
 
     def __predict_detail(self, list_obs_data, exploit_flag=False):
+        list_obs_data = [
+            obs_data for obs_data in (list_obs_data or []) if getattr(obs_data, "feature", None) is not None
+        ]
+        if not list_obs_data:
+            return []
+
         feature = [obs_data.feature for obs_data in list_obs_data]
         phase_masks = np.asarray(
-            [self._phase_action_mask(obs_data.legal_action) for obs_data in list_obs_data],
+            [self._phase_action_mask(getattr(obs_data, "legal_action", None)) for obs_data in list_obs_data],
             dtype=bool,
         )
         joint_masks = self._joint_action_mask(phase_masks)
@@ -110,6 +116,8 @@ class Agent(BaseAgent):
             if not obs_data:
                 return self.rule_based_action(raw_obs)
             act_data = self.__predict_detail([obs_data], exploit_flag=True)
+            if not act_data:
+                return self.rule_based_action(raw_obs)
             return self.action_process(act_data[0])
         except Exception as err:
             if self.logger:
@@ -294,9 +302,15 @@ class Agent(BaseAgent):
         )
 
     def action_process(self, act_data):
-        junction_id = int(act_data.junction_id)
-        phase_index = int(np.clip(act_data.phase_index, 0, Config.DIM_OF_ACTION_PHASE - 1))
-        duration_index = int(np.clip(act_data.duration, 0, Config.DIM_OF_ACTION_DURATION - 1))
+        junction_id = 0
+        phase_index = self._safe_action_index(
+            getattr(act_data, "phase_index", 0),
+            Config.DIM_OF_ACTION_PHASE,
+        )
+        duration_index = self._safe_action_index(
+            getattr(act_data, "duration", 0),
+            Config.DIM_OF_ACTION_DURATION,
+        )
         duration = int(
             np.clip(
                 Config.MIN_GREEN_DURATION + duration_index,
@@ -305,6 +319,15 @@ class Agent(BaseAgent):
             )
         )
         return [junction_id, phase_index, duration]
+
+    def _safe_action_index(self, value, action_dim):
+        try:
+            value = float(value)
+        except (TypeError, ValueError):
+            value = 0.0
+        if not np.isfinite(value):
+            value = 0.0
+        return int(np.clip(value, 0, action_dim - 1))
 
     def rule_based_action(self, raw_obs):
         if not isinstance(raw_obs, dict):

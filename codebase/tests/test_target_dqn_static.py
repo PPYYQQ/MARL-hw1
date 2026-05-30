@@ -77,7 +77,12 @@ def main():
     require("def _fairness_reward" in definition, "reward should include phase fairness term")
     require("def _mark_phase_served" in definition, "reward should update phase service bookkeeping")
 
+    require("if not list_obs_data" in agent, "predict should handle empty observation batches")
+    require('getattr(obs_data, "legal_action", None)' in agent, "predict should default missing legal_action")
     require("MIN_GREEN_DURATION + duration_index" in agent, "action_process must map duration index to seconds")
+    require("def _safe_action_index" in agent, "action_process should sanitize action indices")
+    require("junction_id = 0" in agent, "action_process should force single-junction actions")
+    require("np.isfinite(value)" in agent, "action_process should reject NaN/Inf indices")
     require("def _phase_feature" in agent, "observation should include traffic signal phase features")
     require("def _phase_age_feature" in agent, "observation should include phase service age features")
     require("def _traffic_feature" in agent, "observation should include traffic pressure features")

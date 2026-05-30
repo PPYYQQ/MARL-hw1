@@ -533,7 +533,7 @@
 ### Step 35 - 训练进度日志门控
 
 - 状态：完成
-- Commit：待回填
+- Commit：`e54b6c0`
 - 内容：
   - 将 `predict_cnt % 20 == 0 or done` 改为 `_should_log_progress(predict_cnt, done, need_to_predict)`。
   - 进度日志只在 episode 结束或真实预测计数达到 20 的倍数时打印，避免无决策帧里 `predict_cnt == 0` 导致每帧刷屏。

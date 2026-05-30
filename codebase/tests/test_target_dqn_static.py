@@ -79,6 +79,13 @@ def main():
         "+ traffic_history_feature" in agent and "+ lane_stat_feature" in agent,
         "observation should append phase, phase-age, traffic, trend, history, and lane-stat features",
     )
+    require('raw_obs = observation.get("obs", observation)' in agent, "exploit should tolerate missing obs wrapper")
+    require('frame_state = raw_obs.get("frame_state", {})' in agent, "observation should tolerate missing frame_state")
+    require('frame_state.get("vehicles", [])' in agent, "observation should tolerate missing vehicles")
+    require(
+        "vehicles = [vehicle for vehicle in vehicles if isinstance(vehicle, dict)]" in agent,
+        "observation should filter malformed vehicle records",
+    )
     require("def rule_based_action" in agent, "exploit should have a rule-based fallback")
     require("def _joint_action_mask" in agent, "prediction should expand phase legality to joint actions")
     require("list_joint_action" in agent, "prediction should select joint actions")
@@ -95,6 +102,10 @@ def main():
     require("def get_traffic_trend" in traffic_utils, "shared traffic trend helper is required")
     require("def get_traffic_history_feature" in traffic_utils, "shared traffic history helper is required")
     require("get_lane_position_meters" in traffic_utils, "lane coordinate normalization helper is required")
+    require(
+        "except (KeyError, TypeError, ValueError, AttributeError)" in traffic_utils,
+        "traffic helpers should skip malformed vehicle records",
+    )
     require("def normalize_phase_legal_action" in traffic_utils, "phase legal action normalizer is required")
     require("last_traffic_summary = None" in preprocessor, "traffic trend state should reset each episode")
     require("traffic_history = []" in preprocessor, "traffic history state should reset each episode")

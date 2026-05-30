@@ -168,15 +168,16 @@ def get_lane_statistics(vehicles, waiting_speed_threshold=0.1, lane_count=14):
         try:
             if not on_enter_lane(vehicle):
                 continue
-        except KeyError:
+
+            lane_code = get_lane_code(vehicle)
+            if lane_code is None or lane_code < 0 or lane_code >= lane_count:
+                continue
+
+            speed = float(vehicle.get("speed", 0.0) or 0.0)
+            waiting_time = float(vehicle.get("waiting_time", 0.0) or 0.0)
+        except (KeyError, TypeError, ValueError, AttributeError):
             continue
 
-        lane_code = get_lane_code(vehicle)
-        if lane_code is None or lane_code < 0 or lane_code >= lane_count:
-            continue
-
-        speed = float(vehicle.get("speed", 0.0))
-        waiting_time = float(vehicle.get("waiting_time", 0.0))
         is_waiting = 1.0 if speed <= waiting_speed_threshold else 0.0
 
         counts[lane_code] += 1.0
@@ -339,16 +340,16 @@ def get_phase_pressure(vehicles, waiting_speed_threshold=0.1, phase_count=4):
         try:
             if not on_enter_lane(vehicle):
                 continue
-        except KeyError:
-            continue
 
-        lane_phase = lane_to_phase.get(vehicle.get("lane"))
-        if lane_phase is None:
-            continue
+            lane_phase = lane_to_phase.get(vehicle.get("lane"))
+            if lane_phase is None:
+                continue
 
-        speed = float(vehicle.get("speed", 0.0))
-        waiting_time = float(vehicle.get("waiting_time", 0.0))
-        delay = float(vehicle.get("delay", 0.0))
+            speed = float(vehicle.get("speed", 0.0) or 0.0)
+            waiting_time = float(vehicle.get("waiting_time", 0.0) or 0.0)
+            delay = float(vehicle.get("delay", 0.0) or 0.0)
+        except (KeyError, TypeError, ValueError, AttributeError):
+            continue
         is_waiting = 1.0 if speed <= waiting_speed_threshold else 0.0
 
         pressure = 1.0 + 2.0 * is_waiting + min(waiting_time, 300.0) / 30.0 + min(delay, 300.0) / 60.0

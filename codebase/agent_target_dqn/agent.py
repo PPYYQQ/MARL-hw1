@@ -97,9 +97,16 @@ class Agent(BaseAgent):
         return self.__predict_detail(list_obs_data, exploit_flag=False)
 
     def exploit(self, observation):
-        raw_obs = observation["obs"]
+        if isinstance(observation, dict):
+            raw_obs = observation.get("obs", observation)
+            extra_info = observation.get("extra_info")
+        else:
+            raw_obs = observation
+            extra_info = None
+        if not isinstance(raw_obs, dict):
+            raw_obs = {}
         try:
-            obs_data = self.observation_process(raw_obs, observation["extra_info"])
+            obs_data = self.observation_process(raw_obs, extra_info)
             if not obs_data:
                 return self.rule_based_action(raw_obs)
             act_data = self.__predict_detail([obs_data], exploit_flag=True)
@@ -193,15 +200,18 @@ class Agent(BaseAgent):
         # Note: The unpacking of the following raw data is for example purposes only,
         # please modify according to the actual situation
         # 注意: 以下原始数据的解包为示例, 请根据实际情况修改
-        frame_state = raw_obs["frame_state"]
+        if not isinstance(raw_obs, dict):
+            raw_obs = {}
+        frame_state = raw_obs.get("frame_state", {})
+        if not isinstance(frame_state, dict):
+            frame_state = {}
 
         # Parse frame_state
         # 解析 frame_state
-        _, _, vehicles = (
-            frame_state["frame_no"],
-            frame_state["frame_time"],
-            frame_state["vehicles"],
-        )
+        vehicles = frame_state.get("vehicles", []) or []
+        if not isinstance(vehicles, list):
+            vehicles = []
+        vehicles = [vehicle for vehicle in vehicles if isinstance(vehicle, dict)]
 
         # Divide the lane into several grids along the lane direction and the vehicle driving direction
         # 沿车道方向和车辆行驶方向将车道划分为数个栅格
@@ -223,26 +233,30 @@ class Agent(BaseAgent):
         for vehicle in vehicles:
             # Only count vehicles on the enter lane
             # 仅统计位于进口车道上的车辆信息
-            if on_enter_lane(vehicle):
+            try:
+                is_enter_lane = on_enter_lane(vehicle)
+            except (KeyError, TypeError, ValueError, AttributeError):
+                continue
+            if is_enter_lane:
                 # Convert the vehicle x,y coordinates to grid coordinates. Here,
                 # get_lane_code maps the lane number to integers 0-13, corresponding to 14 import lanes
                 # 将车辆x,y坐标转化为栅格坐标, 此处get_lane_code将车道编号映射至整数0-13, 对应14条进口车道
-                x_pos = get_lane_code(vehicle)
-                if x_pos is None:
+                try:
+                    x_pos = get_lane_code(vehicle)
+                    y_pos = int(get_lane_position_meters(vehicle) // Config.GRID_LENGTH)
+                    vehicle_config = self.preprocess.vehicle_configs_dict.get(vehicle.get("v_config_id"), {})
+                    max_speed = max(float(vehicle_config.get("max_speed", Config.DEFAULT_MAX_SPEED)), 1.0)
+                    speed = float(vehicle.get("speed", 0.0) or 0.0)
+                except (KeyError, TypeError, ValueError, AttributeError):
                     continue
-                y_pos = int(get_lane_position_meters(vehicle) // Config.GRID_LENGTH)
 
                 if y_pos < 0 or y_pos >= Config.GRID_NUM:
                     continue
 
-                vehicle_config = self.preprocess.vehicle_configs_dict.get(vehicle.get("v_config_id"), {})
-                max_speed = max(float(vehicle_config.get("max_speed", Config.DEFAULT_MAX_SPEED)), 1.0)
                 target_junction = vehicle.get("target_junction", junction_id)
                 if target_junction not in speed_dict:
                     target_junction = junction_id
-                speed_dict[target_junction][x_pos, y_pos] = float(
-                    max(0.0, min(float(vehicle.get("speed", 0.0)) / max_speed, 1.0))
-                )
+                speed_dict[target_junction][x_pos, y_pos] = float(max(0.0, min(speed / max_speed, 1.0)))
                 position_dict[target_junction][x_pos, y_pos] = 1
             else:
                 continue
@@ -293,8 +307,15 @@ class Agent(BaseAgent):
         return [junction_id, phase_index, duration]
 
     def rule_based_action(self, raw_obs):
+        if not isinstance(raw_obs, dict):
+            raw_obs = {}
         frame_state = raw_obs.get("frame_state", {})
-        vehicles = frame_state.get("vehicles", [])
+        if not isinstance(frame_state, dict):
+            frame_state = {}
+        vehicles = frame_state.get("vehicles", []) or []
+        if not isinstance(vehicles, list):
+            vehicles = []
+        vehicles = [vehicle for vehicle in vehicles if isinstance(vehicle, dict)]
         phase_pressure, _ = get_phase_pressure(
             vehicles,
             waiting_speed_threshold=Config.WAITING_SPEED_THRESHOLD,
@@ -319,28 +340,37 @@ class Agent(BaseAgent):
         ]
 
     def _phase_feature(self, frame_state):
-        phases = frame_state.get("phases", [])
+        phases = frame_state.get("phases", []) if isinstance(frame_state, dict) else []
+        if not isinstance(phases, list):
+            phases = []
         phase_info = {}
         for candidate in phases:
+            if not isinstance(candidate, dict):
+                continue
             if candidate.get("s_id", 0) == 0:
                 phase_info = candidate
                 break
         if not phase_info and phases:
-            phase_info = phases[0]
+            phase_info = next((candidate for candidate in phases if isinstance(candidate, dict)), {})
 
         phase_feature = [0.0] * Config.DIM_OF_ACTION_PHASE
         if not phase_info:
             return phase_feature + [0.0, 0.0, 0.0, 0.0]
 
-        phase_id = int(
-            np.clip(
-                phase_info.get("phase_id", phase_info.get("phase_idx", 0)),
-                0,
-                Config.DIM_OF_ACTION_PHASE - 1,
+        try:
+            phase_id = int(
+                np.clip(
+                    phase_info.get("phase_id", phase_info.get("phase_idx", 0)),
+                    0,
+                    Config.DIM_OF_ACTION_PHASE - 1,
+                )
             )
-        )
-        duration = max(float(phase_info.get("duration", 0.0) or 0.0), 0.0)
-        remaining_duration = max(float(phase_info.get("remaining_duration", 0.0) or 0.0), 0.0)
+            duration = max(float(phase_info.get("duration", 0.0) or 0.0), 0.0)
+            remaining_duration = max(float(phase_info.get("remaining_duration", 0.0) or 0.0), 0.0)
+        except (TypeError, ValueError):
+            phase_id = 0
+            duration = 0.0
+            remaining_duration = 0.0
         elapsed_duration = max(duration - remaining_duration, 0.0)
 
         phase_feature[phase_id] = 1.0
@@ -352,7 +382,10 @@ class Agent(BaseAgent):
         ]
 
     def _phase_age_feature(self, frame_state):
-        frame_no = int(frame_state.get("frame_no", 0) or 0)
+        try:
+            frame_no = int(frame_state.get("frame_no", 0) or 0)
+        except (TypeError, ValueError):
+            frame_no = 0
         phase_info = self._current_phase_info(frame_state)
         last_served = self.preprocess.phase_last_served_frame
         if len(last_served) != Config.DIM_OF_ACTION_PHASE:
@@ -362,13 +395,16 @@ class Agent(BaseAgent):
             for phase_idx in range(Config.DIM_OF_ACTION_PHASE):
                 last_served[phase_idx] = frame_no
         if phase_info:
-            phase_id = int(
-                np.clip(
-                    phase_info.get("phase_id", phase_info.get("phase_idx", 0)),
-                    0,
-                    Config.DIM_OF_ACTION_PHASE - 1,
+            try:
+                phase_id = int(
+                    np.clip(
+                        phase_info.get("phase_id", phase_info.get("phase_idx", 0)),
+                        0,
+                        Config.DIM_OF_ACTION_PHASE - 1,
+                    )
                 )
-            )
+            except (TypeError, ValueError):
+                phase_id = 0
             last_served[phase_id] = frame_no
         return [
             float(np.clip((frame_no - (served_frame or frame_no)) / Config.PHASE_AGE_SCALE, 0.0, 1.0))
@@ -376,12 +412,17 @@ class Agent(BaseAgent):
         ]
 
     def _current_phase_info(self, frame_state):
-        phases = frame_state.get("phases", [])
+        phases = frame_state.get("phases", []) if isinstance(frame_state, dict) else []
+        if not isinstance(phases, list):
+            return {}
         for candidate in phases:
+            if not isinstance(candidate, dict):
+                continue
             if candidate.get("s_id", 0) == 0:
                 return candidate
-        if phases:
-            return phases[0]
+        for candidate in phases:
+            if isinstance(candidate, dict):
+                return candidate
         return {}
 
     def _traffic_feature(self, traffic_summary):

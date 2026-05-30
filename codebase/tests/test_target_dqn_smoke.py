@@ -191,12 +191,40 @@ def main():
     obs_data_without_extra = agent.observation_process(make_fake_obs(), None)
     assert len(obs_data_without_extra.feature) == Config.DIM_OF_OBSERVATION
     assert len(agent.preprocess.traffic_history) == 2
+    empty_obs_data = agent.observation_process({}, None)
+    assert len(empty_obs_data.feature) == Config.DIM_OF_OBSERVATION
+    assert empty_obs_data.legal_action == [1, 1, 1, 1]
+    assert_no_nan(empty_obs_data.feature)
+    malformed_obs = {
+        "legal_action": 1,
+        "frame_state": {
+            "frame_no": "bad",
+            "frame_time": 0,
+            "phases": [None, {"s_id": 0, "phase_id": "bad", "duration": "bad"}],
+            "vehicles": [
+                None,
+                {"bad": "vehicle"},
+                {
+                    "v_id": 3,
+                    "lane": 11,
+                    "target_junction": 0,
+                    "position_in_lane": {"y": "bad"},
+                    "speed": "bad",
+                },
+            ],
+        },
+    }
+    malformed_obs_data = agent.observation_process(malformed_obs, None)
+    assert len(malformed_obs_data.feature) == Config.DIM_OF_OBSERVATION
+    assert malformed_obs_data.legal_action == [1, 1, 1, 1]
+    assert_no_nan(malformed_obs_data.feature)
 
     low_duration_action = agent.action_process(ActData(junction_id=0, phase_index=0, duration=0))
     high_duration_action = agent.action_process(ActData(junction_id=0, phase_index=99, duration=99))
     assert low_duration_action == [0, 0, Config.MIN_GREEN_DURATION]
     assert high_duration_action == [0, Config.DIM_OF_ACTION_PHASE - 1, Config.MIN_GREEN_DURATION + 19]
     assert agent.rule_based_action(make_fake_obs())[1] == 0
+    assert agent.rule_based_action(None) == [0, 0, Config.MIN_GREEN_DURATION]
 
     agent._eps = 1.0
     predictions = agent.predict([obs_data, obs_data])
@@ -204,6 +232,10 @@ def main():
     assert all(prediction.phase_index in [0, 2] for prediction in predictions)
     training_eps = agent._eps
     agent.exploit({"obs": make_fake_obs(), "extra_info": make_extra_info()})
+    fallback_action = agent.exploit({"extra_info": make_extra_info()})
+    assert fallback_action[0] == 0
+    assert 0 <= fallback_action[1] < Config.DIM_OF_ACTION_PHASE
+    assert Config.MIN_GREEN_DURATION <= fallback_action[2] <= Config.MAX_GREEN_DURATION
     assert agent._eps == training_eps
 
     phase_reward, duration_reward = reward_shaping(make_fake_obs(), [0, 0, Config.MIN_GREEN_DURATION], agent)

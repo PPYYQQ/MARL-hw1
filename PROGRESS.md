@@ -357,3 +357,18 @@
   - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
 - 下一步：
   - 平台环境可用后观察新增交通统计是否改善 `phase_reward` 和平均等待指标。
+
+### Step 23 - 合法动作相位掩码
+
+- 状态：完成
+- Commit：待回填
+- 内容：
+  - 新增 `normalize_phase_legal_action()`，兼容平台标量门控和 4 维相位 mask 两种格式。
+  - Target-DQN 贪心预测在 phase Q 值上应用 mask，随机探索只从合法相位采样。
+  - 规则兜底策略在合法相位中选择压力最高相位。
+  - `sample_process()` 保留归一化后的 4 维合法相位信息。
+  - 新增无 `torch` 依赖的 `tests/test_target_dqn_features.py`，并纳入 `./scripts/check_offline.sh`。
+- 验证：
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；新增无平台依赖特征工具测试通过，smoke 因当前本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 平台环境可用后用真实 observation 确认 `legal_action` 的实际格式。

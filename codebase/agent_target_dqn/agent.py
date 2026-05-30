@@ -52,6 +52,10 @@ class Agent(BaseAgent):
 
     def __predict_detail(self, list_obs_data, exploit_flag=False):
         feature = [obs_data.feature for obs_data in list_obs_data]
+        phase_masks = np.asarray(
+            [self._phase_action_mask(obs_data.legal_action) for obs_data in list_obs_data],
+            dtype=bool,
+        )
 
         model = self.model
         model.eval()
@@ -65,15 +69,17 @@ class Agent(BaseAgent):
                     junction_id,
                 ] * len(list_obs_data)
                 res = model(feature)[0]
-                list_phase = torch.argmax(res[0], dim=1).cpu().view(-1).tolist()
+                phase_q = res[0].clone()
+                phase_mask_tensor = torch.as_tensor(phase_masks, device=phase_q.device, dtype=torch.bool)
+                phase_q = phase_q.masked_fill(~phase_mask_tensor, -1e9)
+                list_phase = torch.argmax(phase_q, dim=1).cpu().view(-1).tolist()
                 list_duration = torch.argmax(res[1], dim=1).cpu().view(-1).tolist()
         else:
             list_junction = [
                 junction_id,
             ] * len(list_obs_data)
 
-            random_action = np.random.choice(self.head_dim[0], len(list_obs_data))
-            list_phase = random_action
+            list_phase = [int(np.random.choice(np.flatnonzero(phase_mask))) for phase_mask in phase_masks]
 
             random_action = np.random.choice(self.head_dim[1], len(list_obs_data))
             list_duration = random_action
@@ -240,7 +246,10 @@ class Agent(BaseAgent):
         traffic_feature = self._traffic_feature(vehicles)
         observation = position + speed + phase_feature + traffic_feature
 
-        return ObsData(feature=observation)
+        return ObsData(
+            feature=observation,
+            legal_action=normalize_phase_legal_action(raw_obs.get("legal_action"), Config.DIM_OF_ACTION_PHASE),
+        )
 
     def action_process(self, act_data):
         junction_id = int(act_data.junction_id)
@@ -263,7 +272,9 @@ class Agent(BaseAgent):
             waiting_speed_threshold=Config.WAITING_SPEED_THRESHOLD,
             phase_count=Config.DIM_OF_ACTION_PHASE,
         )
-        phase_index = int(np.argmax(phase_pressure))
+        legal_mask = self._phase_action_mask(raw_obs.get("legal_action"))
+        masked_pressure = np.where(legal_mask, phase_pressure, -1.0)
+        phase_index = int(np.argmax(masked_pressure))
         duration_index = int(np.clip(round(float(phase_pressure[phase_index])), 0, Config.DIM_OF_ACTION_DURATION - 1))
         return [
             0,
@@ -333,3 +344,12 @@ class Agent(BaseAgent):
             ]
         )
         return traffic_feature
+
+    def _phase_action_mask(self, legal_action):
+        mask = np.asarray(
+            normalize_phase_legal_action(legal_action, Config.DIM_OF_ACTION_PHASE),
+            dtype=bool,
+        )
+        if not mask.any():
+            mask[:] = True
+        return mask

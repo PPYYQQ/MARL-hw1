@@ -59,7 +59,7 @@ class NullLogger:
 
 def make_fake_obs():
     return {
-        "legal_action": [1],
+        "legal_action": [1, 0, 1, 0],
         "frame_state": {
             "frame_no": 1,
             "frame_time": 0,
@@ -135,6 +135,7 @@ def main():
     agent = Agent(device="cpu", logger=NullLogger(), monitor=None)
     obs_data = agent.observation_process(make_fake_obs(), make_extra_info())
     assert len(obs_data.feature) == Config.DIM_OF_OBSERVATION
+    assert obs_data.legal_action == [1, 0, 1, 0]
     assert_no_nan(obs_data.feature)
     assert sum(obs_data.feature[: Config.GRID_WIDTH * Config.GRID_NUM]) == 2
     phase_feature_start = Config.GRID_WIDTH * Config.GRID_NUM * 2
@@ -154,8 +155,10 @@ def main():
     assert high_duration_action == [0, Config.DIM_OF_ACTION_PHASE - 1, Config.MIN_GREEN_DURATION + 19]
     assert agent.rule_based_action(make_fake_obs())[1] == 0
 
+    agent._eps = 1.0
     predictions = agent.predict([obs_data, obs_data])
     assert len(predictions) == 2
+    assert all(prediction.phase_index in [0, 2] for prediction in predictions)
 
     phase_reward, duration_reward = reward_shaping(make_fake_obs(), [0, 0, Config.MIN_GREEN_DURATION], agent)
     assert isinstance(phase_reward, float)
@@ -175,7 +178,7 @@ def main():
     first.act = [0, 0, Config.MIN_GREEN_DURATION]
     first.rew = (1.0, 0.5)
     first.done = 0
-    first.legal_action = [1]
+    first.legal_action = [1, 0, 1, 0]
     second = frame_type()
     second.obs = obs_data.feature
     second.act = [0, 1, Config.MIN_GREEN_DURATION + 1]
@@ -186,6 +189,7 @@ def main():
     assert len(samples) == 1
     assert isinstance(samples[0], SampleData)
     assert samples[0].act == [0, 0, Config.MIN_GREEN_DURATION]
+    assert samples[0].legal_action == [1, 0, 1, 0]
 
     agent.load_model(id="latest")
     with tempfile.TemporaryDirectory() as model_dir:

@@ -85,15 +85,16 @@ Target-DQN 关键文件：
 - optimizer 重复初始化已清理，当前使用 Adam。
 - `exploit()` 已有规则基线兜底。
 - `save_model()` / `load_model()` 已支持默认 checkpoint 路径和首次训练无 latest 模型的情况。
+- Target-DQN 已将 `legal_action` 归一化为 4 维相位 mask，用于贪心预测、随机探索和规则兜底选相位。
 
 仍需关注的问题：
 
-- DQN/Target-DQN 目前未真正使用 `ObsData.legal_action` 做 action mask。
+- 平台文档中 `legal_action` 更像是否需要决策的标量门控；当前 Target-DQN 已保守兼容标量门控和 4 维相位 mask，但仍需在真实平台 observation 上确认格式。
+- `agent_dqn`、`agent_ppo`、`agent_diy` 仍基本保留模板状态，不是当前主线。
 - Target-DQN 使用 phase head 和 duration head 两个独立 Q 输出，不能表达相位和时长的联合组合价值；先调通可以保留，追分时可改为 80 维联合动作。
 - 当前状态特征包含占用/速度网格、当前相位、持续时间、剩余时间、相位压力和全局等待/延误统计；仍未显式包含更细的逐车道统计。
 - reward 权重尚未经过平台训练调优。
 - 本地普通 Python 缺少 `torch`、`kaiwudrl`、`common_python`，真实 `train_test.py` 仍需在平台环境验证。
-- `agent_dqn`、`agent_ppo`、`agent_diy` 仍基本保留模板状态，不是当前主线。
 
 ## 完成期望预估
 
@@ -171,6 +172,7 @@ coding agent 无法单独保证：
 - 短期可保留双头输出：phase head 为 4 维，duration head 为 20 维。
 - `phase_idx` 必须落在 `0-3`。
 - `duration_idx` 必须映射为环境接受的秒数；保守建议从 `8 + duration_idx` 或离散档位开始，避免低于 8 秒的切灯惩罚。
+- `legal_action` 需要先通过 `normalize_phase_legal_action()` 转为 4 维相位 mask；如果真实平台只给标量门控，则非零表示四个相位都可选。
 - 如果改为联合动作，使用 `action_id = phase_idx * 20 + duration_idx`，输出 80 维 Q 值。
 - `exploit()` 必须使用贪心或规则兜底，不应使用随机探索。
 
@@ -207,6 +209,7 @@ coding agent 无法单独保证：
 - 在 `codebase/` 运行 `python train_test.py`。
 - 所有新增模块能正常 import。
 - `Model.forward()` 对随机 batch 返回两个 head，形状分别为 `[batch, 4]` 和 `[batch, 20]`。
+- 无平台依赖时运行 `python tests/test_target_dqn_features.py`，覆盖特征工具和合法动作归一化。
 
 单元测试：
 

@@ -32,6 +32,7 @@
 - Huber loss，降低异常 TD error 对训练的冲击。
 - phase 和 duration 两个输出 head。
 - epsilon-greedy 训练探索。
+- `legal_action` 相位 mask，在贪心预测、随机探索和规则兜底中避免选择明确非法的相位。
 - 固定频率目标网络同步。
 - 规则策略兜底，保证评估阶段即使模型异常也能输出合法动作。
 
@@ -91,6 +92,12 @@ duration_seconds = MIN_GREEN_DURATION + duration_index
 
 当前 `MIN_GREEN_DURATION = 8`，所以模型输出的持续时间范围为 `8-27` 秒。训练时，算法会将环境动作中的秒数转换回 duration head 索引，避免直接用秒数索引 20 维 Q head。
 
+`legal_action` 会被归一化为 4 维相位 mask：
+
+- 如果平台只提供标量门控，非零值表示四个相位都可选。
+- 如果平台提供相位级 mask，则预测和随机探索只在合法相位中选择。
+- 如果 mask 全零，推理侧会回退为四个相位都可选，避免无可选动作导致崩溃。
+
 ## 奖励设计
 
 奖励函数返回两个分量：
@@ -128,7 +135,7 @@ duration reward 主要考虑：
 `exploit()` 中加入 `rule_based_action()`：
 
 - 统计四个相位对应进口车道组的压力。
-- 选择压力最高的相位。
+- 在合法相位中选择压力最高的相位。
 - 根据压力大小设置绿灯持续时间。
 
 用途：
@@ -180,6 +187,7 @@ python tests/test_target_dqn_smoke.py
 当前状态：
 
 - 编译检查通过。
+- 无平台依赖特征工具测试通过。
 - 静态约束检查通过。
 - smoke 脚本在缺少 `torch` 时明确 skip。
 - `python train_test.py` 需要 KaiwuDRL 环境。

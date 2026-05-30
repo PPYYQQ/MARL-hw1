@@ -58,6 +58,9 @@ def main():
 
     require("def get_phase_pressure" in traffic_utils, "shared phase pressure helper is required")
     require("get_lane_position_meters" in traffic_utils, "lane coordinate normalization helper is required")
+    require("def normalize_phase_legal_action" in traffic_utils, "phase legal action normalizer is required")
+    require("masked_fill" in agent, "phase Q-values should be masked before greedy selection")
+    require("np.flatnonzero" in agent, "random exploration should sample only legal phase actions")
 
     require("phase_reward" in workflow and "duration_reward" in workflow, "workflow should monitor reward components")
     require("predict_cnt % 20" in workflow, "workflow should not log every frame")

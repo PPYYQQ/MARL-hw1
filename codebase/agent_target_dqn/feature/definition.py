@@ -40,8 +40,10 @@ ActData = create_cls("ActData", junction_id=None, phase_index=None, duration=Non
 def sample_process(list_game_data):
     sample_datas = []
     for data in list_game_data:
-        legal_action_value = data.legal_action[0] if getattr(data, "legal_action", None) is not None else 1
-        legal_action = [legal_action_value, legal_action_value, legal_action_value, legal_action_value]
+        legal_action = normalize_phase_legal_action(
+            getattr(data, "legal_action", None),
+            Config.DIM_OF_ACTION_PHASE,
+        )
         reward = data.rew if data.rew is not None else (0.0, 0.0)
         sample_data = SampleData(
             obs=data.obs,

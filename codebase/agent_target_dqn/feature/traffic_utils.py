@@ -11,6 +11,27 @@ Author: Tencent AI Arena Authors
 import numpy as np
 
 
+def normalize_phase_legal_action(legal_action, phase_count=4):
+    if legal_action is None:
+        return [1] * phase_count
+
+    try:
+        values = np.asarray(legal_action, dtype=np.float32).flatten()
+    except (TypeError, ValueError):
+        return [1] * phase_count
+
+    if values.size == 0:
+        return [1] * phase_count
+
+    if values.size == 1:
+        return [1 if values[0] != 0 else 0] * phase_count
+
+    mask = [1 if value > 0 else 0 for value in values[:phase_count]]
+    if len(mask) < phase_count:
+        mask.extend([1] * (phase_count - len(mask)))
+    return mask
+
+
 def on_enter_lane(vehicle):
     """
     This function determines whether the vehicle is located on the enter lane

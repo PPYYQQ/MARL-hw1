@@ -671,3 +671,17 @@
   - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
 - 下一步：
   - 平台环境可用后确认动作输出不再出现非法 `junction_id`、越界相位或低于最小绿灯时长。
+
+### Step 45 - latest checkpoint 坏文件容错
+
+- 状态：完成
+- Commit：`a3c8a3a`
+- 内容：
+  - `load_model(id="latest")` 现在会跳过不可读或反序列化失败的 checkpoint，避免坏文件阻断每局开始加载。
+  - 对 checkpoint payload 非 dict 的情况增加显式校验，`latest` 路径记录日志后跳过，指定模型加载仍抛错暴露问题。
+  - `load_state_dict()` 的容错从 `RuntimeError` 扩展到 `RuntimeError`、`TypeError` 和 `ValueError`，覆盖更多坏结构场景。
+  - smoke 测试增加损坏文本 checkpoint 和非 dict checkpoint 覆盖，静态测试增加对应锚点。
+- 验证：
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 平台环境可用后确认损坏或旧格式 `agent_target_dqn/ckpt/model.ckpt-latest.pkl` 不再阻断后续 episode。

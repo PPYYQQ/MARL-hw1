@@ -451,7 +451,7 @@
 ### Step 29 - 联合动作 checkpoint 迁移容灾
 
 - 状态：完成
-- Commit：待回填
+- Commit：`df2bec5 Handle incompatible latest checkpoints`
 - 内容：
   - `load_model(id="latest")` 现在会捕获结构不兼容的 checkpoint，并跳过加载继续从当前参数训练。
   - 保留显式模型 ID 的严格加载行为，避免用户手动指定模型时静默忽略错误。

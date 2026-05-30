@@ -35,6 +35,7 @@ def main():
     require("rew is not None" in definition, "sample_process should handle missing rewards")
 
     require("MIN_GREEN_DURATION + duration_index" in agent, "action_process must map duration index to seconds")
+    require("def _phase_feature" in agent, "observation should include traffic signal phase features")
     require("def rule_based_action" in agent, "exploit should have a rule-based fallback")
     require("if not os.path.exists(model_file_path)" in agent, "load_model should handle missing latest model")
     require("self.algorithm.update_target_q()" in agent, "load_model should sync target network")

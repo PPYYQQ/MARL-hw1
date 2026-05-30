@@ -236,7 +236,8 @@ class Agent(BaseAgent):
 
         # Integrate all state quantities into the observation
         # 将所有状态量整合在observation中
-        observation = position + speed
+        phase_feature = self._phase_feature(frame_state)
+        observation = position + speed + phase_feature
 
         return ObsData(feature=observation)
 
@@ -273,4 +274,37 @@ class Agent(BaseAgent):
                     Config.MAX_GREEN_DURATION,
                 )
             ),
+        ]
+
+    def _phase_feature(self, frame_state):
+        phases = frame_state.get("phases", [])
+        phase_info = {}
+        for candidate in phases:
+            if candidate.get("s_id", 0) == 0:
+                phase_info = candidate
+                break
+        if not phase_info and phases:
+            phase_info = phases[0]
+
+        phase_feature = [0.0] * Config.DIM_OF_ACTION_PHASE
+        if not phase_info:
+            return phase_feature + [0.0, 0.0, 0.0, 0.0]
+
+        phase_id = int(
+            np.clip(
+                phase_info.get("phase_id", phase_info.get("phase_idx", 0)),
+                0,
+                Config.DIM_OF_ACTION_PHASE - 1,
+            )
+        )
+        duration = max(float(phase_info.get("duration", 0.0) or 0.0), 0.0)
+        remaining_duration = max(float(phase_info.get("remaining_duration", 0.0) or 0.0), 0.0)
+        elapsed_duration = max(duration - remaining_duration, 0.0)
+
+        phase_feature[phase_id] = 1.0
+        return phase_feature + [
+            float(np.clip(duration / Config.MAX_GREEN_DURATION, 0.0, 1.0)),
+            float(np.clip(remaining_duration / Config.MAX_GREEN_DURATION, 0.0, 1.0)),
+            float(np.clip(elapsed_duration / Config.MAX_GREEN_DURATION, 0.0, 1.0)),
+            1.0,
         ]

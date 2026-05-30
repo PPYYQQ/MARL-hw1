@@ -63,6 +63,7 @@ def make_fake_obs():
         "frame_state": {
             "frame_no": 1,
             "frame_time": 0,
+            "phases": [{"s_id": 0, "phase_id": 0, "duration": 20, "remaining_duration": 12}],
             "vehicles": [
                 {
                     "v_id": 1,
@@ -136,6 +137,9 @@ def main():
     assert len(obs_data.feature) == Config.DIM_OF_OBSERVATION
     assert_no_nan(obs_data.feature)
     assert sum(obs_data.feature[: Config.GRID_WIDTH * Config.GRID_NUM]) == 2
+    phase_feature_start = Config.GRID_WIDTH * Config.GRID_NUM * 2
+    assert obs_data.feature[phase_feature_start] == 1.0
+    assert obs_data.feature[-1] == 1.0
     obs_data_without_extra = agent.observation_process(make_fake_obs(), None)
     assert len(obs_data_without_extra.feature) == Config.DIM_OF_OBSERVATION
 

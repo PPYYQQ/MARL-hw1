@@ -90,7 +90,7 @@ Target-DQN 关键文件：
 
 - DQN/Target-DQN 目前未真正使用 `ObsData.legal_action` 做 action mask。
 - Target-DQN 使用 phase head 和 duration head 两个独立 Q 输出，不能表达相位和时长的联合组合价值；先调通可以保留，追分时可改为 80 维联合动作。
-- 当前状态特征仍只有占用和速度网格，未显式包含当前相位、剩余时间和车道统计。
+- 当前状态特征包含占用/速度网格以及当前相位、持续时间、剩余时间；仍未显式包含更细的车道统计。
 - reward 权重尚未经过平台训练调优。
 - 本地普通 Python 缺少 `torch`、`kaiwudrl`、`common_python`，真实 `train_test.py` 仍需在平台环境验证。
 - `agent_dqn`、`agent_ppo`、`agent_diy` 仍基本保留模板状态，不是当前主线。
@@ -176,7 +176,7 @@ coding agent 无法单独保证：
 
 特征设计：
 
-- 保持 `Config.DIM_OF_OBSERVATION = 560` 时，当前模板使用 14 条进口车道乘 20 个格子的占用和速度：`14 * 20 * 2 = 560`。
+- 当前 `Config.DIM_OF_OBSERVATION = 568`，其中 560 维为 14 条进口车道乘 20 个格子的占用和速度，额外 8 维为信号相位与持续时间特征。
 - 如增加相位、剩余时间、车道统计等特征，必须同步修改 `Config.DIM_OF_OBSERVATION` 和模型输入层。
 - 坐标单位必须通过真实 observation 确认；若 `position_in_lane["y"]` 是毫米，应使用 `/ 1000` 后再按 `GRID_LENGTH` 分桶。
 - 所有特征必须固定长度、无 NaN、范围稳定；空车辆和缺失字段要有默认值。

@@ -12,7 +12,7 @@ class Config:
 
     # Size of observation
     # observation的维度
-    DIM_OF_OBSERVATION = 560
+    DIM_OF_OBSERVATION = 568
     DIM_OF_ACTION_PHASE = 4
     DIM_OF_ACTION_DURATION = 20
     DIM_SUB_ACTION_MASK = 24
@@ -36,6 +36,7 @@ class Config:
     GRID_WIDTH = 14
     GRID_NUM = 20
     GRID_LENGTH = 5
+    PHASE_FEATURE_DIM = 8
     DEFAULT_MAX_SPEED = 17.0
     WAITING_SPEED_THRESHOLD = 0.1
     MIN_GREEN_DURATION = 8

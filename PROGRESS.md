@@ -274,3 +274,18 @@
   - 已运行 `git diff --check`，未发现空白错误。
 - 下一步：
   - 继续补平台运行后的实验回填内容。
+
+### Step 17 - 相位时间特征并入观测
+
+- 状态：完成
+- 内容：
+  - 将 `agent_target_dqn` 观测维度从 `560` 扩展为 `568`。
+  - 在占用/速度网格后追加 8 维相位时间特征：phase one-hot、duration、remaining duration、elapsed duration、phase present flag。
+  - 更新静态测试、smoke 测试、`AGENTS.md` 和 `REPORT_DRAFT.md` 的特征说明。
+- 验证：
+  - 已运行 `python -m compileall agent_target_dqn tests`，语法编译通过。
+  - 已运行 `python tests/test_target_dqn_static.py`，静态约束检查通过。
+  - 已运行 `python tests/test_target_dqn_smoke.py`，当前本地缺少 `torch`，脚本明确 skip。
+  - 已运行 `git diff --check`，未发现空白错误。
+- 下一步：
+  - 平台验证后根据训练表现决定是否加入车道统计特征或 80 维联合动作。

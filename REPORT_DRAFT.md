@@ -28,6 +28,8 @@
 实现包含：
 
 - 在线 Q 网络和独立目标 Q 网络。
+- Double DQN 风格 TD 目标：在线网络选择下一动作，目标网络评估该动作的 Q 值。
+- Huber loss，降低异常 TD error 对训练的冲击。
 - phase 和 duration 两个输出 head。
 - epsilon-greedy 训练探索。
 - 固定频率目标网络同步。

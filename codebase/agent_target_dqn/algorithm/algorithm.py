@@ -57,14 +57,17 @@ class Algorithm:
         self.target_model.eval()
 
         with torch.no_grad():
+            online_next_outputs = self.model(_obs)[0]
             target_outputs = self.target_model(_obs)[0]
             # Calculate the target Q-values for each head
             # 计算各个头的目标q值
             q_targets = []
             for head_idx in range(self.num_head):
+                next_action = online_next_outputs[head_idx].argmax(dim=1, keepdim=True)
+                next_q_value = target_outputs[head_idx].gather(1, next_action)
                 q_targets_head = (
                     rew[:, head_idx].unsqueeze(1)
-                    + self._gamma * target_outputs[head_idx].max(1)[0].unsqueeze(1) * not_done.unsqueeze(1)
+                    + self._gamma * next_q_value * not_done.unsqueeze(1)
                 )
                 q_targets.append(q_targets_head)
             q_targets = torch.cat(q_targets, dim=1)
@@ -80,7 +83,7 @@ class Algorithm:
         q_values = torch.cat(q_values, dim=1)
 
         self.optim.zero_grad()
-        loss = F.mse_loss(q_targets.float(), q_values.float())
+        loss = F.smooth_l1_loss(q_values.float(), q_targets.float())
         loss.backward()
         model_grad_norm = torch.nn.utils.clip_grad_norm_(self.model.parameters(), 1.0).item()
         self.optim.step()

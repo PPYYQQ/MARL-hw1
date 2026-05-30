@@ -330,3 +330,16 @@
   - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
 - 下一步：
   - 平台环境可用后运行真实 `train_test.py`。
+
+### Step 21 - Double DQN 目标和 Huber loss
+
+- 状态：完成
+- 内容：
+  - TD target 改为 Double DQN 风格：在线网络选择下一动作，目标网络评估该动作 Q 值。
+  - value loss 从 MSE 改为 Huber loss，降低异常 TD error 的影响。
+  - 静态检查增加 Double DQN 目标和 Huber loss 约束。
+  - 报告草稿同步说明目标值计算方式。
+- 验证：
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 平台环境可用后观察 `value_loss`、`q_value`、`target_q_value` 是否更稳定。

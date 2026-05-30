@@ -78,6 +78,8 @@ def main():
     require("def _joint_action_mask" in agent, "prediction should expand phase legality to joint actions")
     require("list_joint_action" in agent, "prediction should select joint actions")
     require("if not os.path.exists(model_file_path)" in agent, "load_model should handle missing latest model")
+    require("except RuntimeError as err" in agent, "load_model should handle incompatible latest checkpoints")
+    require("incompatible checkpoint" in agent, "load_model should log incompatible latest checkpoints")
     require("self.algorithm.update_target_q()" in agent, "load_model should sync target network")
 
     require("def get_phase_pressure" in traffic_utils, "shared phase pressure helper is required")

@@ -171,7 +171,7 @@ duration reward 主要考虑：
 训练 workflow 完成：
 
 1. 读取 `agent_target_dqn/conf/train_env_conf.toml`。
-2. 每局开始尝试加载 `latest` 模型；若首次训练无模型，则跳过。
+2. 每局开始尝试加载 `latest` 模型；若首次训练无模型或旧模型结构不兼容，则跳过。
 3. 环境 reset 后进行特征处理。
 4. 需要决策时调用 `predict()`。
 5. 将模型动作转换为环境动作。

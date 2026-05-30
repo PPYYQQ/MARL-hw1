@@ -85,6 +85,7 @@ Target-DQN 关键文件：
 - optimizer 重复初始化已清理，当前使用 Adam。
 - `exploit()` 已有规则基线兜底。
 - `save_model()` / `load_model()` 已支持默认 checkpoint 路径和首次训练无 latest 模型的情况。
+- `load_model(id="latest")` 会跳过结构不兼容的旧 checkpoint，避免联合动作架构迁移后从旧模型恢复时崩溃。
 - Target-DQN 已将 `legal_action` 归一化为 4 维相位 mask，用于贪心预测、随机探索和规则兜底选相位。
 - `sample_process()` 会把训练样本中的 `legal_action` 设置为下一状态相位 mask，供 Double DQN target 选择下一相位时使用。
 - 观测和 reward 已加入相位服务年龄，用于降低高压相位长期不被服务的风险。

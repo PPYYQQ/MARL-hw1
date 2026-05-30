@@ -141,7 +141,17 @@ class Agent(BaseAgent):
                     self.logger.info(f"skip load model, {model_file_path} does not exist yet")
                 return
             raise FileNotFoundError(model_file_path)
-        self.model.load_state_dict(torch.load(model_file_path, map_location=self.model.device))
+        model_state = torch.load(model_file_path, map_location=self.model.device)
+        if isinstance(model_state, dict) and "state_dict" in model_state:
+            model_state = model_state["state_dict"]
+        try:
+            self.model.load_state_dict(model_state)
+        except RuntimeError as err:
+            if str(id) == "latest":
+                if self.logger:
+                    self.logger.info(f"skip load model, incompatible checkpoint {model_file_path}: {err}")
+                return
+            raise
         self.algorithm.update_target_q()
 
         if self.logger:

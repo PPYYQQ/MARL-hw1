@@ -447,3 +447,17 @@
   - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
 - 下一步：
   - 平台环境可用后对比联合动作模型和历史双头模型的训练稳定性。
+
+### Step 29 - 联合动作 checkpoint 迁移容灾
+
+- 状态：完成
+- Commit：待回填
+- 内容：
+  - `load_model(id="latest")` 现在会捕获结构不兼容的 checkpoint，并跳过加载继续从当前参数训练。
+  - 保留显式模型 ID 的严格加载行为，避免用户手动指定模型时静默忽略错误。
+  - 清理 `Algorithm.learn()` 中旧双头注释和未使用的 `_action_to_head_indices()`。
+  - 更新静态测试、`AGENTS.md`、`RUNBOOK.md` 和 `REPORT_DRAFT.md`。
+- 验证：
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 平台环境可用后确认旧双头 `latest` checkpoint 不会阻断新联合动作模型训练。

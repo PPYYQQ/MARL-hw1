@@ -9,7 +9,6 @@ Author: Tencent AI Arena Authors
 import torch
 import os
 import time
-import numpy as np
 from agent_target_dqn.conf.conf import Config
 from copy import deepcopy
 import torch.nn.functional as F
@@ -59,22 +58,22 @@ class Algorithm:
         action_indices = self._action_to_joint_index(action)
         total_reward = rew.sum(dim=1, keepdim=True)
 
-        # Main implementation of the multi-head output Target_DQN algorithm
-        # 多头输出target_dqn算法的主要实现
+        # Main implementation of the joint-action Target_DQN algorithm
+        # 联合动作target_dqn算法的主要实现
         self.target_model.eval()
 
         with torch.no_grad():
             online_next_outputs = self.model(_obs)[0]
             target_outputs = self.target_model(_obs)[0]
-            # Calculate the target Q-values for each head
-            # 计算各个头的目标q值
+            # Calculate the target Q-value for the joint action head
+            # 计算联合动作头的目标q值
             next_q_for_action = online_next_outputs[0].masked_fill(~joint_legal_mask, -1e9)
             next_action = next_q_for_action.argmax(dim=1, keepdim=True)
             next_q_value = target_outputs[0].gather(1, next_action)
             q_targets = total_reward + self._gamma * next_q_value * not_done.unsqueeze(1)
 
-        # Calculate the Q-values for each head
-        # 计算各个头的q值
+        # Calculate the Q-value for the executed joint action
+        # 计算实际执行联合动作的q值
         self.model.train()
         online_outputs = self.model(obs)[0]
         q_values = online_outputs[0].gather(1, action_indices)
@@ -125,12 +124,6 @@ class Algorithm:
         if self.device is None:
             return torch.as_tensor(value, dtype=dtype)
         return torch.as_tensor(value, dtype=dtype, device=self.device)
-
-    def _action_to_head_indices(self, action):
-        phase_index = action[:, 1].long().clamp(0, Config.DIM_OF_ACTION_PHASE - 1)
-        duration_index = (action[:, 2] - Config.MIN_GREEN_DURATION).long()
-        duration_index = duration_index.clamp(0, Config.DIM_OF_ACTION_DURATION - 1)
-        return torch.stack([phase_index, duration_index], dim=1)
 
     def _action_to_joint_index(self, action):
         phase_index = action[:, 1].long().clamp(0, Config.DIM_OF_ACTION_PHASE - 1)

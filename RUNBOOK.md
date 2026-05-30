@@ -29,7 +29,11 @@ python tests/test_target_dqn_smoke.py
 
 ## 平台验证步骤
 
-1. 上传或同步 `codebase/` 到腾讯开悟作业环境。
+1. 上传或同步 `codebase/` 到腾讯开悟作业环境。需要压缩包时运行：
+   ```bash
+   ./scripts/package_submission.sh
+   ```
+   默认产物为 `dist/marl_hw1_codebase.zip`，只包含 `codebase/` 目录内容，不包含日志、checkpoint、截图和本地报告资料。
 2. 确认 `codebase/conf/app_conf_intelligent_traffic_lights.toml` 中 `algo = "target_dqn"`。
 3. 先运行 `python train_test.py`，确认基础接口、环境 reset/step、样本发送和模型保存不崩溃。
 4. 如果 `train_test.py` 通过，再启动短训练任务，建议先使用默认简单环境：

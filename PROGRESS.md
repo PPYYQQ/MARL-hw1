@@ -242,3 +242,19 @@
   - 已检查 `REPORT_DRAFT.md`、`RUNBOOK.md`、`PROGRESS.md` 行数。
 - 下一步：
   - 平台环境可用后补真实实验结果和曲线。
+
+### Step 15 - 平台提交打包脚本
+
+- 状态：完成
+- 内容：
+  - 新增 `scripts/package_submission.sh`，将 `codebase/` 打包为平台上传压缩包。
+  - 打包时排除日志、`__pycache__`、checkpoint、模型 pkl 和其他运行产物。
+  - `.gitignore` 增加 `dist/`，避免提交生成的压缩包。
+  - `RUNBOOK.md` 增加打包命令和默认产物说明。
+- 验证：
+  - 已运行 `bash scripts/package_submission.sh`，生成 `dist/marl_hw1_codebase.zip`。
+  - 已运行 `zipinfo` 内容检查，确认压缩包未包含日志、checkpoint、`.pkl`、截图、报告和根目录追踪文档。
+  - 已运行 `python tests/test_target_dqn_static.py`，静态约束检查通过。
+  - 已运行 `git diff --check`，未发现空白错误。
+- 下一步：
+  - 更新 `AGENTS.md` 中已经过期的仓库状态和风险描述。

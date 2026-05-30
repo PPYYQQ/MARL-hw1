@@ -642,3 +642,17 @@
   - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
 - 下一步：
   - 平台环境可用后确认异常 env response 不再导致 `KeyError: observation`、`extra_info` 或 `legal_action`。
+
+### Step 43 - workflow 返回结构归一化
+
+- 状态：完成
+- Commit：`11c3f4a`
+- 内容：
+  - 增加 `_normalize_reset_result()`，兼容平台封装 dict 返回和作业文档中的 `(observation, extra_info)` 二元 reset 返回。
+  - 增加 `_normalize_step_result()`，兼容当前封装 `(reward, env_obs)` 二元返回和文档中的 `(frame_no, observation, score, terminated, truncated, extra_info)` 六元返回。
+  - `run_episodes()` 在 disaster recovery、特征处理和 sample 构造前统一使用归一化后的 `env_obs`。
+  - 将 reset/step 返回结构归一化 helper 纳入无平台依赖测试，并加入静态锚点防止回退。
+- 验证：
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 平台环境可用后确认真实 `env.reset()` / `env.step()` 返回形态均能进入同一训练路径。

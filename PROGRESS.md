@@ -520,7 +520,7 @@
 ### Step 34 - 样本发送列表引用隔离
 
 - 状态：完成
-- Commit：待回填
+- Commit：`8790612`
 - 内容：
   - 将 `agent.send_sample_data(g_data)` 改为 `agent.send_sample_data(list(g_data))`。
   - 保留后续 `g_data.clear()` 释放本地列表，但避免平台发送实现异步持有原列表引用时样本被清空。

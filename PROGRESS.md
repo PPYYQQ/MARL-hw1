@@ -278,6 +278,7 @@
 ### Step 17 - 相位时间特征并入观测
 
 - 状态：完成
+- Commit：`a7b610b Add signal phase features to Target-DQN observations`
 - 内容：
   - 将 `agent_target_dqn` 观测维度从 `560` 扩展为 `568`。
   - 在占用/速度网格后追加 8 维相位时间特征：phase one-hot、duration、remaining duration、elapsed duration、phase present flag。

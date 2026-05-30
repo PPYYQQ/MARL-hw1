@@ -63,7 +63,8 @@
 
 ### Step 3 - Target-DQN 本地 smoke 测试
 
-- 状态：进行中
+- 状态：完成
+- Commit：`1ef3342 Add Target-DQN smoke validation script`
 - 内容：
   - 新增 `codebase/tests/test_target_dqn_smoke.py`。
   - 通过 stub `common_python` 和 `kaiwudrl`，让测试可在没有平台 SDK 的本地环境运行。
@@ -73,3 +74,15 @@
   - 当前本地 Python 缺少 `torch`，`python tests/test_target_dqn_smoke.py` 会明确输出 skip；平台或安装 PyTorch 后可执行完整 smoke。
 - 下一步：
   - 根据 smoke 测试结果修正剩余接口问题。
+
+### Step 4 - 本地依赖和平台入口检查
+
+- 状态：完成
+- 内容：
+  - 运行 `python train_test.py` 检查平台训练入口。
+  - 运行 `python -m pip show torch kaiwudrl common_python` 检查本地依赖。
+- 验证：
+  - `python train_test.py` 当前失败于 `ModuleNotFoundError: No module named 'kaiwudrl'`。
+  - 当前本地 Python 未安装 `torch`、`kaiwudrl`、`common_python`。
+- 结论：
+  - 本地只能做语法编译和 stub smoke；真实训练检查需要腾讯开悟/KaiwuDRL 环境或用户提供依赖安装方式。

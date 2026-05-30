@@ -494,7 +494,7 @@
 ### Step 32 - 平台异常信息保留
 
 - 状态：完成
-- Commit：待回填
+- Commit：`1d36834`
 - 内容：
   - `run_episodes()` 捕获异常时记录原始异常信息，不再只输出通用 `run_episodes error`。
   - 使用 `raise ... from e` 保留 Python 异常链，便于平台日志定位真实崩溃点。

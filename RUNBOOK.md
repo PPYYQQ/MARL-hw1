@@ -22,10 +22,17 @@ python tests/test_target_dqn_static.py
 python tests/test_target_dqn_smoke.py
 ```
 
+也可以在仓库根目录运行一键检查：
+
+```bash
+./scripts/check_offline.sh
+```
+
 说明：
 
 - `test_target_dqn_static.py` 不依赖 `torch` 和 `kaiwudrl`，用于检查关键源码约束。
 - `test_target_dqn_smoke.py` 需要 `torch`；当前本地未安装时会输出 skip。
+- `check_offline.sh` 会同时运行编译、静态检查、smoke、空白检查和提交包内容检查。
 - `python train_test.py` 需要 KaiwuDRL 平台依赖，当前本地会因缺少 `kaiwudrl` 失败。
 
 ## 平台验证步骤

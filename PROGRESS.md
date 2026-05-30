@@ -305,3 +305,15 @@
   - 已运行 `git diff --check`，未发现空白错误。
 - 下一步：
   - 平台环境可用后填写 E00 首次 smoke 结果。
+
+### Step 19 - 一键离线检查脚本
+
+- 状态：完成
+- 内容：
+  - 新增 `scripts/check_offline.sh`，串联编译检查、静态约束检查、smoke、空白检查、打包和压缩包内容检查。
+  - 修正 `scripts/package_submission.sh` 可执行权限，保证 `RUNBOOK.md` 中的 `./scripts/package_submission.sh` 可直接运行。
+  - 更新 `RUNBOOK.md` 的本地检查说明。
+- 验证：
+  - 已运行 `./scripts/check_offline.sh`，编译、静态检查、smoke skip、空白检查、打包和压缩包内容检查完成。
+- 下一步：
+  - 继续维护平台实验台账。

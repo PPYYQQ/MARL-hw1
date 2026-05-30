@@ -295,8 +295,10 @@ def main():
     agent.load_model(id="latest")
     with tempfile.TemporaryDirectory() as model_dir:
         agent.save_model(path=model_dir, id="smoke")
+        assert not (Path(model_dir) / "model.ckpt-smoke.pkl.tmp").exists()
         agent.load_model(path=model_dir, id="smoke")
         agent.save_model(path=model_dir, id="latest")
+        assert not (Path(model_dir) / "model.ckpt-latest.pkl.tmp").exists()
         agent.load_model(path=model_dir, id="latest")
         latest_path = Path(model_dir) / "model.ckpt-latest.pkl"
         latest_path.write_text("not a checkpoint", encoding="utf-8")

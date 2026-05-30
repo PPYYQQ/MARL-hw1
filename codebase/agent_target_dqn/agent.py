@@ -146,11 +146,21 @@ class Agent(BaseAgent):
             path = "agent_target_dqn/ckpt"
         os.makedirs(path, exist_ok=True)
         model_file_path = f"{path}/model.ckpt-{str(id)}.pkl"
+        model_tmp_path = f"{model_file_path}.tmp"
 
         # Copy the model's state dictionary to the CPU
         # 将模型的状态字典拷贝到CPU
         model_state_dict_cpu = {k: v.clone().cpu() for k, v in self.model.state_dict().items()}
-        torch.save(model_state_dict_cpu, model_file_path)
+        try:
+            torch.save(model_state_dict_cpu, model_tmp_path)
+            os.replace(model_tmp_path, model_file_path)
+        except Exception:
+            if os.path.exists(model_tmp_path):
+                try:
+                    os.remove(model_tmp_path)
+                except OSError:
+                    pass
+            raise
 
         if self.logger:
             self.logger.info(f"save model {model_file_path} successfully")

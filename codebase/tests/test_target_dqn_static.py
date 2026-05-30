@@ -49,6 +49,10 @@ def main():
     require("NUMB_HEAD = 1" in conf, "Target-DQN should use one joint action Q head")
     require("FAIRNESS_BONUS_SCALE" in conf, "fairness reward scale should stay explicit")
     require("action_shape = [Config.DIM_OF_ACTION]" in model, "model should output one joint action Q head")
+    require("def _prepare_input" in model, "model should normalize input tensor shape")
+    require("s.unsqueeze(0)" in model, "model should batch one-dimensional observations")
+    require("F.pad(s" in model, "model should pad short observation vectors")
+    require("s[:, : Config.DIM_OF_OBSERVATION]" in model, "model should truncate long observation vectors")
     for agent_path, agent_source in agent_entrypoints:
         require("def _configure_torch_threads" in agent_source, f"{agent_path} should guard torch thread setup")
         require("\n_configure_torch_threads()\n" in agent_source, f"{agent_path} should call guarded torch thread setup")

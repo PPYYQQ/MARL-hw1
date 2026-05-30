@@ -258,6 +258,12 @@ def main():
     model_outputs = agent.model([obs_data.feature])[0]
     assert len(model_outputs) == Config.NUMB_HEAD
     assert model_outputs[0].shape[-1] == Config.DIM_OF_ACTION
+    single_outputs = agent.model(obs_data.feature)[0]
+    assert single_outputs[0].shape == (1, Config.DIM_OF_ACTION)
+    short_outputs = agent.model([obs_data.feature[:-5]])[0]
+    assert short_outputs[0].shape == (1, Config.DIM_OF_ACTION)
+    long_outputs = agent.model([obs_data.feature + [0.0] * 5])[0]
+    assert long_outputs[0].shape == (1, Config.DIM_OF_ACTION)
     action_tensor = torch.tensor([[0, 2, Config.MIN_GREEN_DURATION + 5], [0, 99, 999]], dtype=torch.float32)
     action_indices = algorithm._action_to_joint_index(action_tensor)
     assert action_indices.tolist() == [[45], [Config.DIM_OF_ACTION - 1]]

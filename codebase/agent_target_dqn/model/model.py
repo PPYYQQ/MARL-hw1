@@ -50,17 +50,7 @@ class Model(nn.Module):
         if info is None:
             info = {}
 
-        if not isinstance(s, torch.Tensor):
-            s = torch.tensor(
-                np.array(s, dtype=np.float32),
-                device=self.device,
-                dtype=torch.float32,
-            )
-        else:
-            if self.device is None:
-                s = s.to(dtype=torch.float32)
-            else:
-                s = s.to(device=self.device, dtype=torch.float32)
+        s = self._prepare_input(s)
 
         s = self.model(s)
 
@@ -68,3 +58,29 @@ class Model(nn.Module):
             return [F.softmax(head(s), dim=-1) for head in self.heads], state
         else:
             return [head(s) for head in self.heads], state
+
+    def _prepare_input(self, s):
+        if not isinstance(s, torch.Tensor):
+            s = torch.tensor(
+                np.asarray(s, dtype=np.float32),
+                device=self.device,
+                dtype=torch.float32,
+            )
+        elif self.device is None:
+            s = s.to(dtype=torch.float32)
+        else:
+            s = s.to(device=self.device, dtype=torch.float32)
+
+        if s.dim() == 0:
+            s = s.reshape(1, 1)
+        elif s.dim() == 1:
+            s = s.unsqueeze(0)
+        elif s.dim() > 2:
+            s = s.reshape(s.shape[0], -1)
+
+        feature_dim = s.shape[-1]
+        if feature_dim < Config.DIM_OF_OBSERVATION:
+            s = F.pad(s, (0, Config.DIM_OF_OBSERVATION - feature_dim))
+        elif feature_dim > Config.DIM_OF_OBSERVATION:
+            s = s[:, : Config.DIM_OF_OBSERVATION]
+        return s

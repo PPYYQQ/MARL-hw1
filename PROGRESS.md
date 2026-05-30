@@ -102,3 +102,17 @@
   - 已运行 `git diff --check`，未发现空白错误。
 - 下一步：
   - 考虑把 reward 和规则基线的压力计算抽为共享工具，减少后续调参分叉。
+
+### Step 6 - 相位压力计算共享化
+
+- 状态：完成
+- 内容：
+  - 在 `traffic_utils.py` 中新增 `get_phase_pressure()`。
+  - `reward_shaping()` 和 `rule_based_action()` 复用同一套相位压力估计。
+  - 减少奖励函数和规则基线之间的重复逻辑，便于后续统一调参。
+- 验证：
+  - 已运行 `python -m compileall agent_target_dqn tests`，语法编译通过。
+  - 已运行 `python tests/test_target_dqn_smoke.py`，当前本地缺少 `torch`，脚本明确 skip。
+  - 已运行 `git diff --check`，未发现空白错误。
+- 下一步：
+  - 检查训练 workflow 和 sample 结构是否还存在明显形状风险。

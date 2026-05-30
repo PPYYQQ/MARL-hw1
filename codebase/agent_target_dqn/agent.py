@@ -243,31 +243,11 @@ class Agent(BaseAgent):
     def rule_based_action(self, raw_obs):
         frame_state = raw_obs.get("frame_state", {})
         vehicles = frame_state.get("vehicles", [])
-        lane_to_phase = {}
-        for phase, lanes in get_webster_lane_group().items():
-            for lane in lanes:
-                lane_to_phase[lane] = int(phase)
-
-        phase_pressure = np.zeros(Config.DIM_OF_ACTION_PHASE, dtype=np.float32)
-        for vehicle in vehicles:
-            try:
-                if not on_enter_lane(vehicle):
-                    continue
-            except KeyError:
-                continue
-
-            lane_phase = lane_to_phase.get(vehicle.get("lane"))
-            if lane_phase is None:
-                continue
-
-            speed = float(vehicle.get("speed", 0.0))
-            waiting_time = float(vehicle.get("waiting_time", 0.0))
-            delay = float(vehicle.get("delay", 0.0))
-            is_waiting = 1.0 if speed <= Config.WAITING_SPEED_THRESHOLD else 0.0
-            phase_pressure[lane_phase] += (
-                1.0 + 2.0 * is_waiting + min(waiting_time, 300.0) / 30.0 + min(delay, 300.0) / 60.0
-            )
-
+        phase_pressure, _ = get_phase_pressure(
+            vehicles,
+            waiting_speed_threshold=Config.WAITING_SPEED_THRESHOLD,
+            phase_count=Config.DIM_OF_ACTION_PHASE,
+        )
         phase_index = int(np.argmax(phase_pressure))
         duration_index = int(np.clip(round(float(phase_pressure[phase_index])), 0, Config.DIM_OF_ACTION_DURATION - 1))
         return [

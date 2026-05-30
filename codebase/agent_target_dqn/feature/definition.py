@@ -105,44 +105,20 @@ def reward_shaping(_obs, act, agent):
     frame_state = _obs["frame_state"]
     vehicles = frame_state["vehicles"]
 
-    lane_to_phase = {}
-    for phase, lanes in get_webster_lane_group().items():
-        for lane in lanes:
-            lane_to_phase[lane] = int(phase)
-
-    phase_pressure = np.zeros(Config.DIM_OF_ACTION_PHASE, dtype=np.float32)
-    total_waiting_time = 0.0
-    total_delay = 0.0
-    total_queue = 0.0
-    enter_vehicle_count = 0
-
-    for vehicle in vehicles:
-        if not on_enter_lane(vehicle):
-            continue
-
-        lane_phase = lane_to_phase.get(vehicle["lane"])
-        if lane_phase is None:
-            continue
-
-        speed = float(vehicle.get("speed", 0.0))
-        waiting_time = float(vehicle.get("waiting_time", 0.0))
-        delay = float(vehicle.get("delay", 0.0))
-        is_waiting = 1.0 if speed <= Config.WAITING_SPEED_THRESHOLD else 0.0
-
-        pressure = 1.0 + 2.0 * is_waiting + min(waiting_time, 300.0) / 30.0 + min(delay, 300.0) / 60.0
-        phase_pressure[lane_phase] += pressure
-        total_waiting_time += waiting_time
-        total_delay += delay
-        total_queue += is_waiting
-        enter_vehicle_count += 1
+    phase_pressure, pressure_totals = get_phase_pressure(
+        vehicles,
+        waiting_speed_threshold=Config.WAITING_SPEED_THRESHOLD,
+        phase_count=Config.DIM_OF_ACTION_PHASE,
+    )
+    enter_vehicle_count = pressure_totals["vehicle_count"]
 
     if enter_vehicle_count == 0:
         agent.preprocess.old_waiting_time = 0.0
         agent.preprocess.last_phase_index = phase_index
         return 0.0, 0.0
 
-    avg_waiting_time = total_waiting_time / enter_vehicle_count
-    avg_delay = total_delay / enter_vehicle_count
+    avg_waiting_time = pressure_totals["waiting_time"] / enter_vehicle_count
+    avg_delay = pressure_totals["delay"] / enter_vehicle_count
     waiting_delta = agent.preprocess.old_waiting_time - avg_waiting_time
     agent.preprocess.old_waiting_time = avg_waiting_time
 
@@ -155,7 +131,7 @@ def reward_shaping(_obs, act, agent):
         phase_reward += (selected_pressure - mean_pressure) / total_pressure
     phase_reward += 0.4 if phase_index == best_phase else -0.2
     phase_reward += 0.03 * float(np.clip(waiting_delta, -20.0, 20.0))
-    phase_reward -= 0.02 * total_queue
+    phase_reward -= 0.02 * pressure_totals["queue"]
     phase_reward -= 0.002 * avg_delay
 
     target_duration = int(

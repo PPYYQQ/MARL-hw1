@@ -8,6 +8,9 @@ Author: Tencent AI Arena Authors
 """
 
 
+import numpy as np
+
+
 def on_enter_lane(vehicle):
     """
     This function determines whether the vehicle is located on the enter lane
@@ -150,3 +153,43 @@ def get_webster_lane_group():
         "3": [126, 162],
     }
     return lane_group
+
+
+def get_phase_pressure(vehicles, waiting_speed_threshold=0.1, phase_count=4):
+    lane_to_phase = {}
+    for phase, lanes in get_webster_lane_group().items():
+        for lane in lanes:
+            lane_to_phase[lane] = int(phase)
+
+    phase_pressure = np.zeros(phase_count, dtype=np.float32)
+    totals = {
+        "waiting_time": 0.0,
+        "delay": 0.0,
+        "queue": 0.0,
+        "vehicle_count": 0,
+    }
+
+    for vehicle in vehicles:
+        try:
+            if not on_enter_lane(vehicle):
+                continue
+        except KeyError:
+            continue
+
+        lane_phase = lane_to_phase.get(vehicle.get("lane"))
+        if lane_phase is None:
+            continue
+
+        speed = float(vehicle.get("speed", 0.0))
+        waiting_time = float(vehicle.get("waiting_time", 0.0))
+        delay = float(vehicle.get("delay", 0.0))
+        is_waiting = 1.0 if speed <= waiting_speed_threshold else 0.0
+
+        pressure = 1.0 + 2.0 * is_waiting + min(waiting_time, 300.0) / 30.0 + min(delay, 300.0) / 60.0
+        phase_pressure[lane_phase] += pressure
+        totals["waiting_time"] += waiting_time
+        totals["delay"] += delay
+        totals["queue"] += is_waiting
+        totals["vehicle_count"] += 1
+
+    return phase_pressure, totals

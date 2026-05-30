@@ -132,3 +132,19 @@
   - 已运行 `git diff --check`，未发现空白错误。
 - 下一步：
   - 继续检查 workflow/sample 的训练形状风险。
+
+### Step 8 - 训练动作索引和样本形状修复
+
+- 状态：完成
+- 内容：
+  - 将 `SampleData.act` 从 4 维修正为实际使用的 3 维 `[junction_id, phase_index, duration_seconds]`。
+  - 简化 `sample_process()`，直接遍历轨迹列表，避免 `np.array(...).squeeze()` 在边界长度下改变结构。
+  - 在 `Algorithm.learn()` 中统一用 `torch.as_tensor()` 堆叠样本，兼容 list、numpy 和 tensor。
+  - 将环境动作中的 duration 秒数转换回 duration head 索引，避免 20 维 Q head gather 越界。
+  - smoke 测试增加动作索引转换和 sample_process 断言。
+- 验证：
+  - 已运行 `python -m compileall agent_target_dqn tests`，语法编译通过。
+  - 已运行 `python tests/test_target_dqn_smoke.py`，当前本地缺少 `torch`，脚本明确 skip。
+  - 已运行 `git diff --check`，未发现空白错误。
+- 下一步：
+  - 检查是否需要在训练 workflow 中记录更多 reward/score 指标。

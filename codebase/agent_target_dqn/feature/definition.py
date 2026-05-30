@@ -20,9 +20,9 @@ SampleData = create_cls(
     "SampleData",
     obs=Config.DIM_OF_OBSERVATION,  # 560
     _obs=Config.DIM_OF_OBSERVATION,  # 560
-    act=4,
-    # [phase(4 choices)]
-    # [相位(4个选择)]
+    act=3,
+    # [junction_id, phase_index, duration_seconds]
+    # [路口id, 相位编号, 持续时间秒数]
     rew=2,
     # [phase_reward, duration_reward]
     # [相位奖励, 持续时间奖励]
@@ -38,10 +38,8 @@ ActData = create_cls("ActData", junction_id=None, phase_index=None, duration=Non
 
 
 def sample_process(list_game_data):
-    r_data = np.array(list_game_data).squeeze()
-
     sample_datas = []
-    for data in r_data:
+    for data in list_game_data:
         legal_action = [data.legal_action[0], data.legal_action[0], data.legal_action[0], data.legal_action[0]]
         sample_data = SampleData(
             obs=data.obs,

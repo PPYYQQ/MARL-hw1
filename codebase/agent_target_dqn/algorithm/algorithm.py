@@ -40,26 +40,28 @@ class Algorithm:
     def learn(self, list_sample_data):
         # Convert list of SampleData to tensor batch
         # 将 SampleData 数组 转换为 tensor batch
-        obs = torch.stack([frame.obs for frame in list_sample_data]).to(self.device)
-        action = torch.stack(
-            [frame.act if not any(np.isinf(frame.act)) else [0] * len(frame.act) for frame in list_sample_data]
-        ).to(self.device)
-        rew = torch.stack([frame.rew for frame in list_sample_data]).to(self.device)
-        _obs = torch.stack([frame._obs for frame in list_sample_data]).to(self.device)
-        not_done = torch.stack([frame.done for frame in list_sample_data]).to(self.device)
+        batch_size = len(list_sample_data)
+        obs = self._stack_tensor([frame.obs for frame in list_sample_data], dtype=torch.float32).view(batch_size, -1)
+        action = self._stack_tensor([frame.act for frame in list_sample_data], dtype=torch.float32).view(batch_size, -1)
+        rew = self._stack_tensor([frame.rew for frame in list_sample_data], dtype=torch.float32).view(batch_size, -1)
+        _obs = self._stack_tensor([frame._obs for frame in list_sample_data], dtype=torch.float32).view(batch_size, -1)
+        not_done = self._stack_tensor([frame.done for frame in list_sample_data], dtype=torch.float32).view(batch_size)
+        action = torch.nan_to_num(action, nan=0.0, posinf=0.0, neginf=0.0)
+        action_indices = self._action_to_head_indices(action)
 
         # Main implementation of the multi-head output Target_DQN algorithm
         # 多头输出target_dqn算法的主要实现
         self.target_model.eval()
 
         with torch.no_grad():
+            target_outputs = self.target_model(_obs)[0]
             # Calculate the target Q-values for each head
             # 计算各个头的目标q值
             q_targets = []
             for head_idx in range(self.num_head):
                 q_targets_head = (
                     rew[:, head_idx].unsqueeze(1)
-                    + self._gamma * (self.target_model(_obs)[0][head_idx]).max(1)[0].unsqueeze(1) * not_done[:, None]
+                    + self._gamma * target_outputs[head_idx].max(1)[0].unsqueeze(1) * not_done.unsqueeze(1)
                 )
                 q_targets.append(q_targets_head)
             q_targets = torch.cat(q_targets, dim=1)
@@ -67,9 +69,10 @@ class Algorithm:
         # Calculate the Q-values for each head
         # 计算各个头的q值
         self.model.train()
+        online_outputs = self.model(obs)[0]
         q_values = []
         for head_idx in range(self.num_head):
-            q_values_head = self.model(obs)[0][head_idx].gather(1, action[:, head_idx + 1].long().unsqueeze(1))
+            q_values_head = online_outputs[head_idx].gather(1, action_indices[:, head_idx].unsqueeze(1))
             q_values.append(q_values_head)
         q_values = torch.cat(q_values, dim=1)
 
@@ -110,3 +113,13 @@ class Algorithm:
     def update_target_q(self):
         self.target_model.load_state_dict(self.model.state_dict())
         self.target_model.eval()
+
+    def _stack_tensor(self, values, dtype):
+        tensors = [torch.as_tensor(value, dtype=dtype, device=self.device) for value in values]
+        return torch.stack(tensors)
+
+    def _action_to_head_indices(self, action):
+        phase_index = action[:, 1].long().clamp(0, Config.DIM_OF_ACTION_PHASE - 1)
+        duration_index = (action[:, 2] - Config.MIN_GREEN_DURATION).long()
+        duration_index = duration_index.clamp(0, Config.DIM_OF_ACTION_DURATION - 1)
+        return torch.stack([phase_index, duration_index], dim=1)

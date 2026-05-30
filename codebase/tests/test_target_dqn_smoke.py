@@ -128,7 +128,7 @@ def main():
     from agent_target_dqn.agent import Agent
     from agent_target_dqn.algorithm.algorithm import Algorithm
     from agent_target_dqn.conf.conf import Config
-    from agent_target_dqn.feature.definition import ActData, reward_shaping
+    from agent_target_dqn.feature.definition import ActData, SampleData, reward_shaping, sample_process
 
     agent = Agent(device="cpu", logger=NullLogger(), monitor=None)
     obs_data = agent.observation_process(make_fake_obs(), make_extra_info())
@@ -152,7 +152,28 @@ def main():
 
     algorithm = Algorithm(agent.model, agent.optim, device="cpu", logger=NullLogger(), monitor=None)
     assert algorithm.target_model is not agent.model
+    action_tensor = torch.tensor([[0, 2, Config.MIN_GREEN_DURATION + 5], [0, 99, 999]], dtype=torch.float32)
+    action_indices = algorithm._action_to_head_indices(action_tensor)
+    assert action_indices.tolist() == [[2, 5], [Config.DIM_OF_ACTION_PHASE - 1, Config.DIM_OF_ACTION_DURATION - 1]]
     algorithm.update_target_q()
+
+    frame_type = type("Frame", (), {})
+    first = frame_type()
+    first.obs = obs_data.feature
+    first.act = [0, 0, Config.MIN_GREEN_DURATION]
+    first.rew = (1.0, 0.5)
+    first.done = 0
+    first.legal_action = [1]
+    second = frame_type()
+    second.obs = obs_data.feature
+    second.act = [0, 1, Config.MIN_GREEN_DURATION + 1]
+    second.rew = (0.5, 0.25)
+    second.done = 1
+    second.legal_action = [1]
+    samples = sample_process([first, second])
+    assert len(samples) == 1
+    assert isinstance(samples[0], SampleData)
+    assert samples[0].act == [0, 0, Config.MIN_GREEN_DURATION]
 
 
 if __name__ == "__main__":

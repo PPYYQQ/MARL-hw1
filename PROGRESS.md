@@ -465,7 +465,7 @@
 ### Step 30 - 4 帧滚动交通历史特征
 
 - 状态：完成
-- Commit：待回填
+- Commit：`49240a7`
 - 内容：
   - 将 `agent_target_dqn` 观测维度从 `630` 扩展为 `638`。
   - 新增 `get_traffic_history_feature()`，把最近 4 帧交通摘要压缩为 8 维历史特征。

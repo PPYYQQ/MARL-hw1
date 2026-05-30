@@ -613,3 +613,18 @@
   - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
 - 下一步：
   - 平台环境可用后确认样本生产消费比稳定，且终局 transition 不再触发 shape 或空列表异常。
+
+### Step 41 - 训练非有限数值容错
+
+- 状态：完成
+- Commit：`a3b9d1f`
+- 内容：
+  - `Algorithm.learn()` 统一清洗 `obs`、`_obs`、`rew`、`act`、`not_done`、`legal_action` 和 TD target 中的 NaN/Inf。
+  - `not_done` 清洗后裁剪到 `[0, 1]`，避免异常 done 标记放大 target。
+  - workflow 的 `_reward_components()` 使用 `_finite_float()`，监控 reward 分量遇到 NaN/Inf 或畸形 reward 时归零。
+  - 将 workflow helper 纳入无平台依赖测试，覆盖 `_reward_components()`、`_need_to_predict()` 和 `_should_log_progress()`。
+  - 更新静态测试，防止训练张量清洗和 reward 监控清洗回退。
+- 验证：
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 平台环境可用后观察 `value_loss`、`q_value`、`target_q_value` 是否仍出现 NaN/Inf。

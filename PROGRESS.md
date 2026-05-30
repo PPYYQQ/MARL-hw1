@@ -507,7 +507,7 @@
 ### Step 33 - latest checkpoint 保存加载闭环
 
 - 状态：完成
-- Commit：待回填
+- Commit：`c87815a`
 - 内容：
   - 将 Target-DQN workflow 的周期保存从默认 `model.ckpt-1.pkl` 改为 `model.ckpt-latest.pkl`。
   - 保持每局开始的 `load_model(id="latest")` 与周期保存文件名一致，避免跨 episode 或进程恢复时一直找不到刚保存的模型。

@@ -9,6 +9,7 @@ Author: Tencent AI Arena Authors
 import torch
 import os
 import time
+import math
 from agent_target_dqn.conf.conf import Config
 from copy import deepcopy
 import torch.nn.functional as F
@@ -86,8 +87,21 @@ class Algorithm:
 
         self.optim.zero_grad()
         loss = F.smooth_l1_loss(q_values.float(), q_targets.float())
+        if not bool(torch.isfinite(loss).item()):
+            if self.logger:
+                self.logger.info("skip learn step, non-finite loss")
+            return
         loss.backward()
-        model_grad_norm = torch.nn.utils.clip_grad_norm_(self.model.parameters(), 1.0).item()
+        model_grad_norm = torch.nn.utils.clip_grad_norm_(self.model.parameters(), 1.0)
+        try:
+            model_grad_norm = float(model_grad_norm.item())
+        except AttributeError:
+            model_grad_norm = float(model_grad_norm)
+        if not math.isfinite(model_grad_norm):
+            self.optim.zero_grad()
+            if self.logger:
+                self.logger.info("skip learn step, non-finite grad norm")
+            return
         self.optim.step()
         self.train_step += 1
 

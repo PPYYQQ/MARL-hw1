@@ -72,6 +72,10 @@ def main():
     require("rew = self._finite_tensor(rew)" in algorithm, "learn should sanitize rewards")
     require("legal_action = self._finite_tensor(legal_action)" in algorithm, "learn should sanitize legal action masks")
     require("q_targets = self._finite_tensor(q_targets)" in algorithm, "learn should sanitize TD targets")
+    require("torch.isfinite(loss)" in algorithm, "learn should skip optimizer steps on non-finite loss")
+    require("non-finite loss" in algorithm, "learn should log non-finite loss skips")
+    require("math.isfinite(model_grad_norm)" in algorithm, "learn should skip optimizer steps on non-finite gradients")
+    require("non-finite grad norm" in algorithm, "learn should log non-finite gradient skips")
 
     require('act=3' in definition, "SampleData.act should match [junction, phase, duration_seconds]")
     require("return 0, 0" not in definition, "reward_shaping must not return all-zero rewards")

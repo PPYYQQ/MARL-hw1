@@ -291,6 +291,17 @@ def main():
     assert samples[0].legal_action == [0, 1, 0, 1]
     assert samples[1].done == 0
     assert samples[1]._obs == samples[1].obs
+    algorithm.learn(samples)
+    bad_sample = SampleData(
+        obs=[float("nan")] * Config.DIM_OF_OBSERVATION,
+        _obs=[float("inf")] * Config.DIM_OF_OBSERVATION,
+        act=[0, 0, Config.MIN_GREEN_DURATION],
+        rew=(float("nan"), float("inf")),
+        done=1,
+        legal_action=[1, 0, 1, 0],
+    )
+    algorithm.learn([bad_sample])
+    assert all(torch.isfinite(param).all().item() for param in agent.model.parameters())
 
     agent.load_model(id="latest")
     with tempfile.TemporaryDirectory() as model_dir:

@@ -2,6 +2,7 @@
 
 import math
 import sys
+import tempfile
 import types
 from pathlib import Path
 
@@ -174,6 +175,11 @@ def main():
     assert len(samples) == 1
     assert isinstance(samples[0], SampleData)
     assert samples[0].act == [0, 0, Config.MIN_GREEN_DURATION]
+
+    agent.load_model(id="latest")
+    with tempfile.TemporaryDirectory() as model_dir:
+        agent.save_model(path=model_dir, id="smoke")
+        agent.load_model(path=model_dir, id="smoke")
 
 
 if __name__ == "__main__":

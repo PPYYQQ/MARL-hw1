@@ -110,24 +110,37 @@ class Agent(BaseAgent):
         # To save the model, it can consist of multiple files,
         # and it is important to ensure that each filename includes the "model.ckpt-id" field.
         # 保存模型, 可以是多个文件, 需要确保每个文件名里包括了model.ckpt-id字段
+        if path is None:
+            path = "agent_target_dqn/ckpt"
+        os.makedirs(path, exist_ok=True)
         model_file_path = f"{path}/model.ckpt-{str(id)}.pkl"
 
         # Copy the model's state dictionary to the CPU
         # 将模型的状态字典拷贝到CPU
-        model_state_dict = self.model.state_dict()
         model_state_dict_cpu = {k: v.clone().cpu() for k, v in self.model.state_dict().items()}
         torch.save(model_state_dict_cpu, model_file_path)
 
-        self.logger.info(f"save model {model_file_path} successfully")
+        if self.logger:
+            self.logger.info(f"save model {model_file_path} successfully")
 
     def load_model(self, path=None, id="1"):
         # When loading the model, you can load multiple files,
         # and it is important to ensure that each filename matches the one used during the save_model process.
         # 加载模型, 可以加载多个文件, 注意每个文件名需要和save_model时保持一致
+        if path is None:
+            path = "agent_target_dqn/ckpt"
         model_file_path = f"{path}/model.ckpt-{str(id)}.pkl"
+        if not os.path.exists(model_file_path):
+            if str(id) == "latest":
+                if self.logger:
+                    self.logger.info(f"skip load model, {model_file_path} does not exist yet")
+                return
+            raise FileNotFoundError(model_file_path)
         self.model.load_state_dict(torch.load(model_file_path, map_location=self.model.device))
+        self.algorithm.update_target_q()
 
-        self.logger.info(f"load model {model_file_path} successfully")
+        if self.logger:
+            self.logger.info(f"load model {model_file_path} successfully")
 
     def observation_process(self, raw_obs, extra_info=None):
         """

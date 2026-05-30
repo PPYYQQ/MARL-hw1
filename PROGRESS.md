@@ -149,3 +149,19 @@
   - 已运行 `git diff --check`，未发现空白错误。
 - 下一步：
   - 检查是否需要在训练 workflow 中记录更多 reward/score 指标。
+
+### Step 9 - 模型保存加载默认路径修复
+
+- 状态：完成
+- 内容：
+  - 为 `save_model()` 和 `load_model()` 增加默认 checkpoint 目录 `agent_target_dqn/ckpt`。
+  - `save_model()` 自动创建 checkpoint 目录，并防御 logger 为空。
+  - `load_model(id="latest")` 在初始无模型时跳过加载，避免从零训练第一局崩溃。
+  - 成功加载模型后同步 Target-DQN 目标网络。
+  - smoke 测试增加保存/加载路径检查。
+- 验证：
+  - 已运行 `python -m compileall agent_target_dqn tests`，语法编译通过。
+  - 已运行 `python tests/test_target_dqn_smoke.py`，当前本地缺少 `torch`，脚本明确 skip。
+  - 已运行 `git diff --check`，未发现空白错误。
+- 下一步：
+  - 再检查训练 workflow 指标记录和异常日志。

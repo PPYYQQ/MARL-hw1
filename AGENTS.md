@@ -105,6 +105,7 @@ Target-DQN 关键文件：
 - `sample_process()` 会把训练样本中的 `legal_action` 设置为下一状态相位 mask，供 Double DQN target 选择下一相位时使用。
 - `sample_process()` 对空轨迹、全无效轨迹、缺失 reward 和无效动作帧会保守跳过或补零，避免样本转换边界崩溃。
 - `Algorithm.learn()` 会清洗 observation、reward、action、not_done、legal_action 和 TD target 中的 NaN/Inf，workflow reward 监控也会把非有限值归零。
+- `Algorithm.learn()` 会在 `torch.stack()` 前对 obs、_obs、action、reward、done 和 legal_action 做定宽补齐/截断，避免畸形样本长度不一致时训练崩溃。
 - `Algorithm.learn()` 遇到非有限 loss 或梯度范数时会跳过本次 optimizer step，避免 NaN/Inf 参数污染模型。
 - `exploit()` 强制走贪心推理且不衰减训练用 `_eps`，避免评估调用改变训练探索状态。
 - 观测和 reward 已加入相位服务年龄，用于降低高压相位长期不被服务的风险。

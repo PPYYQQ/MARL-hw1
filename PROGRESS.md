@@ -753,3 +753,17 @@
   - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
 - 下一步：
   - 平台环境可用后确认模型推理入口不会因 observation 是否带 batch 维度而失败。
+
+### Step 51 - DQN 样本张量定宽归一化
+
+- 状态：完成
+- Commit：`a63529c`
+- 内容：
+  - `Algorithm.learn()` 在 `torch.stack()` 前通过 `_normalize_tensor()` 统一每个样本字段的张量形状。
+  - `obs` / `_obs` 补齐或截断到 `Config.DIM_OF_OBSERVATION`，`act`、`rew`、`done` 和 `legal_action` 分别归一化到固定宽度。
+  - 畸形值转换失败时使用空张量再补零，避免单条坏样本导致整个 batch 堆叠失败。
+  - smoke 测试增加短 obs、长 _obs、短 action、短 reward 和短 legal_action 的 ragged sample learn 覆盖；静态测试增加定宽归一化锚点。
+- 验证：
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 平台环境可用后观察 learner 是否仍因样本 shape 不一致报错。

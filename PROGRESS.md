@@ -30,6 +30,7 @@
 ### Step 1 - Target-DQN 目标网络和模型骨干
 
 - 状态：完成
+- Commit：`b324e4a Implement Target-DQN target network backbone`
 - 内容：
   - 将 `agent_target_dqn` 的目标网络改为独立 `deepcopy`，避免与在线网络共享参数对象。
   - 增加 `update_target_q()`，按 `TARGET_UPDATE_FREQ` 定期同步目标网络。

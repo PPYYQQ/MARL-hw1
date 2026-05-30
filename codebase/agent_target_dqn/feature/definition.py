@@ -38,23 +38,40 @@ ActData = create_cls("ActData", junction_id=None, phase_index=None, duration=Non
 
 
 def sample_process(list_game_data):
+    if not list_game_data:
+        return []
+
     sample_datas = []
     for data in list_game_data:
+        obs = getattr(data, "obs", None)
+        act = getattr(data, "act", None)
+        if obs is None or act is None:
+            continue
+        try:
+            if len(act) < 3 or act[0] is None:
+                continue
+        except (TypeError, IndexError):
+            continue
+
         legal_action = normalize_phase_legal_action(
             getattr(data, "legal_action", None),
             Config.DIM_OF_ACTION_PHASE,
         )
-        reward = data.rew if data.rew is not None else (0.0, 0.0)
+        reward = getattr(data, "rew", None)
+        reward = reward if reward is not None else (0.0, 0.0)
         sample_data = SampleData(
-            obs=data.obs,
+            obs=obs,
             _obs=None,
-            act=data.act,
+            act=act,
             rew=reward,
-            done=1 if data.done == 0 else 0,
+            done=1 if getattr(data, "done", 0) == 0 else 0,
             legal_action=legal_action,
         )
 
         sample_datas.append(sample_data)
+
+    if not sample_datas:
+        return []
 
     for i in range(len(sample_datas) - 1):
         sample_datas[i]._obs = sample_datas[i + 1].obs
@@ -98,21 +115,30 @@ def reward_shaping(_obs, act, agent):
         - phase reward: 对应相位编号动作的奖励
         - duration reward: 对应相位持续时间动作的奖励
     """
-    if not act or act[0] is None:
+    if act is None:
         return 0.0, 0.0
 
-    if len(act) < 3 or act[1] is None or act[2] is None:
+    try:
+        if len(act) < 3 or act[0] is None or act[1] is None or act[2] is None:
+            return 0.0, 0.0
+        phase_index = int(np.clip(int(act[1]), 0, Config.DIM_OF_ACTION_PHASE - 1))
+        duration = int(act[2])
+    except (TypeError, ValueError, IndexError):
         return 0.0, 0.0
 
-    phase_index = int(act[1])
-    duration = int(act[2])
     phase_reward, duration_reward = 0.0, 0.0
 
     frame_state = _obs.get("frame_state") if isinstance(_obs, dict) else None
     if not isinstance(frame_state, dict):
         return 0.0, 0.0
-    frame_no = int(frame_state.get("frame_no", 0) or 0)
+    try:
+        frame_no = int(frame_state.get("frame_no", 0) or 0)
+    except (TypeError, ValueError):
+        frame_no = 0
     vehicles = frame_state.get("vehicles", []) or []
+    if not isinstance(vehicles, list):
+        vehicles = []
+    vehicles = [vehicle for vehicle in vehicles if isinstance(vehicle, dict)]
 
     phase_pressure, pressure_totals = get_phase_pressure(
         vehicles,

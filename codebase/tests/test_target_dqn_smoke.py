@@ -282,10 +282,12 @@ def main():
     second.done = 1
     second.legal_action = [0, 1, 0, 1]
     samples = sample_process([first, second])
-    assert len(samples) == 1
+    assert len(samples) == 2
     assert isinstance(samples[0], SampleData)
     assert samples[0].act == [0, 0, Config.MIN_GREEN_DURATION]
     assert samples[0].legal_action == [0, 1, 0, 1]
+    assert samples[1].done == 0
+    assert samples[1]._obs == samples[1].obs
 
     agent.load_model(id="latest")
     with tempfile.TemporaryDirectory() as model_dir:

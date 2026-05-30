@@ -25,6 +25,12 @@ def main():
     preprocessor = read("agent_target_dqn/feature/preprocessor.py")
     traffic_utils = read("agent_target_dqn/feature/traffic_utils.py")
     workflow = read("agent_target_dqn/workflow/train_workflow.py")
+    agent_entrypoints = [
+        ("agent_target_dqn/agent.py", agent),
+        ("agent_dqn/agent.py", read("agent_dqn/agent.py")),
+        ("agent_ppo/agent.py", read("agent_ppo/agent.py")),
+        ("agent_diy/agent.py", read("agent_diy/agent.py")),
+    ]
     package_script = root / "scripts" / "package_submission.sh"
     check_script = root / "scripts" / "check_offline.sh"
 
@@ -43,6 +49,10 @@ def main():
     require("NUMB_HEAD = 1" in conf, "Target-DQN should use one joint action Q head")
     require("FAIRNESS_BONUS_SCALE" in conf, "fairness reward scale should stay explicit")
     require("action_shape = [Config.DIM_OF_ACTION]" in model, "model should output one joint action Q head")
+    for agent_path, agent_source in agent_entrypoints:
+        require("def _configure_torch_threads" in agent_source, f"{agent_path} should guard torch thread setup")
+        require("\n_configure_torch_threads()\n" in agent_source, f"{agent_path} should call guarded torch thread setup")
+        require("except RuntimeError" in agent_source, f"{agent_path} should tolerate torch thread setup RuntimeError")
 
     require("target_model = self.model" not in algorithm, "target model must not alias online model")
     require("deepcopy(self.model)" in algorithm, "target model should be an independent copy")

@@ -10,8 +10,19 @@ Author: Tencent AI Arena Authors
 
 import torch
 
-torch.set_num_threads(1)
-torch.set_num_interop_threads(1)
+
+def _configure_torch_threads():
+    try:
+        torch.set_num_threads(1)
+    except RuntimeError:
+        pass
+    try:
+        torch.set_num_interop_threads(1)
+    except RuntimeError:
+        pass
+
+
+_configure_torch_threads()
 
 from kaiwudrl.interface.agent import BaseAgent
 from agent_diy.model.model import Model

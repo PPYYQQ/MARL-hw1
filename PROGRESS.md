@@ -201,6 +201,7 @@
 ### Step 12 - `extra_info` 缺失健壮性
 
 - 状态：完成
+- Commit：`8606453 Handle missing Target-DQN extra info`
 - 内容：
   - `FeatureProcess.update_traffic_info()` 支持 `extra_info=None`，避免本地测试或部分环境响应缺少 `init_state` 时崩溃。
   - smoke 测试增加无 `extra_info` 的观测处理断言。

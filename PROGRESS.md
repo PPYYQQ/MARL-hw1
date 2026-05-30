@@ -376,7 +376,7 @@
 ### Step 24 - Double DQN 目标动作掩码
 
 - 状态：完成
-- Commit：待回填
+- Commit：`04f5ce1 Mask Double DQN target phase actions`
 - 内容：
   - `sample_process()` 将训练样本里的 `legal_action` 更新为 `_obs` 对应的下一状态相位 mask。
   - `Algorithm.learn()` 在 Double DQN 选择下一相位时应用合法相位 mask。

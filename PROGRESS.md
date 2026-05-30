@@ -739,3 +739,17 @@
   - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
 - 下一步：
   - 平台环境可用后确认训练 episode 不再因偶发空预测或模型推理异常直接失败。
+
+### Step 50 - 模型输入形状容错
+
+- 状态：完成
+- Commit：`5bfc1a5`
+- 内容：
+  - `Model.forward()` 通过 `_prepare_input()` 统一输入张量形状。
+  - 单条一维 observation 会自动转成 batch 维度，保持 Q head 输出形状为 `[1, DIM_OF_ACTION]`。
+  - 短 observation 会补零到 `Config.DIM_OF_OBSERVATION`，长 observation 会截断到配置维度，避免平台封装传入异常长度时线性层直接报错。
+  - smoke 测试覆盖正常 batch、单条一维、短向量和长向量输入；静态测试增加输入形状归一化锚点。
+- 验证：
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 平台环境可用后确认模型推理入口不会因 observation 是否带 batch 维度而失败。

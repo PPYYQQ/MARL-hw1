@@ -390,7 +390,7 @@
 ### Step 25 - 逐车道统计特征并入观测
 
 - 状态：完成
-- Commit：待回填
+- Commit：`91d08ae Add per-lane traffic statistics features`
 - 内容：
   - 将 `agent_target_dqn` 观测维度从 `576` 扩展为 `618`。
   - 新增 `get_lane_statistics()`，统计 14 条进口车道的车辆数、排队数和平均等待时间。

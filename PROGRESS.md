@@ -228,3 +228,16 @@
   - 已运行 `git diff --check`，未发现空白错误。
 - 下一步：
   - 平台环境可用后运行 `python train_test.py` 并回填真实结果。
+
+### Step 14 - 报告草稿整理
+
+- 状态：完成
+- 内容：
+  - 新增 `REPORT_DRAFT.md`，整理问题定义、Target-DQN 方法、状态特征、动作映射、奖励设计、规则兜底、训练流程、本地验证、平台实验表和后续改进方向。
+  - 报告草稿可迁移到 `icml2022.zip` 模板继续排版。
+- 验证：
+  - 已运行 `python tests/test_target_dqn_static.py`，静态约束检查通过。
+  - 已运行 `git diff --check`，未发现空白错误。
+  - 已检查 `REPORT_DRAFT.md`、`RUNBOOK.md`、`PROGRESS.md` 行数。
+- 下一步：
+  - 平台环境可用后补真实实验结果和曲线。

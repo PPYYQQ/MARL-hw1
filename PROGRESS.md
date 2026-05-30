@@ -685,3 +685,17 @@
   - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
 - 下一步：
   - 平台环境可用后确认损坏或旧格式 `agent_target_dqn/ckpt/model.ckpt-latest.pkl` 不再阻断后续 episode。
+
+### Step 46 - Torch 线程设置导入容错
+
+- 状态：完成
+- Commit：`63dd4da`
+- 内容：
+  - 四个 agent 入口都将 `torch.set_num_threads(1)` 和 `torch.set_num_interop_threads(1)` 包进 `_configure_torch_threads()`。
+  - 当平台进程已经启动过 Torch 并行运行、线程设置抛出 `RuntimeError` 时，agent 导入会跳过该设置继续执行。
+  - 静态测试增加四个 agent 入口的容错 helper、实际调用和 `RuntimeError` 捕获锚点。
+- 验证：
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
+  - 已额外运行 `python -m compileall agent_dqn agent_ppo agent_diy`，确认非主线模板 agent 仍能编译。
+- 下一步：
+  - 平台环境可用后确认 `train_test.py` 或框架算法列表校验不会因 Torch 线程设置在导入阶段失败。

@@ -201,6 +201,8 @@ workflow 当前监控：
 - duration reward。
 - data length。
 
+所有 agent 入口的 Torch 线程配置都通过容错 helper 执行；如果平台进程已经启动过 Torch 并行运行，`set_num_threads()` 或 `set_num_interop_threads()` 抛出 `RuntimeError` 时会跳过该设置，避免训练或评估在导入阶段失败。
+
 算法监控：
 
 - value loss。

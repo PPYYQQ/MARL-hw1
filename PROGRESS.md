@@ -334,6 +334,7 @@
 ### Step 21 - Double DQN 目标和 Huber loss
 
 - 状态：完成
+- Commit：`e3c7f00 Use Double DQN target calculation`
 - 内容：
   - TD target 改为 Double DQN 风格：在线网络选择下一动作，目标网络评估该动作 Q 值。
   - value loss 从 MSE 改为 Huber loss，降低异常 TD error 的影响。

@@ -431,3 +431,19 @@
   - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
 - 下一步：
   - 平台环境可用后观察是否降低单方向长期排队的问题。
+
+### Step 28 - 80 维联合动作 Q 头
+
+- 状态：完成
+- Commit：待回填
+- 内容：
+  - Target-DQN 从 phase/duration 双头输出改为单个 80 维联合动作 Q 头。
+  - `predict()` 贪心和随机探索都先选择 joint action，再解码为 `phase_idx` 和 `duration_idx`。
+  - `Algorithm.learn()` 将环境动作映射为 `phase_idx * 20 + duration_idx` 的联合索引。
+  - Double DQN target 使用 80 维 joint mask，避免选择非法相位对应的动作组合。
+  - 训练目标使用 `phase_reward + duration_reward` 的总奖励，同时 workflow 仍保留分量监控。
+  - 更新 smoke/static 测试、`AGENTS.md` 和 `REPORT_DRAFT.md`。
+- 验证：
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 平台环境可用后对比联合动作模型和历史双头模型的训练稳定性。

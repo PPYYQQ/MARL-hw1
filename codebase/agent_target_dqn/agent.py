@@ -34,8 +34,7 @@ class Agent(BaseAgent):
         self.end_eps = Config.END_EPSILON_GREEDY
         self.eps_decay = Config.EPSILON_DECAY
         self.head_dim = [
-            Config.DIM_OF_ACTION_PHASE,
-            Config.DIM_OF_ACTION_DURATION,
+            Config.DIM_OF_ACTION,
         ]
         self.device = device
         self.epsilon = Config.EPSILON
@@ -56,6 +55,7 @@ class Agent(BaseAgent):
             [self._phase_action_mask(obs_data.legal_action) for obs_data in list_obs_data],
             dtype=bool,
         )
+        joint_masks = self._joint_action_mask(phase_masks)
 
         model = self.model
         model.eval()
@@ -69,20 +69,19 @@ class Agent(BaseAgent):
                     junction_id,
                 ] * len(list_obs_data)
                 res = model(feature)[0]
-                phase_q = res[0].clone()
-                phase_mask_tensor = torch.as_tensor(phase_masks, device=phase_q.device, dtype=torch.bool)
-                phase_q = phase_q.masked_fill(~phase_mask_tensor, -1e9)
-                list_phase = torch.argmax(phase_q, dim=1).cpu().view(-1).tolist()
-                list_duration = torch.argmax(res[1], dim=1).cpu().view(-1).tolist()
+                joint_q = res[0].clone()
+                joint_mask_tensor = torch.as_tensor(joint_masks, device=joint_q.device, dtype=torch.bool)
+                joint_q = joint_q.masked_fill(~joint_mask_tensor, -1e9)
+                list_joint_action = torch.argmax(joint_q, dim=1).cpu().view(-1).tolist()
         else:
             list_junction = [
                 junction_id,
             ] * len(list_obs_data)
 
-            list_phase = [int(np.random.choice(np.flatnonzero(phase_mask))) for phase_mask in phase_masks]
+            list_joint_action = [int(np.random.choice(np.flatnonzero(joint_mask))) for joint_mask in joint_masks]
 
-            random_action = np.random.choice(self.head_dim[1], len(list_obs_data))
-            list_duration = random_action
+        list_phase = [action // Config.DIM_OF_ACTION_DURATION for action in list_joint_action]
+        list_duration = [action % Config.DIM_OF_ACTION_DURATION for action in list_joint_action]
 
         return [
             ActData(
@@ -424,3 +423,13 @@ class Agent(BaseAgent):
         if not mask.any():
             mask[:] = True
         return mask
+
+    def _joint_action_mask(self, phase_masks):
+        phase_masks = np.asarray(phase_masks, dtype=bool)
+        if phase_masks.ndim == 1:
+            phase_masks = phase_masks.reshape(1, -1)
+        joint_masks = np.repeat(phase_masks, Config.DIM_OF_ACTION_DURATION, axis=1)
+        empty_rows = ~joint_masks.any(axis=1)
+        if np.any(empty_rows):
+            joint_masks[empty_rows, :] = True
+        return joint_masks

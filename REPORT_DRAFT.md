@@ -30,7 +30,7 @@
 - 在线 Q 网络和独立目标 Q 网络。
 - Double DQN 风格 TD 目标：在线网络选择下一动作，目标网络评估该动作的 Q 值。
 - Huber loss，降低异常 TD error 对训练的冲击。
-- phase 和 duration 两个输出 head。
+- 80 维联合动作 Q head，直接评估相位和持续时间组合价值。
 - epsilon-greedy 训练探索。
 - `legal_action` 相位 mask，在贪心预测、随机探索、规则兜底和 Double DQN 下一动作选择中避免选择明确非法的相位。
 - 固定频率目标网络同步。
@@ -95,10 +95,13 @@
 
 ## 动作设计
 
-模型输出两个 head：
+模型输出一个 80 维联合动作 Q head：
 
-- phase head：4 维，对应四个相位。
-- duration head：20 维，对应持续时间索引。
+```text
+action_id = phase_idx * 20 + duration_idx
+```
+
+其中 `phase_idx` 对应四个相位，`duration_idx` 对应 20 个持续时间索引。
 
 环境动作使用秒数，因此代码将 duration index 映射为：
 
@@ -106,13 +109,13 @@
 duration_seconds = MIN_GREEN_DURATION + duration_index
 ```
 
-当前 `MIN_GREEN_DURATION = 8`，所以模型输出的持续时间范围为 `8-27` 秒。训练时，算法会将环境动作中的秒数转换回 duration head 索引，避免直接用秒数索引 20 维 Q head。
+当前 `MIN_GREEN_DURATION = 8`，所以模型输出的持续时间范围为 `8-27` 秒。训练时，算法会将环境动作中的 `[phase_idx, duration_seconds]` 转换为联合动作索引，避免直接用秒数索引 Q head。
 
 `legal_action` 会被归一化为 4 维相位 mask：
 
 - 如果平台只提供标量门控，非零值表示四个相位都可选。
-- 如果平台提供相位级 mask，则预测和随机探索只在合法相位中选择。
-- 训练样本中的 `legal_action` 保存 `_obs` 对应的下一状态 mask，用于 TD target 的下一相位选择。
+- 如果平台提供相位级 mask，则预测和随机探索只在合法相位对应的联合动作中选择。
+- 训练样本中的 `legal_action` 保存 `_obs` 对应的下一状态 mask，用于 TD target 的下一联合动作选择。
 - 如果 mask 全零，推理侧会回退为四个相位都可选，避免无可选动作导致崩溃。
 
 ## 奖励设计
@@ -234,7 +237,6 @@ python tests/test_target_dqn_smoke.py
 ## 已知限制
 
 - 当前特征未显式包含多帧历史窗口。
-- phase 和 duration 使用两个独立 Q head，不能完全表达联合动作价值。
 - 奖励权重尚未经过平台训练调优。
 - 本地无法验证真实环境交互，因为缺少 KaiwuDRL 依赖。
 - 最终成绩仍依赖平台训练、评估和多轮超参数调整。
@@ -242,7 +244,7 @@ python tests/test_target_dqn_smoke.py
 ## 后续改进方向
 
 - 增加多帧历史窗口特征。
-- 将动作改为 80 维联合 Q 输出。
+- 对比 80 维联合 Q 输出和规则基线的评估表现。
 - 根据平台评分调整奖励权重。
 - 对比规则基线、DQN 和 Target-DQN。
 - 保存每次实验配置、模型 ID、评估得分和关键监控曲线。

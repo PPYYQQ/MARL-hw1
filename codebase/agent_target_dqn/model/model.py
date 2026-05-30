@@ -26,7 +26,7 @@ class Model(nn.Module):
 
     def __init__(self, device=None):
         super().__init__()
-        action_shape = [Config.DIM_OF_ACTION_PHASE, Config.DIM_OF_ACTION_DURATION]
+        action_shape = [Config.DIM_OF_ACTION]
         self.device = device
 
         modules = []

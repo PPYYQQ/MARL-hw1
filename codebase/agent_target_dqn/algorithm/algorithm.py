@@ -54,8 +54,10 @@ class Algorithm:
             dtype=torch.float32,
         ).view(batch_size, -1)
         phase_legal_mask = self._phase_legal_mask(legal_action)
+        joint_legal_mask = self._joint_legal_mask(phase_legal_mask)
         action = torch.nan_to_num(action, nan=0.0, posinf=0.0, neginf=0.0)
-        action_indices = self._action_to_head_indices(action)
+        action_indices = self._action_to_joint_index(action)
+        total_reward = rew.sum(dim=1, keepdim=True)
 
         # Main implementation of the multi-head output Target_DQN algorithm
         # 多头输出target_dqn算法的主要实现
@@ -66,29 +68,16 @@ class Algorithm:
             target_outputs = self.target_model(_obs)[0]
             # Calculate the target Q-values for each head
             # 计算各个头的目标q值
-            q_targets = []
-            for head_idx in range(self.num_head):
-                next_q_for_action = online_next_outputs[head_idx]
-                if head_idx == 0:
-                    next_q_for_action = next_q_for_action.masked_fill(~phase_legal_mask, -1e9)
-                next_action = next_q_for_action.argmax(dim=1, keepdim=True)
-                next_q_value = target_outputs[head_idx].gather(1, next_action)
-                q_targets_head = (
-                    rew[:, head_idx].unsqueeze(1)
-                    + self._gamma * next_q_value * not_done.unsqueeze(1)
-                )
-                q_targets.append(q_targets_head)
-            q_targets = torch.cat(q_targets, dim=1)
+            next_q_for_action = online_next_outputs[0].masked_fill(~joint_legal_mask, -1e9)
+            next_action = next_q_for_action.argmax(dim=1, keepdim=True)
+            next_q_value = target_outputs[0].gather(1, next_action)
+            q_targets = total_reward + self._gamma * next_q_value * not_done.unsqueeze(1)
 
         # Calculate the Q-values for each head
         # 计算各个头的q值
         self.model.train()
         online_outputs = self.model(obs)[0]
-        q_values = []
-        for head_idx in range(self.num_head):
-            q_values_head = online_outputs[head_idx].gather(1, action_indices[:, head_idx].unsqueeze(1))
-            q_values.append(q_values_head)
-        q_values = torch.cat(q_values, dim=1)
+        q_values = online_outputs[0].gather(1, action_indices)
 
         self.optim.zero_grad()
         loss = F.smooth_l1_loss(q_values.float(), q_targets.float())
@@ -143,6 +132,13 @@ class Algorithm:
         duration_index = duration_index.clamp(0, Config.DIM_OF_ACTION_DURATION - 1)
         return torch.stack([phase_index, duration_index], dim=1)
 
+    def _action_to_joint_index(self, action):
+        phase_index = action[:, 1].long().clamp(0, Config.DIM_OF_ACTION_PHASE - 1)
+        duration_index = (action[:, 2] - Config.MIN_GREEN_DURATION).long()
+        duration_index = duration_index.clamp(0, Config.DIM_OF_ACTION_DURATION - 1)
+        joint_index = phase_index * Config.DIM_OF_ACTION_DURATION + duration_index
+        return joint_index.unsqueeze(1)
+
     def _phase_legal_mask(self, legal_action):
         if legal_action.dim() == 1:
             legal_action = legal_action.view(-1, 1)
@@ -165,3 +161,10 @@ class Algorithm:
         if empty_rows.any():
             mask = torch.where(empty_rows, torch.ones_like(mask), mask)
         return mask
+
+    def _joint_legal_mask(self, phase_legal_mask):
+        joint_mask = phase_legal_mask.repeat_interleave(Config.DIM_OF_ACTION_DURATION, dim=1)
+        empty_rows = ~joint_mask.any(dim=1, keepdim=True)
+        if empty_rows.any():
+            joint_mask = torch.where(empty_rows, torch.ones_like(joint_mask), joint_mask)
+        return joint_mask

@@ -194,11 +194,20 @@ def main():
 
     algorithm = Algorithm(agent.model, agent.optim, device="cpu", logger=NullLogger(), monitor=None)
     assert algorithm.target_model is not agent.model
+    model_outputs = agent.model([obs_data.feature])[0]
+    assert len(model_outputs) == Config.NUMB_HEAD
+    assert model_outputs[0].shape[-1] == Config.DIM_OF_ACTION
     action_tensor = torch.tensor([[0, 2, Config.MIN_GREEN_DURATION + 5], [0, 99, 999]], dtype=torch.float32)
-    action_indices = algorithm._action_to_head_indices(action_tensor)
-    assert action_indices.tolist() == [[2, 5], [Config.DIM_OF_ACTION_PHASE - 1, Config.DIM_OF_ACTION_DURATION - 1]]
+    action_indices = algorithm._action_to_joint_index(action_tensor)
+    assert action_indices.tolist() == [[45], [Config.DIM_OF_ACTION - 1]]
     phase_mask = algorithm._phase_legal_mask(torch.tensor([[1, 0, 1, 0], [0, 0, 0, 0]], dtype=torch.float32))
     assert phase_mask.tolist() == [[True, False, True, False], [True, True, True, True]]
+    joint_mask = algorithm._joint_legal_mask(phase_mask)
+    assert joint_mask.shape == (2, Config.DIM_OF_ACTION)
+    assert joint_mask[0, 0]
+    assert not joint_mask[0, Config.DIM_OF_ACTION_DURATION]
+    assert joint_mask[0, Config.DIM_OF_ACTION_DURATION * 2]
+    assert joint_mask[1].all()
     algorithm.update_target_q()
 
     frame_type = type("Frame", (), {})

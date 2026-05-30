@@ -80,7 +80,7 @@ Target-DQN 关键文件：
 - Target-DQN 使用独立 target network，并按 `TARGET_UPDATE_FREQ` 同步。
 - `reward_shaping()` 已返回非零奖励，基于相位压力、等待时间变化、排队和延误。
 - `action_process()` 已将 duration index 映射为实际秒数。
-- 训练时已将 duration 秒数转换回 duration head 索引，避免 Q head gather 越界。
+- 训练时已将 `[phase_idx, duration_seconds]` 转换为 80 维联合动作索引，避免 Q head gather 越界。
 - 观测处理已兼容 `position_in_lane["y"]` 的米/毫米单位。
 - optimizer 重复初始化已清理，当前使用 Adam。
 - `exploit()` 已有规则基线兜底。
@@ -88,12 +88,12 @@ Target-DQN 关键文件：
 - Target-DQN 已将 `legal_action` 归一化为 4 维相位 mask，用于贪心预测、随机探索和规则兜底选相位。
 - `sample_process()` 会把训练样本中的 `legal_action` 设置为下一状态相位 mask，供 Double DQN target 选择下一相位时使用。
 - 观测和 reward 已加入相位服务年龄，用于降低高压相位长期不被服务的风险。
+- Target-DQN 已从 phase/duration 双头改为 80 维联合动作 Q 头，可表达相位和时长组合价值。
 
 仍需关注的问题：
 
 - 平台文档中 `legal_action` 更像是否需要决策的标量门控；当前 Target-DQN 已保守兼容标量门控和 4 维相位 mask，但仍需在真实平台 observation 上确认格式。
 - `agent_dqn`、`agent_ppo`、`agent_diy` 仍基本保留模板状态，不是当前主线。
-- Target-DQN 使用 phase head 和 duration head 两个独立 Q 输出，不能表达相位和时长的联合组合价值；先调通可以保留，追分时可改为 80 维联合动作。
 - 当前状态特征包含占用/速度网格、当前相位、相位服务年龄、持续时间、剩余时间、相位压力、全局等待/延误统计、一帧交通趋势和逐车道车辆/排队/等待统计；仍未包含多帧历史窗口。
 - reward 权重尚未经过平台训练调优。
 - 本地普通 Python 缺少 `torch`、`kaiwudrl`、`common_python`，真实 `train_test.py` 仍需在平台环境验证。
@@ -171,12 +171,12 @@ coding agent 无法单独保证：
 
 动作设计：
 
-- 短期可保留双头输出：phase head 为 4 维，duration head 为 20 维。
+- 当前使用 80 维联合动作 Q 头：`action_id = phase_idx * 20 + duration_idx`。
 - `phase_idx` 必须落在 `0-3`。
 - `duration_idx` 必须映射为环境接受的秒数；保守建议从 `8 + duration_idx` 或离散档位开始，避免低于 8 秒的切灯惩罚。
 - `legal_action` 需要先通过 `normalize_phase_legal_action()` 转为 4 维相位 mask；如果真实平台只给标量门控，则非零表示四个相位都可选。
 - 训练样本里的 `legal_action` 代表 `_obs` 对应的下一状态相位 mask，不是当前已执行动作的 mask。
-- 如果改为联合动作，使用 `action_id = phase_idx * 20 + duration_idx`，输出 80 维 Q 值。
+- 相位级 mask 会展开成 80 维 joint mask，训练和预测都只在合法相位对应的动作组合中选动作。
 - `exploit()` 必须使用贪心或规则兜底，不应使用随机探索。
 
 特征设计：
@@ -207,7 +207,7 @@ coding agent 无法单独保证：
 4. 通过 `./scripts/package_submission.sh` 生成平台上传包。
 5. 使用平台监控调参，记录每次配置、模型 ID、训练时长和评估得分。
 6. 将真实实验结果回填到 `PROGRESS.md` 和 `REPORT_DRAFT.md`。
-7. 如基础 Target-DQN 稳定，再考虑增加多帧历史窗口或改成 80 维联合动作。
+7. 如基础 Target-DQN 稳定，再考虑增加多帧历史窗口或根据平台指标调参。
 
 ## 测试计划
 
@@ -215,7 +215,7 @@ coding agent 无法单独保证：
 
 - 在 `codebase/` 运行 `python train_test.py`。
 - 所有新增模块能正常 import。
-- `Model.forward()` 对随机 batch 返回两个 head，形状分别为 `[batch, 4]` 和 `[batch, 20]`。
+- `Model.forward()` 对随机 batch 返回一个 joint Q head，形状为 `[batch, 80]`。
 - 无平台依赖时运行 `python tests/test_target_dqn_features.py`，覆盖特征工具和合法动作归一化。
 
 单元测试：

@@ -21,6 +21,7 @@ def main():
     agent = read("agent_target_dqn/agent.py")
     conf = read("agent_target_dqn/conf/conf.py")
     definition = read("agent_target_dqn/feature/definition.py")
+    model = read("agent_target_dqn/model/model.py")
     preprocessor = read("agent_target_dqn/feature/preprocessor.py")
     traffic_utils = read("agent_target_dqn/feature/traffic_utils.py")
     workflow = read("agent_target_dqn/workflow/train_workflow.py")
@@ -36,7 +37,10 @@ def main():
     require("TRAFFIC_FEATURE_DIM = 8" in conf, "traffic feature dimension should stay explicit")
     require("TRAFFIC_TREND_FEATURE_DIM = 8" in conf, "traffic trend feature dimension should stay explicit")
     require("LANE_STAT_FEATURE_DIM = 42" in conf, "lane stat feature dimension should stay explicit")
+    require("DIM_OF_ACTION = DIM_OF_ACTION_PHASE * DIM_OF_ACTION_DURATION" in conf, "joint action dimension should be explicit")
+    require("NUMB_HEAD = 1" in conf, "Target-DQN should use one joint action Q head")
     require("FAIRNESS_BONUS_SCALE" in conf, "fairness reward scale should stay explicit")
+    require("action_shape = [Config.DIM_OF_ACTION]" in model, "model should output one joint action Q head")
 
     require("target_model = self.model" not in algorithm, "target model must not alias online model")
     require("deepcopy(self.model)" in algorithm, "target model should be an independent copy")
@@ -44,9 +48,11 @@ def main():
     require("online_next_outputs" in algorithm, "Double DQN should select next action with online network")
     require("next_q_value = target_outputs" in algorithm, "target network should evaluate selected next action")
     require("smooth_l1_loss" in algorithm, "TD loss should use Huber loss for stability")
-    require("_action_to_head_indices" in algorithm, "training must map env action to Q-head indices")
+    require("_action_to_joint_index" in algorithm, "training must map env action to joint Q index")
     require("def _phase_legal_mask" in algorithm, "training should normalize legal phase masks")
-    require("phase_legal_mask" in algorithm, "Double DQN phase target should use legal action mask")
+    require("def _joint_legal_mask" in algorithm, "training should expand phase legality to joint actions")
+    require("joint_legal_mask" in algorithm, "Double DQN joint target should use legal action mask")
+    require("total_reward = rew.sum" in algorithm, "joint Q target should train on total reward")
     require("Config.MIN_GREEN_DURATION" in algorithm, "duration seconds must be converted to duration index")
     require("if not list_sample_data" in algorithm, "learn should handle empty batches")
 
@@ -69,6 +75,8 @@ def main():
         "observation should append phase, phase-age, traffic, trend, and lane-stat features",
     )
     require("def rule_based_action" in agent, "exploit should have a rule-based fallback")
+    require("def _joint_action_mask" in agent, "prediction should expand phase legality to joint actions")
+    require("list_joint_action" in agent, "prediction should select joint actions")
     require("if not os.path.exists(model_file_path)" in agent, "load_model should handle missing latest model")
     require("self.algorithm.update_target_q()" in agent, "load_model should sync target network")
 
@@ -80,7 +88,7 @@ def main():
     require("def normalize_phase_legal_action" in traffic_utils, "phase legal action normalizer is required")
     require("last_traffic_summary = None" in preprocessor, "traffic trend state should reset each episode")
     require("phase_last_served_frame" in preprocessor, "phase service state should reset each episode")
-    require("masked_fill" in agent, "phase Q-values should be masked before greedy selection")
+    require("masked_fill" in agent, "joint Q-values should be masked before greedy selection")
     require("np.flatnonzero" in agent, "random exploration should sample only legal phase actions")
 
     require("phase_reward" in workflow and "duration_reward" in workflow, "workflow should monitor reward components")

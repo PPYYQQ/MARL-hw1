@@ -60,3 +60,16 @@
   - 已运行 `git diff --check`，未发现空白错误。
 - 下一步：
   - 补充可脱离 KaiwuDRL 的本地验证脚本。
+
+### Step 3 - Target-DQN 本地 smoke 测试
+
+- 状态：进行中
+- 内容：
+  - 新增 `codebase/tests/test_target_dqn_smoke.py`。
+  - 通过 stub `common_python` 和 `kaiwudrl`，让测试可在没有平台 SDK 的本地环境运行。
+  - 覆盖观测特征长度、NaN 检查、占用网格、duration 映射、batch predict、非零奖励和目标网络独立性。
+- 验证：
+  - 已运行 `python -m compileall agent_target_dqn tests`，语法编译通过。
+  - 当前本地 Python 缺少 `torch`，`python tests/test_target_dqn_smoke.py` 会明确输出 skip；平台或安装 PyTorch 后可执行完整 smoke。
+- 下一步：
+  - 根据 smoke 测试结果修正剩余接口问题。

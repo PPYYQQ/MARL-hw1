@@ -197,3 +197,16 @@
   - 已运行 `git diff --check`，未发现空白错误。
 - 下一步：
   - 做一次 Target-DQN 当前 TODO/风险复扫。
+
+### Step 12 - `extra_info` 缺失健壮性
+
+- 状态：完成
+- 内容：
+  - `FeatureProcess.update_traffic_info()` 支持 `extra_info=None`，避免本地测试或部分环境响应缺少 `init_state` 时崩溃。
+  - smoke 测试增加无 `extra_info` 的观测处理断言。
+- 验证：
+  - 已运行 `python -m compileall agent_target_dqn tests`，语法编译通过。
+  - 已运行 `python tests/test_target_dqn_smoke.py`，当前本地缺少 `torch`，脚本明确 skip。
+  - 已运行 `git diff --check`，未发现空白错误。
+- 下一步：
+  - 汇总当前剩余受阻项：真实 KaiwuDRL 训练验证需要平台依赖。

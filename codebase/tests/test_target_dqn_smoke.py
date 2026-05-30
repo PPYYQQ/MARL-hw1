@@ -136,6 +136,8 @@ def main():
     assert len(obs_data.feature) == Config.DIM_OF_OBSERVATION
     assert_no_nan(obs_data.feature)
     assert sum(obs_data.feature[: Config.GRID_WIDTH * Config.GRID_NUM]) == 2
+    obs_data_without_extra = agent.observation_process(make_fake_obs(), None)
+    assert len(obs_data_without_extra.feature) == Config.DIM_OF_OBSERVATION
 
     low_duration_action = agent.action_process(ActData(junction_id=0, phase_index=0, duration=0))
     high_duration_action = agent.action_process(ActData(junction_id=0, phase_index=99, duration=99))

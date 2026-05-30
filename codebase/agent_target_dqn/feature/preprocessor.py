@@ -97,6 +97,7 @@ class FeatureProcess:
         """
         更新车辆历史信息, 计算各项动态交通变量
         """
+        extra_info = extra_info or {}
         frame_state = raw_obs["frame_state"]
         frame_no = frame_state["frame_no"]
         frame_time, vehicles = frame_state["frame_time"], frame_state["vehicles"]

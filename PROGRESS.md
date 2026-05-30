@@ -90,6 +90,7 @@
 ### Step 5 - 规则基线兜底策略
 
 - 状态：完成
+- Commit：`a72df32 Add Target-DQN rule-based fallback`
 - 内容：
   - 在 `agent_target_dqn.Agent` 中新增 `rule_based_action()`。
   - 规则策略按四个相位对应进口车道的车辆数、低速排队、等待时间和延误估计压力。

@@ -101,13 +101,18 @@ def reward_shaping(_obs, act, agent):
     if not act or act[0] is None:
         return 0.0, 0.0
 
+    if len(act) < 3 or act[1] is None or act[2] is None:
+        return 0.0, 0.0
+
     phase_index = int(act[1])
     duration = int(act[2])
     phase_reward, duration_reward = 0.0, 0.0
 
-    frame_state = _obs["frame_state"]
+    frame_state = _obs.get("frame_state") if isinstance(_obs, dict) else None
+    if not isinstance(frame_state, dict):
+        return 0.0, 0.0
     frame_no = int(frame_state.get("frame_no", 0) or 0)
-    vehicles = frame_state["vehicles"]
+    vehicles = frame_state.get("vehicles", []) or []
 
     phase_pressure, pressure_totals = get_phase_pressure(
         vehicles,

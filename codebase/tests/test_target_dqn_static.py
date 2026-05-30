@@ -63,6 +63,8 @@ def main():
     require("get_phase_pressure" in definition, "reward should use shared phase pressure")
     require("rew is not None" in definition, "sample_process should handle missing rewards")
     require("sample_datas[i].legal_action = sample_datas[i + 1].legal_action" in definition, "samples should carry next-state phase legality")
+    require('frame_state = _obs.get("frame_state")' in definition, "reward should tolerate missing frame_state")
+    require('frame_state.get("vehicles", [])' in definition, "reward should tolerate missing vehicles")
     require("def _fairness_reward" in definition, "reward should include phase fairness term")
     require("def _mark_phase_served" in definition, "reward should update phase service bookkeeping")
 

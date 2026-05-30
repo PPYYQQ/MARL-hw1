@@ -205,6 +205,12 @@ def main():
     assert isinstance(duration_reward, float)
     assert abs(phase_reward) > 0 or abs(duration_reward) > 0
     assert agent.preprocess.phase_last_served_frame[0] == 1
+    assert reward_shaping({}, [0, 0, Config.MIN_GREEN_DURATION], agent) == (0.0, 0.0)
+    assert reward_shaping({"frame_state": {"frame_no": 2}}, [0, 0, Config.MIN_GREEN_DURATION], agent) == (
+        0.0,
+        0.0,
+    )
+    assert reward_shaping(make_fake_obs(), [0], agent) == (0.0, 0.0)
 
     algorithm = Algorithm(agent.model, agent.optim, device="cpu", logger=NullLogger(), monitor=None)
     assert algorithm.target_model is not agent.model

@@ -146,7 +146,17 @@ def main():
     assert obs_data.feature[traffic_feature_start + 2] > 0.0
     assert abs(obs_data.feature[traffic_feature_start + 4] - 0.02) < 1e-6
     assert abs(obs_data.feature[traffic_feature_start + 5] - 0.5) < 1e-6
-    lane_stat_start = traffic_feature_start + Config.TRAFFIC_FEATURE_DIM
+    traffic_trend_start = traffic_feature_start + Config.TRAFFIC_FEATURE_DIM
+    assert (
+        sum(
+            abs(value)
+            for value in obs_data.feature[
+                traffic_trend_start : traffic_trend_start + Config.TRAFFIC_TREND_FEATURE_DIM
+            ]
+        )
+        == 0.0
+    )
+    lane_stat_start = traffic_trend_start + Config.TRAFFIC_TREND_FEATURE_DIM
     assert abs(obs_data.feature[lane_stat_start] - 0.05) < 1e-6
     assert abs(obs_data.feature[lane_stat_start + 4] - 0.05) < 1e-6
     assert abs(obs_data.feature[lane_stat_start + Config.GRID_WIDTH] - 0.05) < 1e-6

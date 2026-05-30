@@ -12,7 +12,7 @@ class Config:
 
     # Size of observation
     # observation的维度
-    DIM_OF_OBSERVATION = 618
+    DIM_OF_OBSERVATION = 626
     DIM_OF_ACTION_PHASE = 4
     DIM_OF_ACTION_DURATION = 20
     DIM_SUB_ACTION_MASK = 24
@@ -38,6 +38,7 @@ class Config:
     GRID_LENGTH = 5
     PHASE_FEATURE_DIM = 8
     TRAFFIC_FEATURE_DIM = 8
+    TRAFFIC_TREND_FEATURE_DIM = 8
     LANE_STAT_FEATURE_DIM = 42
     LANE_COUNT_SCALE = 20.0
     TRAFFIC_PRESSURE_SCALE = 50.0

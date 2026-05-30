@@ -52,6 +52,7 @@ class FeatureProcess:
         # 用户自定义变量
         self.old_waiting_time = 0
         self.last_phase_index = None
+        self.last_traffic_summary = None
 
     def init_road_info(self, start_info):
         """

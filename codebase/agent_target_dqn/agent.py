@@ -243,9 +243,15 @@ class Agent(BaseAgent):
         # Integrate all state quantities into the observation
         # 将所有状态量整合在observation中
         phase_feature = self._phase_feature(frame_state)
-        traffic_feature = self._traffic_feature(vehicles)
+        traffic_summary = get_traffic_summary(
+            vehicles,
+            waiting_speed_threshold=Config.WAITING_SPEED_THRESHOLD,
+            phase_count=Config.DIM_OF_ACTION_PHASE,
+        )
+        traffic_feature = self._traffic_feature(traffic_summary)
+        traffic_trend_feature = self._traffic_trend_feature(traffic_summary)
         lane_stat_feature = self._lane_stat_feature(vehicles)
-        observation = position + speed + phase_feature + traffic_feature + lane_stat_feature
+        observation = position + speed + phase_feature + traffic_feature + traffic_trend_feature + lane_stat_feature
 
         return ObsData(
             feature=observation,
@@ -322,29 +328,31 @@ class Agent(BaseAgent):
             1.0,
         ]
 
-    def _traffic_feature(self, vehicles):
-        phase_pressure, totals = get_phase_pressure(
-            vehicles,
-            waiting_speed_threshold=Config.WAITING_SPEED_THRESHOLD,
-            phase_count=Config.DIM_OF_ACTION_PHASE,
-        )
-        vehicle_count = float(totals["vehicle_count"])
-        queue_count = float(totals["queue"])
-        avg_waiting_time = totals["waiting_time"] / vehicle_count if vehicle_count > 0 else 0.0
-        avg_delay = totals["delay"] / vehicle_count if vehicle_count > 0 else 0.0
-
+    def _traffic_feature(self, traffic_summary):
         traffic_feature = [
-            float(np.clip(pressure / Config.TRAFFIC_PRESSURE_SCALE, 0.0, 1.0)) for pressure in phase_pressure
+            float(np.clip(pressure / Config.TRAFFIC_PRESSURE_SCALE, 0.0, 1.0))
+            for pressure in traffic_summary["phase_pressure"]
         ]
         traffic_feature.extend(
             [
-                float(np.clip(vehicle_count / Config.TRAFFIC_COUNT_SCALE, 0.0, 1.0)),
-                float(np.clip(queue_count / max(vehicle_count, 1.0), 0.0, 1.0)),
-                float(np.clip(avg_waiting_time / Config.TRAFFIC_TIME_SCALE, 0.0, 1.0)),
-                float(np.clip(avg_delay / Config.TRAFFIC_TIME_SCALE, 0.0, 1.0)),
+                float(np.clip(traffic_summary["vehicle_count"] / Config.TRAFFIC_COUNT_SCALE, 0.0, 1.0)),
+                float(np.clip(traffic_summary["queue_ratio"], 0.0, 1.0)),
+                float(np.clip(traffic_summary["avg_waiting_time"] / Config.TRAFFIC_TIME_SCALE, 0.0, 1.0)),
+                float(np.clip(traffic_summary["avg_delay"] / Config.TRAFFIC_TIME_SCALE, 0.0, 1.0)),
             ]
         )
         return traffic_feature
+
+    def _traffic_trend_feature(self, traffic_summary):
+        trend_feature = get_traffic_trend(
+            traffic_summary,
+            self.preprocess.last_traffic_summary,
+            pressure_scale=Config.TRAFFIC_PRESSURE_SCALE,
+            count_scale=Config.TRAFFIC_COUNT_SCALE,
+            time_scale=Config.TRAFFIC_TIME_SCALE,
+        )
+        self.preprocess.last_traffic_summary = traffic_summary
+        return trend_feature
 
     def _lane_stat_feature(self, vehicles):
         lane_stats = get_lane_statistics(

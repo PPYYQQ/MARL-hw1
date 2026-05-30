@@ -191,6 +191,85 @@ def get_lane_statistics(vehicles, waiting_speed_threshold=0.1, lane_count=14):
     }
 
 
+def get_traffic_summary(vehicles, waiting_speed_threshold=0.1, phase_count=4):
+    phase_pressure, totals = get_phase_pressure(
+        vehicles,
+        waiting_speed_threshold=waiting_speed_threshold,
+        phase_count=phase_count,
+    )
+    vehicle_count = float(totals["vehicle_count"])
+    queue_count = float(totals["queue"])
+    avg_waiting_time = totals["waiting_time"] / vehicle_count if vehicle_count > 0 else 0.0
+    avg_delay = totals["delay"] / vehicle_count if vehicle_count > 0 else 0.0
+    return {
+        "phase_pressure": phase_pressure,
+        "vehicle_count": vehicle_count,
+        "queue_count": queue_count,
+        "queue_ratio": queue_count / max(vehicle_count, 1.0),
+        "avg_waiting_time": avg_waiting_time,
+        "avg_delay": avg_delay,
+    }
+
+
+def get_traffic_trend(
+    current_summary,
+    previous_summary,
+    pressure_scale=50.0,
+    count_scale=100.0,
+    time_scale=120.0,
+):
+    current_pressure = np.asarray(current_summary["phase_pressure"], dtype=np.float32)
+    if previous_summary is None:
+        return [0.0] * (len(current_pressure) + 4)
+
+    previous_pressure = np.asarray(
+        previous_summary.get("phase_pressure", np.zeros_like(current_pressure)),
+        dtype=np.float32,
+    )
+    if previous_pressure.size < current_pressure.size:
+        previous_pressure = np.pad(previous_pressure, (0, current_pressure.size - previous_pressure.size))
+    previous_pressure = previous_pressure[: current_pressure.size]
+
+    trend = [
+        float(np.clip((current - previous) / pressure_scale, -1.0, 1.0))
+        for current, previous in zip(current_pressure, previous_pressure)
+    ]
+    trend.extend(
+        [
+            float(
+                np.clip(
+                    (current_summary["vehicle_count"] - previous_summary.get("vehicle_count", 0.0)) / count_scale,
+                    -1.0,
+                    1.0,
+                )
+            ),
+            float(
+                np.clip(
+                    current_summary["queue_ratio"] - previous_summary.get("queue_ratio", 0.0),
+                    -1.0,
+                    1.0,
+                )
+            ),
+            float(
+                np.clip(
+                    (current_summary["avg_waiting_time"] - previous_summary.get("avg_waiting_time", 0.0))
+                    / time_scale,
+                    -1.0,
+                    1.0,
+                )
+            ),
+            float(
+                np.clip(
+                    (current_summary["avg_delay"] - previous_summary.get("avg_delay", 0.0)) / time_scale,
+                    -1.0,
+                    1.0,
+                )
+            ),
+        ]
+    )
+    return trend
+
+
 def get_webster_lane_group():
     """
     Classify according to the green light phase corresponding to each import lane,

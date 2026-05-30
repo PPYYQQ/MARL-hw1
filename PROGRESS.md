@@ -400,3 +400,18 @@
   - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；新增无平台依赖逐车道统计测试通过，smoke 因当前本地缺少 `torch` 明确 skip。
 - 下一步：
   - 平台环境可用后观察逐车道统计是否改善排队和等待指标。
+
+### Step 26 - 一帧交通趋势特征
+
+- 状态：完成
+- Commit：待回填
+- 内容：
+  - 将 `agent_target_dqn` 观测维度从 `618` 扩展为 `626`。
+  - 新增 `get_traffic_summary()` 和 `get_traffic_trend()`，统计当前交通摘要并计算相对上一帧的变化。
+  - 在观测中追加 8 维趋势特征：4 个相位压力变化、进口车辆数变化、排队比例变化、平均等待时间变化和平均延误变化。
+  - `FeatureProcess.reset()` 清空 `last_traffic_summary`，避免跨 episode 泄漏趋势状态。
+  - 更新无平台依赖特征测试、静态测试、smoke 测试、`AGENTS.md` 和 `REPORT_DRAFT.md`。
+- 验证：
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；新增无平台依赖交通趋势测试通过，smoke 因当前本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 平台环境可用后观察趋势特征是否改善拥堵缓解方向的学习。

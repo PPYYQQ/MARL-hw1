@@ -13,8 +13,9 @@ github 目录：https://github.com/PPYYQQ/MARL-hw1.git
 - 默认用中文沟通，除非用户明确要求英文。
 - 先读 `智能交通信号灯调度作业文档.md`，再修改代码。
 - 不要改动 `screenshot/`、`icml2022.zip` 和 `codebase/log/`，除非用户明确要求。
-- 当前目录不是 git 仓库；不要假设可以用 git diff/status 追踪改动。
+- 当前目录已经是 git 仓库，远端为 `git@github.com:PPYYQQ/MARL-hw1.git`；关键修改必须 commit 并 push。
 - 代码包实际位于 `codebase/`，运行训练检查时应先进入 `codebase/`。
+- 每个关键步骤必须更新 `PROGRESS.md`，平台运行方法记录在 `RUNBOOK.md`，报告草稿记录在 `REPORT_DRAFT.md`。
 
 ## 总体概述
 
@@ -72,27 +73,27 @@ Target-DQN 关键文件：
 
 ## 代码审阅结论
 
-当前代码包是官方教学模板，不是可直接高分训练的完成版。优先修 `agent_target_dqn` 的可运行性和训练有效性。
+当前代码包来自官方教学模板。主线已集中在 `agent_target_dqn`，并完成了一批从模板到可训练闭环所需的基础修复。后续仍应优先维护 `agent_target_dqn`，除非用户明确要求切换算法。
 
-高优先级问题：
+已处理的高优先级问题：
 
-- `codebase/agent_target_dqn/algorithm/algorithm.py` 中 `target_model = self.model` 只是同一个网络引用，不是真正 Target-DQN；必须用独立目标网络并定期同步。
-- `codebase/agent_target_dqn/algorithm/algorithm.py` 只有 TODO 注释，没有实现 `update_target_q()` 和目标网络定期更新。
-- `codebase/agent_target_dqn/feature/definition.py` 的 `reward_shaping()` 当前返回 `(0, 0)`，训练没有有效奖励信号。
-- `codebase/agent_target_dqn/agent.py` 的 `action_process()` 直接返回 duration index `0-19`，应确认环境是否要求秒；按作业文档通常需要映射为实际持续时间。
-- `codebase/agent_target_dqn/agent.py` 的 `position_in_lane["y"] / 1` 与 `agent_dqn` 中 `/ 1000` 不一致，可能导致多数车辆落到网格外，应结合真实观测单位确认。
-- `codebase/agent_target_dqn/agent.py` 重复创建两次 RMSprop optimizer，应清理为一次。
-- `agent_dqn` 基本是普通 DQN 模板，奖励仍为零；可借鉴其 `/1000` 坐标尺度，但不建议作为主线。
-- `agent_ppo` 的 policy loss、entropy loss、总 loss、奖励和模型结构仍是 TODO；除非专门做 PPO，否则不要优先投入。
-- `agent_diy` 大量函数为 `pass`，更像从零实现入口；不要误认为可运行基线。
+- Target-DQN 使用独立 target network，并按 `TARGET_UPDATE_FREQ` 同步。
+- `reward_shaping()` 已返回非零奖励，基于相位压力、等待时间变化、排队和延误。
+- `action_process()` 已将 duration index 映射为实际秒数。
+- 训练时已将 duration 秒数转换回 duration head 索引，避免 Q head gather 越界。
+- 观测处理已兼容 `position_in_lane["y"]` 的米/毫米单位。
+- optimizer 重复初始化已清理，当前使用 Adam。
+- `exploit()` 已有规则基线兜底。
+- `save_model()` / `load_model()` 已支持默认 checkpoint 路径和首次训练无 latest 模型的情况。
 
-中优先级问题：
+仍需关注的问题：
 
 - DQN/Target-DQN 目前未真正使用 `ObsData.legal_action` 做 action mask。
 - Target-DQN 使用 phase head 和 duration head 两个独立 Q 输出，不能表达相位和时长的联合组合价值；先调通可以保留，追分时可改为 80 维联合动作。
-- `reward_shaping()` 需要依赖 `FeatureProcess` 中已维护的等待时间、车道车辆数和相位历史，避免重复散落统计。
-- `monitor.put_data()` 调用前应防御 `monitor is None`，本地测试可能没有 monitor。
-- fake observation 测试必须覆盖 `extra_info` 无 `init_state`、车辆为空、进口车道为空等情况。
+- 当前状态特征仍只有占用和速度网格，未显式包含当前相位、剩余时间和车道统计。
+- reward 权重尚未经过平台训练调优。
+- 本地普通 Python 缺少 `torch`、`kaiwudrl`、`common_python`，真实 `train_test.py` 仍需在平台环境验证。
+- `agent_dqn`、`agent_ppo`、`agent_diy` 仍基本保留模板状态，不是当前主线。
 
 ## 完成期望预估
 
@@ -190,16 +191,13 @@ coding agent 无法单独保证：
 
 ## 实施计划
 
-1. 在 `codebase/` 运行基础检查，确认当前平台依赖是否可用。
-2. 为 `agent_target_dqn` 写 fake observation 单元测试，先锁定特征长度和动作合法性。
-3. 修正 Target-DQN 目标网络：独立 deepcopy、`eval()`、定期 `load_state_dict()` 同步。
-4. 修正 duration 映射、坐标单位、optimizer 重复初始化和 monitor 空值防御。
-5. 实现规则兜底策略，按相位车道组压力选择 phase/duration。
-6. 实现 reward：等待/排队/延误负项、压力下降正项、切灯惩罚。
-7. 调整模型隐藏层和超参数，保持训练稳定，不做大规模重构。
-8. 跑 `python train_test.py`，再跑短回合 smoke test。
-9. 使用平台监控调参，记录每次配置、模型 ID、训练时长和评估得分。
-10. 最后补实验报告材料，使用 `icml2022.zip` 中的模板写方法和结果。
+1. 在 `codebase/` 运行离线检查：`python -m compileall agent_target_dqn tests`、`python tests/test_target_dqn_static.py`。
+2. 有 `torch` 时运行 `python tests/test_target_dqn_smoke.py`。
+3. 在腾讯开悟/KaiwuDRL 环境运行 `python train_test.py`。
+4. 通过 `./scripts/package_submission.sh` 生成平台上传包。
+5. 使用平台监控调参，记录每次配置、模型 ID、训练时长和评估得分。
+6. 将真实实验结果回填到 `PROGRESS.md` 和 `REPORT_DRAFT.md`。
+7. 如基础 Target-DQN 稳定，再考虑增加相位/剩余时间特征或改成 80 维联合动作。
 
 ## 测试计划
 

@@ -259,3 +259,17 @@
   - 已运行 `git diff --check`，未发现空白错误。
 - 下一步：
   - 更新 `AGENTS.md` 中已经过期的仓库状态和风险描述。
+
+### Step 16 - 更新 AGENTS 当前状态
+
+- 状态：完成
+- 内容：
+  - 修正 `AGENTS.md` 中“当前目录不是 git 仓库”的过期描述。
+  - 将早期代码审阅风险拆分为“已处理问题”和“仍需关注问题”。
+  - 更新后续实施计划，指向当前实际的离线检查、平台验证、打包脚本和实验回填流程。
+- 验证：
+  - 已运行 `python tests/test_target_dqn_static.py`，静态约束检查通过。
+  - 已运行 `python -m compileall agent_target_dqn tests`，语法编译通过。
+  - 已运行 `git diff --check`，未发现空白错误。
+- 下一步：
+  - 继续补平台运行后的实验回填内容。

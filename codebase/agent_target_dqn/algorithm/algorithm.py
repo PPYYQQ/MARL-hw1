@@ -44,14 +44,35 @@ class Algorithm:
             return
 
         batch_size = len(list_sample_data)
-        obs = self._stack_tensor([frame.obs for frame in list_sample_data], dtype=torch.float32).view(batch_size, -1)
-        action = self._stack_tensor([frame.act for frame in list_sample_data], dtype=torch.float32).view(batch_size, -1)
-        rew = self._stack_tensor([frame.rew for frame in list_sample_data], dtype=torch.float32).view(batch_size, -1)
-        _obs = self._stack_tensor([frame._obs for frame in list_sample_data], dtype=torch.float32).view(batch_size, -1)
-        not_done = self._stack_tensor([frame.done for frame in list_sample_data], dtype=torch.float32).view(batch_size)
+        obs = self._stack_tensor(
+            [frame.obs for frame in list_sample_data],
+            dtype=torch.float32,
+            width=Config.DIM_OF_OBSERVATION,
+        ).view(batch_size, -1)
+        action = self._stack_tensor(
+            [frame.act for frame in list_sample_data],
+            dtype=torch.float32,
+            width=3,
+        ).view(batch_size, -1)
+        rew = self._stack_tensor(
+            [frame.rew for frame in list_sample_data],
+            dtype=torch.float32,
+            width=2,
+        ).view(batch_size, -1)
+        _obs = self._stack_tensor(
+            [frame._obs for frame in list_sample_data],
+            dtype=torch.float32,
+            width=Config.DIM_OF_OBSERVATION,
+        ).view(batch_size, -1)
+        not_done = self._stack_tensor(
+            [frame.done for frame in list_sample_data],
+            dtype=torch.float32,
+            width=1,
+        ).view(batch_size)
         legal_action = self._stack_tensor(
             [frame.legal_action for frame in list_sample_data],
             dtype=torch.float32,
+            width=Config.DIM_OF_ACTION_PHASE,
         ).view(batch_size, -1)
         obs = self._finite_tensor(obs)
         _obs = self._finite_tensor(_obs)
@@ -136,9 +157,23 @@ class Algorithm:
         self.target_model.load_state_dict(self.model.state_dict())
         self.target_model.eval()
 
-    def _stack_tensor(self, values, dtype):
-        tensors = [self._as_tensor(value, dtype=dtype) for value in values]
+    def _stack_tensor(self, values, dtype, width=None):
+        tensors = [self._normalize_tensor(value, dtype=dtype, width=width) for value in values]
         return torch.stack(tensors)
+
+    def _normalize_tensor(self, value, dtype, width=None):
+        try:
+            tensor = self._as_tensor(value, dtype=dtype).view(-1)
+        except (TypeError, ValueError, RuntimeError):
+            tensor = self._as_tensor([], dtype=dtype).view(-1)
+        tensor = self._finite_tensor(tensor)
+        if width is None:
+            return tensor
+        if tensor.numel() < width:
+            tensor = F.pad(tensor, (0, width - tensor.numel()))
+        elif tensor.numel() > width:
+            tensor = tensor[:width]
+        return tensor
 
     def _finite_tensor(self, tensor):
         return torch.nan_to_num(tensor, nan=0.0, posinf=0.0, neginf=0.0)

@@ -308,6 +308,16 @@ def main():
     )
     algorithm.learn([bad_sample])
     assert all(torch.isfinite(param).all().item() for param in agent.model.parameters())
+    ragged_sample = SampleData(
+        obs=obs_data.feature[:-7],
+        _obs=obs_data.feature + [0.0] * 7,
+        act=[0, 2],
+        rew=(0.25,),
+        done=1,
+        legal_action=[1, 0],
+    )
+    algorithm.learn([ragged_sample])
+    assert all(torch.isfinite(param).all().item() for param in agent.model.parameters())
 
     agent.load_model(id="latest")
     with tempfile.TemporaryDirectory() as model_dir:

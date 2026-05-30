@@ -290,3 +290,17 @@
   - 已运行 `git diff --check`，未发现空白错误。
 - 下一步：
   - 平台验证后根据训练表现决定是否加入车道统计特征或 80 维联合动作。
+
+### Step 18 - 实验台账模板
+
+- 状态：完成
+- 内容：
+  - 新增 `EXPERIMENTS.md`，将平台实验记录从开发进度中拆出来。
+  - 增加首次平台 smoke 的实验模板，覆盖 commit、代码包、环境配置、监控、评分和错误日志。
+  - 更新 `RUNBOOK.md` 和 `REPORT_DRAFT.md`，指向独立实验台账。
+- 验证：
+  - 已运行 `python tests/test_target_dqn_static.py`，静态约束检查通过。
+  - 已运行 `python -m compileall agent_target_dqn tests`，语法编译通过。
+  - 已运行 `git diff --check`，未发现空白错误。
+- 下一步：
+  - 平台环境可用后填写 E00 首次 smoke 结果。

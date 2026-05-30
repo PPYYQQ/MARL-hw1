@@ -9,6 +9,7 @@
 - 入口配置：`codebase/conf/app_conf_intelligent_traffic_lights.toml`
 - 本地基础入口：`codebase/train_test.py`
 - 进度记录：`PROGRESS.md`
+- 实验台账：`EXPERIMENTS.md`
 
 ## 本地可运行检查
 
@@ -57,7 +58,7 @@ python tests/test_target_dqn_smoke.py
 
 ## 每次实验回填格式
 
-将每次平台运行追加到 `PROGRESS.md`：
+将每次平台运行追加到 `EXPERIMENTS.md`，关键开发变更仍记录到 `PROGRESS.md`：
 
 ```text
 ### Experiment N - 简短名称

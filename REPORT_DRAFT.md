@@ -176,6 +176,8 @@ python tests/test_target_dqn_smoke.py
 
 ## 平台实验记录
 
+详细实验流水记录在 `EXPERIMENTS.md`。正式报告中只保留代表性实验和结论。
+
 待平台运行后补充：
 
 | 实验 | Commit | 环境配置 | 训练时长 | 模型 ID | 评估得分 | 结论 |

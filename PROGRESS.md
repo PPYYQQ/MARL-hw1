@@ -628,3 +628,17 @@
   - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
 - 下一步：
   - 平台环境可用后观察 `value_loss`、`q_value`、`target_q_value` 是否仍出现 NaN/Inf。
+
+### Step 42 - workflow 环境响应安全读取
+
+- 状态：完成
+- Commit：`8c5ff73`
+- 内容：
+  - `run_episodes()` 在 reset 后通过 `_safe_observation()` 和 `_safe_extra_info()` 读取 observation 与 extra info，避免字段缺失直接 `KeyError`。
+  - step 返回后通过 `_safe_frame_no()`、`_safe_observation()`、`_safe_done_flag()` 和 `_safe_extra_info()` 解析状态，字段异常时使用保守默认值。
+  - 构造训练 Frame 时通过 `_safe_legal_action()` 读取当前 observation 的合法动作，缺失时交给后续归一化逻辑默认处理。
+  - 将 workflow 安全读取 helper 纳入无平台依赖测试，并加入静态锚点防止回退到直接索引。
+- 验证：
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 平台环境可用后确认异常 env response 不再导致 `KeyError: observation`、`extra_info` 或 `legal_action`。

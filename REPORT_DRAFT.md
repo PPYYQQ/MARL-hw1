@@ -188,6 +188,8 @@ duration reward 主要考虑：
 9. 发送样本浅拷贝到训练组件，再清理本地 collector。
 10. 定期保存 `latest` checkpoint，供后续 episode 或训练进程恢复。
 
+workflow 对 `env.reset()` / `env.step()` 返回值中的 `observation`、`extra_info`、`frame_no`、结束标记和采样帧 `legal_action` 使用安全读取；字段缺失或类型异常时按空 observation、空 extra info 或默认结束状态处理，避免不完整平台响应直接中断 episode。
+
 样本处理会保留终局 transition，并对空轨迹、全无效轨迹、缺失 reward、缺失合法动作和无效动作帧做防护；终局样本的 `done` 在训练张量中表示 `not_done=0`，Double DQN target 不再引入下一状态 Q 值。
 
 workflow 当前监控：

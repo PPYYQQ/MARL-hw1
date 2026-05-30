@@ -404,7 +404,7 @@
 ### Step 26 - 一帧交通趋势特征
 
 - 状态：完成
-- Commit：待回填
+- Commit：`4cf403d Add traffic trend observation features`
 - 内容：
   - 将 `agent_target_dqn` 观测维度从 `618` 扩展为 `626`。
   - 新增 `get_traffic_summary()` 和 `get_traffic_trend()`，统计当前交通摘要并计算相对上一帧的变化。

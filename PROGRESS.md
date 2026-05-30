@@ -348,7 +348,7 @@
 ### Step 22 - 交通压力特征并入观测
 
 - 状态：完成
-- Commit：待回填
+- Commit：`fbf6110 Add traffic pressure features to Target-DQN observations`
 - 内容：
   - 将 `agent_target_dqn` 观测维度从 `568` 扩展为 `576`。
   - 在占用/速度网格和相位时间特征后追加 8 维交通统计：4 个相位压力、进口车辆数、排队比例、平均等待时间和平均延误。

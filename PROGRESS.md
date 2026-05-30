@@ -435,7 +435,7 @@
 ### Step 28 - 80 维联合动作 Q 头
 
 - 状态：完成
-- Commit：待回填
+- Commit：`eb6cdb5 Use joint action Q head for Target-DQN`
 - 内容：
   - Target-DQN 从 phase/duration 双头输出改为单个 80 维联合动作 Q 头。
   - `predict()` 贪心和随机探索都先选择 joint action，再解码为 `phase_idx` 和 `duration_idx`。

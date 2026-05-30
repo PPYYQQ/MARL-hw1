@@ -69,6 +69,8 @@ def main():
     )
     from agent_target_dqn.workflow.train_workflow import (
         _need_to_predict,
+        _normalize_reset_result,
+        _normalize_step_result,
         _reward_components,
         _safe_done_flag,
         _safe_extra_info,
@@ -196,6 +198,24 @@ def main():
     assert _reward_components((1.5, float("nan"))) == (1.5, 0.0)
     assert _reward_components((float("inf"), 2.0)) == (0.0, 2.0)
     assert _reward_components("bad") == (0.0, 0.0)
+    assert _normalize_reset_result(({"legal_action": 1}, {"init_state": {}})) == {
+        "observation": {"legal_action": 1},
+        "extra_info": {"init_state": {}},
+    }
+    assert _normalize_reset_result({"observation": {}}) == {"observation": {}}
+    assert _normalize_reset_result(None) == {}
+    two_item_reward, two_item_obs = _normalize_step_result((0.5, {"frame_no": 3}))
+    assert two_item_reward == 0.5
+    assert two_item_obs == {"frame_no": 3}
+    six_item_reward, six_item_obs = _normalize_step_result((7, {"legal_action": 1}, 1.25, True, False, {"x": 1}))
+    assert six_item_reward == 1.25
+    assert six_item_obs["frame_no"] == 7
+    assert six_item_obs["observation"] == {"legal_action": 1}
+    assert six_item_obs["terminated"] is True
+    assert six_item_obs["truncated"] is False
+    assert six_item_obs["extra_info"] == {"x": 1}
+    assert _normalize_step_result({"frame_no": 4}) == (0.0, {"frame_no": 4})
+    assert _normalize_step_result(None) == (0.0, {})
     assert _safe_observation({"observation": {"legal_action": 1}}) == {"legal_action": 1}
     assert _safe_observation({"observation": None}) == {}
     assert _safe_extra_info({"extra_info": {"init_state": {}}}) == {"init_state": {}}

@@ -112,7 +112,7 @@ def run_episodes(n_episode, env, agent, usr_conf, logger):
 
             # Reset the environment and get the initial extra_info
             # 重置环境, 并获取初始状态
-            env_obs = env.reset(usr_conf=usr_conf)
+            env_obs = _normalize_reset_result(env.reset(usr_conf=usr_conf))
             # Disaster recovery
             # 容灾
             if handle_disaster_recovery(env_obs, logger):
@@ -155,7 +155,7 @@ def run_episodes(n_episode, env, agent, usr_conf, logger):
 
                 # Interact with the environment, execute actions, get the next extra_info
                 # 与环境交互, 执行动作, 获取下一步的状态, 如果遇到不需要预测的帧，则env.step直到得到需要预测的帧
-                env_reward, env_obs = env.step(act)
+                env_reward, env_obs = _normalize_step_result(env.step(act))
                 # Disaster recovery
                 # 容灾
                 if handle_disaster_recovery(env_obs, logger):
@@ -234,6 +234,36 @@ def _finite_float(value):
     if not math.isfinite(value):
         return 0.0
     return value
+
+
+def _normalize_reset_result(reset_result):
+    if isinstance(reset_result, dict):
+        return reset_result
+    if isinstance(reset_result, tuple) and len(reset_result) >= 2:
+        return {
+            "observation": reset_result[0],
+            "extra_info": reset_result[1],
+        }
+    return {}
+
+
+def _normalize_step_result(step_result):
+    if isinstance(step_result, tuple):
+        if len(step_result) >= 6:
+            frame_no, observation, reward, terminated, truncated, extra_info = step_result[:6]
+            return reward, {
+                "frame_no": frame_no,
+                "observation": observation,
+                "terminated": terminated,
+                "truncated": truncated,
+                "extra_info": extra_info,
+            }
+        if len(step_result) >= 2:
+            env_reward, env_obs = step_result[:2]
+            return env_reward, env_obs if isinstance(env_obs, dict) else {}
+    if isinstance(step_result, dict):
+        return 0.0, step_result
+    return 0.0, {}
 
 
 def _safe_env_value(env_obs, key, default):

@@ -213,8 +213,8 @@ def run_episodes(n_episode, env, agent, usr_conf, logger):
                     break
 
     except Exception as e:
-        _log_error(logger, "run_episodes error")
-        raise RuntimeError(f"run_episodes error")
+        _log_error(logger, f"run_episodes error: {e}")
+        raise RuntimeError(f"run_episodes error: {e}") from e
 
 
 def _reward_components(reward):

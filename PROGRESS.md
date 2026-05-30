@@ -490,3 +490,16 @@
   - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；新增标量 `legal_action` 测试通过，smoke 因当前本地缺少 `torch` 明确 skip。
 - 下一步：
   - 平台环境可用后用真实 observation 日志确认 `legal_action` 是否包含相位级约束。
+
+### Step 32 - 平台异常信息保留
+
+- 状态：完成
+- Commit：待回填
+- 内容：
+  - `run_episodes()` 捕获异常时记录原始异常信息，不再只输出通用 `run_episodes error`。
+  - 使用 `raise ... from e` 保留 Python 异常链，便于平台日志定位真实崩溃点。
+  - 更新静态测试、`AGENTS.md` 和 `RUNBOOK.md`。
+- 验证：
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 平台环境可用后如仍崩溃，优先根据 chained traceback 修复首个真实异常。

@@ -139,7 +139,12 @@ def main():
     assert sum(obs_data.feature[: Config.GRID_WIDTH * Config.GRID_NUM]) == 2
     phase_feature_start = Config.GRID_WIDTH * Config.GRID_NUM * 2
     assert obs_data.feature[phase_feature_start] == 1.0
-    assert obs_data.feature[-1] == 1.0
+    assert obs_data.feature[phase_feature_start + Config.PHASE_FEATURE_DIM - 1] == 1.0
+    traffic_feature_start = phase_feature_start + Config.PHASE_FEATURE_DIM
+    assert obs_data.feature[traffic_feature_start] > 0.0
+    assert obs_data.feature[traffic_feature_start + 2] > 0.0
+    assert abs(obs_data.feature[traffic_feature_start + 4] - 0.02) < 1e-6
+    assert abs(obs_data.feature[traffic_feature_start + 5] - 0.5) < 1e-6
     obs_data_without_extra = agent.observation_process(make_fake_obs(), None)
     assert len(obs_data_without_extra.feature) == Config.DIM_OF_OBSERVATION
 

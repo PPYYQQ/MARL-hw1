@@ -344,3 +344,16 @@
   - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
 - 下一步：
   - 平台环境可用后观察 `value_loss`、`q_value`、`target_q_value` 是否更稳定。
+
+### Step 22 - 交通压力特征并入观测
+
+- 状态：完成
+- Commit：待回填
+- 内容：
+  - 将 `agent_target_dqn` 观测维度从 `568` 扩展为 `576`。
+  - 在占用/速度网格和相位时间特征后追加 8 维交通统计：4 个相位压力、进口车辆数、排队比例、平均等待时间和平均延误。
+  - 更新静态测试、smoke 测试、`AGENTS.md` 和 `REPORT_DRAFT.md` 的特征说明。
+- 验证：
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 平台环境可用后观察新增交通统计是否改善 `phase_reward` 和平均等待指标。

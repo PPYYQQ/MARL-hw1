@@ -18,8 +18,8 @@ from agent_target_dqn.feature.traffic_utils import *
 # SampleData with dimensions: 直接定义维度，不需要 SampleData2NumpyData/NumpyData2SampleData
 SampleData = create_cls(
     "SampleData",
-    obs=Config.DIM_OF_OBSERVATION,  # 560
-    _obs=Config.DIM_OF_OBSERVATION,  # 560
+    obs=Config.DIM_OF_OBSERVATION,
+    _obs=Config.DIM_OF_OBSERVATION,
     act=3,
     # [junction_id, phase_index, duration_seconds]
     # [路口id, 相位编号, 持续时间秒数]

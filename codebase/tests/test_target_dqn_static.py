@@ -26,8 +26,12 @@ def main():
     package_script = root / "scripts" / "package_submission.sh"
     check_script = root / "scripts" / "check_offline.sh"
 
-    require("DIM_OF_OBSERVATION = 568" in conf, "observation dim should include 560 grid + 8 phase features")
+    require(
+        "DIM_OF_OBSERVATION = 576" in conf,
+        "observation dim should include 560 grid + 8 phase features + 8 traffic features",
+    )
     require("PHASE_FEATURE_DIM = 8" in conf, "phase feature dimension should stay explicit")
+    require("TRAFFIC_FEATURE_DIM = 8" in conf, "traffic feature dimension should stay explicit")
 
     require("target_model = self.model" not in algorithm, "target model must not alias online model")
     require("deepcopy(self.model)" in algorithm, "target model should be an independent copy")
@@ -46,6 +50,8 @@ def main():
 
     require("MIN_GREEN_DURATION + duration_index" in agent, "action_process must map duration index to seconds")
     require("def _phase_feature" in agent, "observation should include traffic signal phase features")
+    require("def _traffic_feature" in agent, "observation should include traffic pressure features")
+    require("phase_feature + traffic_feature" in agent, "observation should append phase and traffic features")
     require("def rule_based_action" in agent, "exploit should have a rule-based fallback")
     require("if not os.path.exists(model_file_path)" in agent, "load_model should handle missing latest model")
     require("self.algorithm.update_target_q()" in agent, "load_model should sync target network")

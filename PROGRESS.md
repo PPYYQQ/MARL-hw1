@@ -121,6 +121,7 @@
 ### Step 7 - 模型 forward 设备一致性
 
 - 状态：完成
+- Commit：`c073b85 Align Target-DQN model input device`
 - 内容：
   - 修正 `Model.forward()` 中输入已经是 tensor 时只转 dtype、不转 device 的问题。
   - 移除未使用的 `batch` 局部变量。

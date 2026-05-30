@@ -106,6 +106,7 @@
 ### Step 6 - 相位压力计算共享化
 
 - 状态：完成
+- Commit：`97bf0f0 Share Target-DQN phase pressure utility`
 - 内容：
   - 在 `traffic_utils.py` 中新增 `get_phase_pressure()`。
   - `reward_shaping()` 和 `rule_based_action()` 复用同一套相位压力估计。

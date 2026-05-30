@@ -573,7 +573,7 @@
 ### Step 38 - 特征预处理缺字段容错
 
 - 状态：完成
-- Commit：待回填
+- Commit：`821913b`
 - 内容：
   - `FeatureProcess.init_road_info()` 对缺失路网字段或非 dict `init_state` 保守跳过。
   - `FeatureProcess.update_traffic_info()` 对缺失 `frame_state` 或 `vehicles` 的 observation 保守返回。

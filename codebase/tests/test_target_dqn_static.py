@@ -137,6 +137,9 @@ def main():
     require("def _safe_action_index" in agent, "action_process should sanitize action indices")
     require("junction_id = 0" in agent, "action_process should force single-junction actions")
     require("np.isfinite(value)" in agent, "action_process should reject NaN/Inf indices")
+    require("def _safe_mapping_get" in agent, "agent should isolate mapping field reads")
+    require("observation.get(" not in agent, "exploit should not directly read dict-like observation")
+    require("raw_obs.get(" not in agent, "agent should not directly read dict-like raw observations")
     require("def _safe_float" in agent, "agent observation helpers should sanitize scalar values")
     require("def _safe_int" in agent, "agent observation helpers should sanitize frame numbers")
     require("duration = _safe_nonnegative_float" in agent, "phase features should sanitize duration")
@@ -157,9 +160,13 @@ def main():
         "+ traffic_history_feature" in agent and "+ lane_stat_feature" in agent,
         "observation should append phase, phase-age, traffic, trend, history, and lane-stat features",
     )
-    require('raw_obs = observation.get("obs", observation)' in agent, "exploit should tolerate missing obs wrapper")
-    require('frame_state = raw_obs.get("frame_state", {})' in agent, "observation should tolerate missing frame_state")
-    require('frame_state.get("vehicles", [])' in agent, "observation should tolerate missing vehicles")
+    require(
+        'raw_obs = _safe_mapping_get(observation, "obs", observation)' in agent,
+        "exploit should tolerate missing or malformed obs wrapper",
+    )
+    require('frame_state = _safe_mapping_get(raw_obs, "frame_state", {})' in agent, "observation should tolerate missing frame_state")
+    require('_safe_mapping_get(frame_state, "vehicles", [])' in agent, "observation should tolerate missing vehicles")
+    require("traffic info update failed" in agent, "observation should isolate preprocess update failures")
     require(
         "vehicles = [vehicle for vehicle in vehicles if isinstance(vehicle, dict)]" in agent,
         "observation should filter malformed vehicle records",

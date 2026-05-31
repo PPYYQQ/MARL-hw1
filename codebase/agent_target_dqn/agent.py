@@ -55,6 +55,15 @@ def _safe_int(value, default=0):
     return int(_safe_float(value, default))
 
 
+def _safe_mapping_get(mapping, key, default=None):
+    if isinstance(mapping, dict):
+        try:
+            return mapping.get(key, default)
+        except Exception:
+            return default
+    return default
+
+
 class Agent(BaseAgent):
     def __init__(self, agent_type="player", device=None, logger=None, monitor=None):
         self.model = Model(device=device)
@@ -134,8 +143,8 @@ class Agent(BaseAgent):
 
     def exploit(self, observation):
         if isinstance(observation, dict):
-            raw_obs = observation.get("obs", observation)
-            extra_info = observation.get("extra_info")
+            raw_obs = _safe_mapping_get(observation, "obs", observation)
+            extra_info = _safe_mapping_get(observation, "extra_info")
         else:
             raw_obs = observation
             extra_info = None
@@ -277,20 +286,23 @@ class Agent(BaseAgent):
 
         # User-defined section, can record or update traffic information per frame.
         # 用户自定义部分, 可每帧对交通信息进行记录或更新
-        self.preprocess.update_traffic_info(raw_obs, extra_info)
+        try:
+            self.preprocess.update_traffic_info(raw_obs, extra_info)
+        except Exception as err:
+            self._log_error(f"traffic info update failed: {err}")
 
         # Note: The unpacking of the following raw data is for example purposes only,
         # please modify according to the actual situation
         # 注意: 以下原始数据的解包为示例, 请根据实际情况修改
         if not isinstance(raw_obs, dict):
             raw_obs = {}
-        frame_state = raw_obs.get("frame_state", {})
+        frame_state = _safe_mapping_get(raw_obs, "frame_state", {})
         if not isinstance(frame_state, dict):
             frame_state = {}
 
         # Parse frame_state
         # 解析 frame_state
-        vehicles = frame_state.get("vehicles", []) or []
+        vehicles = _safe_mapping_get(frame_state, "vehicles", []) or []
         if not isinstance(vehicles, list):
             vehicles = []
         vehicles = [vehicle for vehicle in vehicles if isinstance(vehicle, dict)]
@@ -326,16 +338,19 @@ class Agent(BaseAgent):
                 try:
                     x_pos = get_lane_code(vehicle)
                     y_pos = int(get_lane_position_meters(vehicle) // Config.GRID_LENGTH)
-                    vehicle_config = self.preprocess.vehicle_configs_dict.get(vehicle.get("v_config_id"), {})
+                    vehicle_config = self.preprocess.vehicle_configs_dict.get(
+                        _safe_mapping_get(vehicle, "v_config_id"),
+                        {},
+                    )
                     max_speed = max(_safe_float(vehicle_config.get("max_speed"), Config.DEFAULT_MAX_SPEED), 1.0)
-                    speed = _safe_nonnegative_float(vehicle.get("speed", 0.0))
+                    speed = _safe_nonnegative_float(_safe_mapping_get(vehicle, "speed", 0.0))
                 except (KeyError, TypeError, ValueError, AttributeError):
                     continue
 
                 if y_pos < 0 or y_pos >= Config.GRID_NUM:
                     continue
 
-                target_junction = vehicle.get("target_junction", junction_id)
+                target_junction = _safe_mapping_get(vehicle, "target_junction", junction_id)
                 if target_junction not in speed_dict:
                     target_junction = junction_id
                 speed_dict[target_junction][x_pos, y_pos] = float(max(0.0, min(speed / max_speed, 1.0)))
@@ -373,7 +388,10 @@ class Agent(BaseAgent):
 
         return ObsData(
             feature=observation,
-            legal_action=normalize_phase_legal_action(raw_obs.get("legal_action"), Config.DIM_OF_ACTION_PHASE),
+            legal_action=normalize_phase_legal_action(
+                _safe_mapping_get(raw_obs, "legal_action"),
+                Config.DIM_OF_ACTION_PHASE,
+            ),
         )
 
     def _sanitize_observation(self, observation):
@@ -419,10 +437,10 @@ class Agent(BaseAgent):
     def rule_based_action(self, raw_obs):
         if not isinstance(raw_obs, dict):
             raw_obs = {}
-        frame_state = raw_obs.get("frame_state", {})
+        frame_state = _safe_mapping_get(raw_obs, "frame_state", {})
         if not isinstance(frame_state, dict):
             frame_state = {}
-        vehicles = frame_state.get("vehicles", []) or []
+        vehicles = _safe_mapping_get(frame_state, "vehicles", []) or []
         if not isinstance(vehicles, list):
             vehicles = []
         vehicles = [vehicle for vehicle in vehicles if isinstance(vehicle, dict)]
@@ -433,7 +451,7 @@ class Agent(BaseAgent):
         )
         phase_age_feature = np.asarray(self._phase_age_feature(frame_state), dtype=np.float32)
         fair_pressure = phase_pressure * (1.0 + Config.FAIRNESS_BONUS_SCALE * phase_age_feature)
-        legal_mask = self._phase_action_mask(raw_obs.get("legal_action"))
+        legal_mask = self._phase_action_mask(_safe_mapping_get(raw_obs, "legal_action"))
         masked_pressure = np.where(legal_mask, fair_pressure, -1.0)
         phase_index = int(np.argmax(masked_pressure))
         duration_index = int(np.clip(round(float(phase_pressure[phase_index])), 0, Config.DIM_OF_ACTION_DURATION - 1))
@@ -450,14 +468,14 @@ class Agent(BaseAgent):
         ]
 
     def _phase_feature(self, frame_state):
-        phases = frame_state.get("phases", []) if isinstance(frame_state, dict) else []
+        phases = _safe_mapping_get(frame_state, "phases", []) if isinstance(frame_state, dict) else []
         if not isinstance(phases, list):
             phases = []
         phase_info = {}
         for candidate in phases:
             if not isinstance(candidate, dict):
                 continue
-            if candidate.get("s_id", 0) == 0:
+            if _safe_mapping_get(candidate, "s_id", 0) == 0:
                 phase_info = candidate
                 break
         if not phase_info and phases:
@@ -468,11 +486,11 @@ class Agent(BaseAgent):
             return phase_feature + [0.0, 0.0, 0.0, 0.0]
 
         phase_id = self._safe_action_index(
-            phase_info.get("phase_id", phase_info.get("phase_idx", 0)),
+            _safe_mapping_get(phase_info, "phase_id", _safe_mapping_get(phase_info, "phase_idx", 0)),
             Config.DIM_OF_ACTION_PHASE,
         )
-        duration = _safe_nonnegative_float(phase_info.get("duration", 0.0))
-        remaining_duration = _safe_nonnegative_float(phase_info.get("remaining_duration", 0.0))
+        duration = _safe_nonnegative_float(_safe_mapping_get(phase_info, "duration", 0.0))
+        remaining_duration = _safe_nonnegative_float(_safe_mapping_get(phase_info, "remaining_duration", 0.0))
         elapsed_duration = max(duration - remaining_duration, 0.0)
 
         phase_feature[phase_id] = 1.0
@@ -484,7 +502,7 @@ class Agent(BaseAgent):
         ]
 
     def _phase_age_feature(self, frame_state):
-        frame_no = _safe_int(frame_state.get("frame_no", 0)) if isinstance(frame_state, dict) else 0
+        frame_no = _safe_int(_safe_mapping_get(frame_state, "frame_no", 0)) if isinstance(frame_state, dict) else 0
         phase_info = self._current_phase_info(frame_state)
         last_served = self.preprocess.phase_last_served_frame
         if not isinstance(last_served, list) or len(last_served) != Config.DIM_OF_ACTION_PHASE:
@@ -496,7 +514,7 @@ class Agent(BaseAgent):
         self.preprocess.phase_last_served_frame = last_served
         if phase_info:
             phase_id = self._safe_action_index(
-                phase_info.get("phase_id", phase_info.get("phase_idx", 0)),
+                _safe_mapping_get(phase_info, "phase_id", _safe_mapping_get(phase_info, "phase_idx", 0)),
                 Config.DIM_OF_ACTION_PHASE,
             )
             last_served[phase_id] = frame_no
@@ -506,13 +524,13 @@ class Agent(BaseAgent):
         ]
 
     def _current_phase_info(self, frame_state):
-        phases = frame_state.get("phases", []) if isinstance(frame_state, dict) else []
+        phases = _safe_mapping_get(frame_state, "phases", []) if isinstance(frame_state, dict) else []
         if not isinstance(phases, list):
             return {}
         for candidate in phases:
             if not isinstance(candidate, dict):
                 continue
-            if candidate.get("s_id", 0) == 0:
+            if _safe_mapping_get(candidate, "s_id", 0) == 0:
                 return candidate
         for candidate in phases:
             if isinstance(candidate, dict):

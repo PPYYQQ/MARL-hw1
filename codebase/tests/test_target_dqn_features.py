@@ -272,6 +272,14 @@ def main():
     object_lane_pressure, object_lane_totals = get_lane_observation_phase_pressure([object_lane])
     assert object_lane_pressure[0] > 0.0
     assert object_lane_totals["vehicle_count"] == 4.0
+    alias_lanes = [{"laneId": "11", "vCount": "6", "queueLength": "4", "congestionLevel": "0.6"}]
+    alias_lane_stats = get_lane_observation_statistics(alias_lanes)
+    assert alias_lane_stats["counts"][0] == 6.0
+    assert alias_lane_stats["queues"][0] == 4.0
+    alias_lane_pressure, alias_lane_totals = get_lane_observation_phase_pressure(alias_lanes)
+    assert alias_lane_pressure[0] > 0.0
+    assert alias_lane_totals["vehicle_count"] == 6.0
+    assert alias_lane_totals["queue"] == 4.0
     congestion_only_pressure, congestion_only_totals = get_lane_observation_phase_pressure(
         [{"lane_id": 11, "congestion": 0.5}]
     )
@@ -796,6 +804,21 @@ def main():
         dummy_agent,
     )
     assert single_dict_lane_reward[0] > 0.0
+    dummy_agent.preprocess.old_waiting_time = 0.0
+    dummy_agent.preprocess.phase_last_served_frame = [None] * Config.DIM_OF_ACTION_PHASE
+    dummy_agent.preprocess.last_phase_index = None
+    alias_dict_lane_reward = reward_shaping(
+        {
+            "frame_state": {
+                "frame_no": 5,
+                "vehicles": [],
+                "lanes": {"laneId": 11, "vCount": 4, "queueLength": 3, "congestionLevel": 0.4},
+            }
+        },
+        [0, 0, Config.MIN_GREEN_DURATION + 10],
+        dummy_agent,
+    )
+    assert alias_dict_lane_reward[0] > 0.0
     dummy_agent.preprocess.old_waiting_time = 0.0
     dummy_agent.preprocess.phase_last_served_frame = [None] * Config.DIM_OF_ACTION_PHASE
     object_reward = reward_shaping(

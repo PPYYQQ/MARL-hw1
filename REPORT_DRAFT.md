@@ -87,7 +87,7 @@
 - 14 条进口车道的归一化排队车辆数。
 - 14 条进口车道的归一化平均等待时间。
 
-如果 `vehicles` 列表为空或无法推导有效进口车道压力，代码会使用 `frame_state.lanes` 中的 `lane_id`、`v_count`、`queue_length` 和 `congestion` 作为 fallback，聚合四个相位压力，并把 lanes 聚合统计与逐车道统计特征取最大值合并。这保持了 638 维输入不变，同时避免真实平台只提供 lane 级聚合信息时交通压力长期为 0。
+如果 `vehicles` 列表为空或无法推导有效进口车道压力，代码会使用 `frame_state.lanes` 中的 `lane_id` / `laneId`、`v_count` / `vCount` / `vehicle_count`、`queue_length` / `queueLength` / `queue_count` 和 `congestion` / `congestionLevel` 作为 fallback，聚合四个相位压力，并把 lanes 聚合统计与逐车道统计特征取最大值合并。这保持了 638 维输入不变，同时避免真实平台只提供 lane 级聚合信息时交通压力长期为 0。
 
 代码中对 `position_in_lane["y"]` 做了单位兼容：
 

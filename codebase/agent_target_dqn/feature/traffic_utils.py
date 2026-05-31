@@ -85,6 +85,14 @@ def lane_value(lane, key, default=None):
     return record_value(lane, key, default)
 
 
+def _first_lane_value(lane, keys, default=None):
+    for key in keys:
+        value = lane_value(lane, key, None)
+        if value is not None:
+            return value
+    return default
+
+
 def _safe_lane_id(value):
     try:
         lane_id = float(value)
@@ -106,7 +114,7 @@ def _safe_junction_id(value, default=-1):
 
 
 def _lane_id_from_record(lane):
-    for key in ("lane_id", "lane", "l_id", "id"):
+    for key in ("lane_id", "laneId", "lane_idx", "laneIdx", "lane", "l_id", "lId", "id"):
         lane_id = _safe_lane_id(lane_value(lane, key))
         if lane_id is not None:
             return lane_id
@@ -282,8 +290,12 @@ def get_lane_observation_statistics(lanes, lane_count=14):
             if lane_code is None or lane_code < 0 or lane_code >= lane_count:
                 continue
 
-            vehicle_count = _nonnegative_float(lane_value(lane, "v_count", 0.0))
-            queue_length = _nonnegative_float(lane_value(lane, "queue_length", 0.0))
+            vehicle_count = _nonnegative_float(
+                _first_lane_value(lane, ("v_count", "vCount", "vehicle_count", "vehicleCount"), 0.0)
+            )
+            queue_length = _nonnegative_float(
+                _first_lane_value(lane, ("queue_length", "queueLength", "queue_count", "queueCount", "queue"), 0.0)
+            )
         except (KeyError, TypeError, ValueError, AttributeError):
             continue
 
@@ -322,9 +334,15 @@ def get_lane_observation_phase_pressure(lanes, phase_count=4):
             if lane_phase is None or lane_phase < 0 or lane_phase >= phase_count:
                 continue
 
-            vehicle_count = _nonnegative_float(lane_value(lane, "v_count", 0.0))
-            queue_length = _nonnegative_float(lane_value(lane, "queue_length", 0.0))
-            congestion = _nonnegative_float(lane_value(lane, "congestion", 0.0))
+            vehicle_count = _nonnegative_float(
+                _first_lane_value(lane, ("v_count", "vCount", "vehicle_count", "vehicleCount"), 0.0)
+            )
+            queue_length = _nonnegative_float(
+                _first_lane_value(lane, ("queue_length", "queueLength", "queue_count", "queueCount", "queue"), 0.0)
+            )
+            congestion = _nonnegative_float(
+                _first_lane_value(lane, ("congestion", "congestion_level", "congestionLevel"), 0.0)
+            )
         except (KeyError, TypeError, ValueError, AttributeError):
             continue
 

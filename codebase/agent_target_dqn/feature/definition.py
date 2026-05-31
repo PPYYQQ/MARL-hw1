@@ -74,9 +74,22 @@ _RECORD_FIELD_KEYS = {
     "duration",
     "remaining_duration",
     "lane_id",
+    "laneId",
+    "lane_idx",
+    "laneIdx",
+    "l_id",
+    "lId",
     "v_count",
+    "vCount",
+    "vehicle_count",
+    "vehicleCount",
     "congestion",
+    "congestion_level",
+    "congestionLevel",
     "queue_length",
+    "queueLength",
+    "queue_count",
+    "queueCount",
 }
 
 

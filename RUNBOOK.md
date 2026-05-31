@@ -127,7 +127,7 @@ python tests/test_target_dqn_smoke.py
 - duration reward 长期为负：当前 20 个 duration 桶覆盖 `8-40` 秒，reward 目标也限制在同一范围；如果仍长期强负，优先检查压力尺度、`DIM_OF_ACTION_DURATION` 和实际平台动作秒数是否一致。
 - `observation process failed` / `traffic info update failed`：当前 workflow 会回退到规则动作、零特征样本或跳过非决策帧预处理并继续；需要保留原始 observation 和 extra_info 定位特征处理异常。
 - 观测里有异常 frame 或车辆字段：当前预处理器会兼容 dict、属性对象和单个对象式列表字段，并清洗 frame、车辆 ID、车速和位置；标量坏字段会跳过。若仍异常，优先保存原始 observation 样例和 repr。
-- 观测里 `vehicles` 为空但 `lanes` 有值：当前观测、规则兜底和 reward 会用 lanes 的 `lane_id`、`v_count`、`queue_length`、`congestion` 聚合压力；若平台字段名或单位不同，保存 `frame_state.lanes` 原始样例后扩展字段映射。
+- 观测里 `vehicles` 为空但 `lanes` 有值：当前观测、规则兜底和 reward 会用 lanes 的 `lane_id` / `laneId`、`v_count` / `vCount` / `vehicle_count`、`queue_length` / `queueLength` / `queue_count`、`congestion` / `congestionLevel` 聚合压力；若平台字段名或单位不同，保存 `frame_state.lanes` 原始样例后扩展字段映射。
 - 车辆字段缺少 `target_junction`：当前进口车道判断和交叉口等待时间统计会在车辆可识别为进口车道时按单路口目标路口处理；没有车辆 ID 或无法识别进口车道的畸形 targetless 记录会跳过。若平台实际上用其它字段区分车辆目标，需要保存原始车辆样例再扩展映射。
 - `junction` / `target_junction` 是字符串：当前会先转换成有限整数再判断进口车道、路口内状态和等待时间归属，`"0"` 会匹配单路口，`"-1"` 会按无目标或不在路口处理；若平台提供其它哨兵值，保存原始车辆样例后扩展清洗规则。
 - 路网或车辆 ID 是字符串：当前会清洗 `junction_id`、`edge_id`、`lane_id`、`vehicle_config_id`、车辆 `lane` 和 `v_config_id`，避免路网 key 与车辆字段一个是 `"11"`、一个是 `11` 时相位压力、车道统计或 max speed 查找失效。

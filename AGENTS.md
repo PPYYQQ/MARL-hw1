@@ -110,6 +110,7 @@ Target-DQN 关键文件：
 - 训练 workflow 会归一化 `env.reset()` 的二元 tuple 返回和 `env.step()` 的二元/六元 tuple 返回，兼容当前封装与作业文档形式。
 - 训练 workflow 会隔离 `env.reset()` 和 `env.step()` 抛出的平台异常；reset 失败跳过当前 episode，step 失败中止当前 episode。
 - 训练 workflow 对 reset/step 返回的 `observation`、`extra_info`、`frame_no`、结束标记和采样帧 `legal_action` 会安全读取，避免不完整环境响应直接触发 `KeyError`。
+- 训练 workflow 会显式解析 `terminated` / `truncated` 的 bool、数值和字符串形式，避免 `"False"` 这类非空字符串被误判为结束。
 - 训练 workflow 调用 `agent.reset(env_obs)` 时会隔离异常，reset 失败会记录错误并跳过当前 episode，避免半初始化状态继续采样。
 - 训练 workflow 读取 `train_env_conf.toml` 时会隔离配置校验工具异常，读取失败会记录错误并清晰退出入口。
 - 训练 workflow 调用平台容灾 helper 时会隔离异常，容灾检测失败会记录错误并按无容灾信号继续。

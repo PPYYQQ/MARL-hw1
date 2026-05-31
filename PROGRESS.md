@@ -1065,3 +1065,17 @@
   - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
 - 下一步：
   - 平台环境可用后确认异常预测或规则兜底动作不会触发环境非法动作错误，且非决策帧 `[None, None, None]` 语义保持不变。
+
+### Step 72 - done 标记解析修正
+
+- 状态：完成
+- Commit：`4d2b6a0`
+- 内容：
+  - workflow 更新 `_safe_done_flag()`，显式解析 `terminated` / `truncated` 的 bool、数值和字符串形式。
+  - `"true"`、`"1"`、`"yes"`、`"y"` 会视为 True；`"false"`、`"0"`、`"no"`、`"n"` 和空字符串视为 False。
+  - NaN/Inf、未知字符串和异常对象按 False 处理，避免 `bool("False") == True` 导致 episode 过早结束。
+  - 无平台依赖测试覆盖 int、字符串 true/false、未知字符串、Inf 和 object 输入；静态测试增加 done flag sanitation 锚点。
+- 验证：
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 平台环境可用后确认不同封装返回的 `terminated` / `truncated` 类型不会误触发结束或漏掉真实结束。

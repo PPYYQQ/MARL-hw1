@@ -378,6 +378,24 @@ def _normalize_step_result(step_result):
                 "truncated": truncated,
                 "extra_info": extra_info,
             }
+        if len(step_result) == 5:
+            observation, reward, terminated, truncated, extra_info = step_result
+            return reward, {
+                "frame_no": _safe_env_value(extra_info, "frame_no", 0),
+                "observation": observation,
+                "terminated": terminated,
+                "truncated": truncated,
+                "extra_info": extra_info if isinstance(extra_info, dict) else {},
+            }
+        if len(step_result) == 4:
+            observation, reward, done, extra_info = step_result
+            return reward, {
+                "frame_no": _safe_env_value(extra_info, "frame_no", 0),
+                "observation": observation,
+                "terminated": done,
+                "truncated": False,
+                "extra_info": extra_info if isinstance(extra_info, dict) else {},
+            }
         if len(step_result) >= 2:
             env_reward, env_obs = step_result[:2]
             return env_reward, env_obs if isinstance(env_obs, dict) else {}

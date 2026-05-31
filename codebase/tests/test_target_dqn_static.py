@@ -281,6 +281,8 @@ def main():
     require("def _normalize_reset_result" in workflow, "workflow should normalize tuple reset results")
     require("def _normalize_step_result" in workflow, "workflow should normalize tuple step results")
     require("len(step_result) >= 6" in workflow, "workflow should support documented six-item env.step results")
+    require("len(step_result) == 5" in workflow, "workflow should support Gymnasium-style env.step results")
+    require("len(step_result) == 4" in workflow, "workflow should support Gym-style env.step results")
     require("def _reset_env" in workflow, "workflow env reset should be isolated")
     require("_reset_env(env, usr_conf, logger)" in workflow, "workflow should reset environments through the safe helper")
     require("env reset failed" in workflow, "workflow should log env reset failures")

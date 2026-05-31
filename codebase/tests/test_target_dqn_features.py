@@ -540,6 +540,21 @@ def main():
     assert six_item_obs["terminated"] is True
     assert six_item_obs["truncated"] is False
     assert six_item_obs["extra_info"] == {"x": 1}
+    five_item_reward, five_item_obs = _normalize_step_result(
+        ({"legal_action": 1}, 0.75, False, True, {"frame_no": 11})
+    )
+    assert five_item_reward == 0.75
+    assert five_item_obs["frame_no"] == 11
+    assert five_item_obs["observation"] == {"legal_action": 1}
+    assert five_item_obs["terminated"] is False
+    assert five_item_obs["truncated"] is True
+    assert five_item_obs["extra_info"] == {"frame_no": 11}
+    four_item_reward, four_item_obs = _normalize_step_result(({"legal_action": 1}, 0.5, True, {"frame_no": 12}))
+    assert four_item_reward == 0.5
+    assert four_item_obs["frame_no"] == 12
+    assert four_item_obs["observation"] == {"legal_action": 1}
+    assert four_item_obs["terminated"] is True
+    assert four_item_obs["truncated"] is False
     assert _normalize_step_result({"frame_no": 4}) == (0.0, {"frame_no": 4})
     assert _normalize_step_result(None) == (0.0, {})
 

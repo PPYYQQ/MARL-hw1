@@ -115,6 +115,12 @@ def main():
     assert normalize_phase_legal_action([1, float("nan"), float("inf"), float("-inf")]) == [1, 0, 0, 0]
     assert normalize_phase_legal_action("bad-input") == [1, 1, 1, 1]
 
+    class FailingLegalAction:
+        def __array__(self, dtype=None):
+            raise RuntimeError("legal action conversion failed")
+
+    assert normalize_phase_legal_action(FailingLegalAction()) == [1, 1, 1, 1]
+
     vehicles = [
         {
             "lane": 11,
@@ -574,6 +580,7 @@ def main():
     assert _safe_legal_action(None) is None
     assert _need_to_predict({"legal_action": 0}) is False
     assert _need_to_predict({"legal_action": [0, 1, 0, 0]}) is True
+    assert _need_to_predict({"legal_action": FailingLegalAction()}) is True
     assert _should_log_progress(0, False, False) is False
     assert _should_log_progress(20, False, True) is True
     assert _should_log_progress(0, True, False) is True

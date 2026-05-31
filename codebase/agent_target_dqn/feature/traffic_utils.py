@@ -14,7 +14,7 @@ import numpy as np
 def _finite_float(value, default=0.0):
     try:
         value = float(value)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         return default
     if not np.isfinite(value):
         return default
@@ -28,7 +28,7 @@ def _nonnegative_float(value, default=0.0):
 def _phase_array(values, phase_count):
     try:
         array = np.asarray(values, dtype=np.float32).flatten()
-    except (TypeError, ValueError):
+    except Exception:
         array = np.asarray([], dtype=np.float32)
 
     array = np.nan_to_num(array, nan=0.0, posinf=0.0, neginf=0.0)
@@ -45,7 +45,7 @@ def normalize_phase_legal_action(legal_action, phase_count=4):
 
     try:
         values = np.asarray(legal_action, dtype=np.float32).flatten()
-    except (TypeError, ValueError):
+    except Exception:
         return [1] * phase_count
 
     if values.size == 0:

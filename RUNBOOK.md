@@ -109,11 +109,11 @@ python tests/test_target_dqn_smoke.py
 - `predict observation batch failed`：当前 `predict()` 会丢弃无法迭代的异常 ObsData batch，generator 式 batch 会先转成 list；如果反复出现，检查平台传入 `Agent.predict()` 的数据类型。
 - `invalid action, use default action`：当前 workflow 会在进入 `env.step()` 前把异常动作回退为 `[0, 0, MIN_GREEN_DURATION]`；如果频繁出现，检查 `predict()`、`action_process()` 或规则兜底返回值。
 - `rule_based_action failed, use default action`：评估 `exploit()` 的最终规则兜底失败时会返回默认动作；如果反复出现，保存评估 observation 并检查规则策略输入结构。
-- 评估 observation 字段读取失败：当前 `Agent.exploit()`、`observation_process()` 和 `rule_based_action()` 会对异常 dict-like observation 使用安全读取并进入规则/默认兜底；如果反复出现，需要保存原始 observation 类型和 repr。
+- 评估 observation 字段读取失败：当前 `Agent.exploit()`、`observation_process()` 和 `rule_based_action()` 会对 dict 或属性对象 observation 使用安全读取并进入规则/默认兜底；如果反复出现，需要保存原始 observation 类型和 repr。
 - `env reset failed`：当前 workflow 会跳过当前 episode 并在下一 epoch 重试；如果持续出现，检查环境配置、平台任务状态和 reset 返回协议。
 - `env step failed`：当前 workflow 会中止当前 episode 并丢弃未完成 collector；如果持续出现，优先确认动作合法性、平台环境状态和前一帧 observation。
 - `env.step()` 返回 tuple 形态不一致：当前 workflow 支持二元封装返回、Gym 四元返回、Gymnasium 五元返回和作业文档六元返回；如果平台返回其他结构，需要保存原始返回值再扩展 `_normalize_step_result()`。
-- env_obs/obs 映射读取失败：当前 workflow 会把异常 dict-like 对象的字段读取回退为默认值；如果频繁出现，需要保存原始环境返回类型，确认平台封装是否已经损坏。
+- env_obs/obs 字段读取失败：当前 workflow 会兼容 dict 与属性对象字段读取，读取异常时回退默认值；如果频繁出现，需要保存原始环境返回类型，确认平台封装是否已经损坏。
 - `terminated` / `truncated` 字段异常：当前 workflow 只把 bool true、非零有限数值或明确 true 字符串视为结束；未知字符串、NaN/Inf 和异常对象按 False 处理。
 - 样本 `done` 字段异常：当前 `sample_process()` 会把 bool、有限数值和 true/false 字符串统一转成 not_done 标记；未知字符串、NaN/Inf 和异常对象按非终局处理。
 - `agent reset failed`：当前 workflow 会跳过本局 episode，避免使用半初始化 agent 状态继续采样；如果反复出现，优先检查 `FeatureProcess.reset()` 和 agent 初始化状态。
@@ -123,7 +123,7 @@ python tests/test_target_dqn_smoke.py
 - `reward shaping failed`：当前 workflow 会将该步奖励回退为 `(0.0, 0.0)` 并继续 episode；需要保存对应 observation、action 和 agent 状态定位奖励函数异常。
 - duration reward 长期为负：当前 20 个 duration 桶覆盖 `8-40` 秒，reward 目标也限制在同一范围；如果仍长期强负，优先检查压力尺度、`DIM_OF_ACTION_DURATION` 和实际平台动作秒数是否一致。
 - `observation process failed` / `traffic info update failed`：当前 workflow 会回退到规则动作、零特征样本或跳过非决策帧预处理并继续；需要保留原始 observation 和 extra_info 定位特征处理异常。
-- 观测里有异常 frame 或车辆字段：当前预处理器会清洗 frame、车辆 ID、车速和位置；若仍异常，优先保存原始 observation 样例并检查是否不是 dict/list 结构。
+- 观测里有异常 frame 或车辆字段：当前预处理器会兼容 dict 和属性对象协议记录，并清洗 frame、车辆 ID、车速和位置；若仍异常，优先保存原始 observation 样例和 repr。
 - 车辆字段缺少 `target_junction`：当前进口车道判断和交叉口等待时间统计会在车辆可识别为进口车道时按单路口目标路口处理；没有车辆 ID 或无法识别进口车道的畸形 targetless 记录会跳过。若平台实际上用其它字段区分车辆目标，需要保存原始车辆样例再扩展映射。
 - 观测里有异常相位字段：当前相位 ID、duration、remaining duration、相位年龄和 workflow frame_no 都会清洗为有限值；若仍异常，优先保留原始 `frame_state.phases`。
 - 模型输入含 NaN/Inf 或异常 array-like：当前 `Model._prepare_input()` 会把非有限值归零，ragged 或转换失败的 Python observation 会补零或截断；如果仍出现非有限 Q 值，优先保留进入模型前的 feature。

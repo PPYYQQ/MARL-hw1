@@ -1381,3 +1381,19 @@
   - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
 - 下一步：
   - 平台运行后确认真实车辆记录缺少 `target_junction` 时，交叉口等待时间统计、相位压力和 reward 是否仍有非零信号。
+
+### Step 93 - 兼容对象式平台协议记录
+
+- 状态：完成
+- Commit：`acab81e`
+- 内容：
+  - `traffic_utils` 新增 `record_value()`，统一支持 dict 和属性对象字段读取，`vehicle_value()` 复用该 helper。
+  - `FeatureProcess` 的路网初始化、动态交通更新、等待时间、行驶距离、车道车辆数和交叉口等待统计改用安全字段读取，兼容作业文档中的 FrameState / Vehicle / InitState 对象形态。
+  - `reward_shaping()`、Agent 观测编码、规则兜底、相位特征和 workflow 环境字段读取兼容 dict 与属性对象，避免真实平台返回协议对象时被当成空 observation。
+  - 无平台依赖测试增加属性对象车辆、属性对象路网初始化、对象式 reward observation 和 workflow object env_obs 覆盖；静态测试增加对象协议字段读取锚点。
+- 验证：
+  - 已运行 `python -m compileall agent_target_dqn tests/test_target_dqn_features.py tests/test_target_dqn_static.py`，通过。
+  - 已运行 `python tests/test_target_dqn_features.py` 和 `python tests/test_target_dqn_static.py`，均通过。
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 平台运行后确认真实 Observation / Vehicle / Phase 是否以属性对象返回；如果仍有字段读取失败，保存原始类型和 repr 后补具体字段别名。

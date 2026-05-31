@@ -152,6 +152,11 @@ def main():
     )
     require("def rule_based_action" in agent, "exploit should have a rule-based fallback")
     require("def _joint_action_mask" in agent, "prediction should expand phase legality to joint actions")
+    require("if not mask.any()" in agent and "mask[:] = True" in agent, "prediction should recover empty phase masks")
+    require(
+        "empty_rows = ~joint_masks.any(axis=1)" in agent and "joint_masks[empty_rows, :] = True" in agent,
+        "prediction should recover empty joint mask rows",
+    )
     require("list_joint_action" in agent, "prediction should select joint actions")
     require("if not exploit_flag" in agent, "exploit should not decay training epsilon")
     require("if exploit_flag or np.random.rand() >= self._eps" in agent, "exploit should force greedy prediction")

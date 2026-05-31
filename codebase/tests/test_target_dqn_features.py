@@ -81,6 +81,7 @@ def main():
         _normalize_step_result,
         _obs_feature,
         _predict_action,
+        _process_samples,
         _process_observation,
         _put_monitor_data,
         _read_usr_conf,
@@ -503,6 +504,22 @@ def main():
     assert _process_observation(FailingObservationAgent(), {"legal_action": 1}, {}, FailingLogger()) is None
     assert len(_obs_feature(None)) == Config.DIM_OF_OBSERVATION
     assert _obs_feature(None)[0] == 0.0
+
+    original_workflow_sample_process = train_workflow.sample_process
+    try:
+        train_workflow.sample_process = lambda collector: ["sample-data"]
+        assert _process_samples([object()], FailingLogger()) == ["sample-data"]
+        assert _process_samples([], FailingLogger()) == []
+        train_workflow.sample_process = lambda collector: None
+        assert _process_samples([object()], FailingLogger()) == []
+
+        def raise_sample_process(collector):
+            raise RuntimeError("sample process failed")
+
+        train_workflow.sample_process = raise_sample_process
+        assert _process_samples([object()], FailingLogger()) == []
+    finally:
+        train_workflow.sample_process = original_workflow_sample_process
 
     traffic_info_agent = TrafficInfoAgent()
     assert _update_traffic_info(traffic_info_agent, {"legal_action": 0}, {"init_state": {}}, FailingLogger()) is True

@@ -155,8 +155,9 @@ def run_episodes(n_episode, env, agent, usr_conf, logger):
                 # 容灾
                 if _handle_disaster_recovery(env_obs, logger):
                     if len(collector) > 10:
-                        collector = sample_process(collector)
-                        yield collector
+                        samples = _process_samples(collector, logger)
+                        if samples:
+                            yield samples
                     break
 
                 frame_no = _safe_frame_no(env_obs)
@@ -204,8 +205,9 @@ def run_episodes(n_episode, env, agent, usr_conf, logger):
                         reward = _shape_reward(_obs, last_predict_act, agent, logger)
                         collector[-1].done = 1
                         collector[-1].rew = reward
-                        collector = sample_process(collector)
-                        yield collector
+                        samples = _process_samples(collector, logger)
+                        if samples:
+                            yield samples
                     break
 
     except Exception as e:
@@ -255,6 +257,17 @@ def _obs_feature(obs_data):
     if feature is None:
         return [0.0] * Config.DIM_OF_OBSERVATION
     return feature
+
+
+def _process_samples(collector, logger):
+    if not collector:
+        return []
+    try:
+        samples = sample_process(collector)
+    except Exception as err:
+        _log_error(logger, f"sample process failed: {err}")
+        return []
+    return samples if isinstance(samples, list) else []
 
 
 def _read_usr_conf(path, logger):

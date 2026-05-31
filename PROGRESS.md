@@ -1631,3 +1631,19 @@
   - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
 - 下一步：
   - 平台运行后对比 monitor 上报与评估页面指标；如果仍缺字段，保存 env_reward/env_obs/info 样例后补充对应容器或字段别名。
+
+### Step 108 - 兼容终局与截断字段别名
+
+- 状态：完成
+- Commit：`aeefce7`
+- 内容：
+  - workflow 新增 `DONE_FIELD_ALIASES`，集中维护 `terminated` / `done` / `is_done` / `terminal` 和 `truncated` / `timeout` / `is_truncated` 等结束或截断字段别名。
+  - dict/object step envelope 归一化和 `_safe_done_flag()` 都改走同一别名表，并会从 `extra_info` / `_state` / `state` / `info` 中回退读取截断标记。
+  - 无平台依赖测试增加 `isDone`、`timeout`、`terminal`、`timedOut`、嵌套 `info.is_truncated` 覆盖；静态测试增加终局字段别名锚点。
+  - 更新 `AGENTS.md`、`RUNBOOK.md` 和 `REPORT_DRAFT.md`，记录 workflow 已兼容更多终局/截断别名。
+- 验证：
+  - 已运行 `python -m compileall agent_target_dqn/workflow/train_workflow.py tests/test_target_dqn_features.py tests/test_target_dqn_static.py`，通过。
+  - 已运行 `python tests/test_target_dqn_features.py` 和 `python tests/test_target_dqn_static.py`，均通过。
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 平台运行后确认终局和超时日志是否与真实 episode 结束原因一致；如平台使用其它字段名，保存 step_result 样例后扩展 `DONE_FIELD_ALIASES`。

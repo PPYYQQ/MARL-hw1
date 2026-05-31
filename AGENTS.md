@@ -86,7 +86,7 @@ Target-DQN 关键文件：
 - `FeatureProcess` 会清洗 `frame_no`、`frame_time`、车辆 ID、车速和车道位置，等待时间/行驶距离/车道计数统计遇到异常动态字段会跳过单车而不是中断整帧。
 - 训练 workflow 调用 `observation_process()` 和非决策帧 `update_traffic_info()` 时会隔离异常，特征处理失败会回退到规则动作和零特征样本。
 - `observation_process()`、`rule_based_action()` 和共享交通统计工具会保守处理缺失 `frame_state`、缺失 `vehicles`、缺失 `obs` 包装和畸形车辆/相位记录。
-- workflow、Agent、reward、preprocessor 和交通统计 helper 的关键协议字段读取已兼容普通 dict 与属性对象，贴合作业文档中的 Observation / FrameState / Vehicle / Phase 消息形态。
+- workflow、Agent、reward、preprocessor 和交通统计 helper 的关键协议字段读取已兼容普通 dict 与属性对象，贴合作业文档中的 Observation / FrameState / Vehicle / Phase 消息形态；标量字段不会被误当成协议对象，单个对象式 vehicles/phases 容器也会按一条记录处理。
 - 共享交通统计工具不再要求车辆记录必须包含 `target_junction`；缺失时会按单路口进口车道车辆处理，等待时间统计也会复用同一默认目标路口，贴合作业文档字段列表。
 - `action_process()` 已将 duration index 映射为实际秒数。
 - `predict()` 对空 observation batch 会返回空列表；`action_process()` 会固定 `junction_id=0` 并清洗异常相位/时长索引，确保输出合法动作。
@@ -251,7 +251,7 @@ coding agent 无法单独保证：
 - 逐车道统计特征包括 14 条进口车道的车辆数、排队数和平均等待时间。
 - 如继续增加更长历史窗口等特征，必须同步修改 `Config.DIM_OF_OBSERVATION` 和模型输入层。
 - 坐标单位必须通过真实 observation 确认；若 `position_in_lane["y"]` 是毫米，应使用 `/ 1000` 后再按 `GRID_LENGTH` 分桶。
-- 原始 observation、frame_state、vehicle、phase、extra_info 可能是 dict，也可能是平台协议对象；新增解析逻辑必须使用安全字段读取 helper，不要直接假设 `.get()` 或下标访问一定可用。
+- 原始 observation、frame_state、vehicle、phase、extra_info 可能是 dict，也可能是平台协议对象；新增解析逻辑必须使用安全字段读取 helper，不要直接假设 `.get()` 或下标访问一定可用。注意区分协议对象和标量，避免把 `1`、`False` 这类坏字段当成有效 observation。
 - 车辆记录可能没有 `target_junction`，进口车道判断和交叉口等待时间统计不能强依赖该字段；单路口场景下缺失且能识别为进口车道时按目标路口 0 处理，无法识别目标的畸形记录应跳过。
 - 所有特征必须固定长度、无 NaN、范围稳定；空车辆和缺失字段要有默认值。
 

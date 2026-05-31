@@ -1397,3 +1397,19 @@
   - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
 - 下一步：
   - 平台运行后确认真实 Observation / Vehicle / Phase 是否以属性对象返回；如果仍有字段读取失败，保存原始类型和 repr 后补具体字段别名。
+
+### Step 94 - 收紧协议记录列表解析
+
+- 状态：完成
+- Commit：`74ec647`
+- 内容：
+  - `_is_record()` 排除 `bool`、`int`、`float` 和 `complex`，避免标量 observation / extra_info / vehicle 字段被误当作有效协议对象。
+  - Agent、reward 和 preprocessor 的列表字段解析支持单个非迭代协议对象，兼容平台把单个 Vehicle、Phase、Junction 或 lane container 直接作为对象返回的边界情况。
+  - workflow 的 `_safe_observation()` 和 `_safe_extra_info()` 对标量 payload 回退为空对象，避免坏字段触发不必要预测路径。
+  - 无平台依赖测试覆盖单个对象式 InitState/Vehicle、单个对象式 reward vehicles、标量 observation/extra_info 回退；静态测试增加标量伪记录与单对象容器锚点。
+- 验证：
+  - 已运行 `python -m compileall agent_target_dqn/agent.py agent_target_dqn/feature/definition.py agent_target_dqn/feature/preprocessor.py agent_target_dqn/workflow/train_workflow.py tests/test_target_dqn_features.py tests/test_target_dqn_static.py`，通过。
+  - 已运行 `python tests/test_target_dqn_features.py` 和 `python tests/test_target_dqn_static.py`，均通过。
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 平台运行后如果 observation 容器还有 list/dict 之外的特殊 repeated 类型，保存原始类型、repr 和可迭代行为后继续扩展解析。

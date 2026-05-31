@@ -1435,7 +1435,7 @@
 ### Step 96 - 完整代码包复核并更新 AGENTS
 
 - 状态：完成
-- Commit：待提交
+- Commit：`1e294a0`
 - 内容：
   - 复核平台完整 `codebase/`、四套 agent、配置入口、测试目录、打包脚本和文档台账。
   - 更新 `AGENTS.md` 的实际项目结构，补充 `tests/`、`scripts/check_offline.sh`、`scripts/package_submission.sh`、`RUNBOOK.md`、`EXPERIMENTS.md`、`REPORT_DRAFT.md` 和 `PROGRESS.md` 的职责。

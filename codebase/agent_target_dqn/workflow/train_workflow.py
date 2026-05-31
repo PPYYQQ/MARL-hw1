@@ -137,7 +137,7 @@ def run_episodes(n_episode, env, agent, usr_conf, logger):
 
                     # Feature processing
                     # 特征处理
-                    obs_data = agent.observation_process(obs, extra_info)
+                    obs_data = _process_observation(agent, obs, extra_info, logger)
                     # Agent makes a prediction to get the next frame's action
                     # Agent 进行推理, 获取下一帧的预测动作
                     act = _predict_action(agent, obs_data, obs, logger)
@@ -145,7 +145,7 @@ def run_episodes(n_episode, env, agent, usr_conf, logger):
                 else:
                     # No need to predict
                     # 不需要预测的情况
-                    agent.preprocess.update_traffic_info(obs, extra_info)
+                    _update_traffic_info(agent, obs, extra_info, logger)
                     act = [None, None, None]
 
                 # Interact with the environment, execute actions, get the next extra_info
@@ -180,7 +180,7 @@ def run_episodes(n_episode, env, agent, usr_conf, logger):
                     # Construct environment frames to prepare for sample construction
                     # 构造环境帧，为构造样本做准备
                     frame = Frame(
-                        obs=obs_data.feature,
+                        obs=_obs_feature(obs_data),
                         act=act,
                         rew=None,
                         done=0,
@@ -231,6 +231,30 @@ def _shape_reward(obs, act, agent, logger):
         _log_error(logger, f"reward shaping failed: {err}")
         return 0.0, 0.0
     return _reward_components(reward)
+
+
+def _process_observation(agent, obs, extra_info, logger):
+    try:
+        return agent.observation_process(obs, extra_info)
+    except Exception as err:
+        _log_error(logger, f"observation process failed: {err}")
+        return None
+
+
+def _update_traffic_info(agent, obs, extra_info, logger):
+    try:
+        agent.preprocess.update_traffic_info(obs, extra_info)
+        return True
+    except Exception as err:
+        _log_error(logger, f"traffic info update failed: {err}")
+        return False
+
+
+def _obs_feature(obs_data):
+    feature = getattr(obs_data, "feature", None)
+    if feature is None:
+        return [0.0] * Config.DIM_OF_OBSERVATION
+    return feature
 
 
 def _read_usr_conf(path, logger):
@@ -335,6 +359,14 @@ def _should_log_progress(predict_cnt, done, need_to_predict):
 
 
 def _predict_action(agent, obs_data, obs, logger):
+    if obs_data is None:
+        _log_error(logger, "observation process returned empty, fallback to rule_based_action")
+        try:
+            return agent.rule_based_action(obs)
+        except Exception as err:
+            _log_error(logger, f"rule_based_action failed, use default action: {err}")
+            return [0, 0, Config.MIN_GREEN_DURATION]
+
     try:
         act_data = agent.predict(list_obs_data=[obs_data])
         if act_data:

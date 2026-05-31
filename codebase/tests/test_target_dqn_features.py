@@ -79,7 +79,9 @@ def main():
         _need_to_predict,
         _normalize_reset_result,
         _normalize_step_result,
+        _obs_feature,
         _predict_action,
+        _process_observation,
         _put_monitor_data,
         _read_usr_conf,
         _reward_components,
@@ -92,6 +94,7 @@ def main():
         _send_sample_data,
         _shape_reward,
         _should_log_progress,
+        _update_traffic_info,
     )
 
     assert normalize_phase_legal_action(None) == [1, 1, 1, 1]
@@ -463,6 +466,49 @@ def main():
 
     _log_info(FailingLogger(), "info")
     _log_error(FailingLogger(), "error")
+
+    class FeatureObsData:
+        def __init__(self, feature):
+            self.feature = feature
+
+    class ObservationAgent:
+        def observation_process(self, obs, extra_info):
+            return FeatureObsData([1.0, 2.0])
+
+    class FailingObservationAgent:
+        def observation_process(self, obs, extra_info):
+            raise RuntimeError("observation failed")
+
+    class RecordingPreprocess:
+        def __init__(self):
+            self.records = []
+
+        def update_traffic_info(self, obs, extra_info):
+            self.records.append((obs, extra_info))
+
+    class TrafficInfoAgent:
+        def __init__(self):
+            self.preprocess = RecordingPreprocess()
+
+    class FailingPreprocess:
+        def update_traffic_info(self, obs, extra_info):
+            raise RuntimeError("traffic update failed")
+
+    class FailingTrafficInfoAgent:
+        def __init__(self):
+            self.preprocess = FailingPreprocess()
+
+    processed_obs = _process_observation(ObservationAgent(), {"legal_action": 1}, {}, FailingLogger())
+    assert _obs_feature(processed_obs) == [1.0, 2.0]
+    assert _process_observation(FailingObservationAgent(), {"legal_action": 1}, {}, FailingLogger()) is None
+    assert len(_obs_feature(None)) == Config.DIM_OF_OBSERVATION
+    assert _obs_feature(None)[0] == 0.0
+
+    traffic_info_agent = TrafficInfoAgent()
+    assert _update_traffic_info(traffic_info_agent, {"legal_action": 0}, {"init_state": {}}, FailingLogger()) is True
+    assert traffic_info_agent.preprocess.records
+    assert _update_traffic_info(FailingTrafficInfoAgent(), {"legal_action": 0}, {}, FailingLogger()) is False
+
     recording_monitor = RecordingMonitor()
     assert _put_monitor_data(recording_monitor, {"reward": 1.0}, FailingLogger()) is True
     assert recording_monitor.records
@@ -554,6 +600,7 @@ def main():
     assert _predict_action(EmptyPredictAgent(), object(), {}, None) == [0, 2, Config.MIN_GREEN_DURATION + 1]
     assert _predict_action(FailingPredictAgent(), object(), {}, None) == [0, 1, Config.MIN_GREEN_DURATION]
     assert _predict_action(FailingFallbackAgent(), object(), {}, None) == [0, 0, Config.MIN_GREEN_DURATION]
+    assert _predict_action(EmptyPredictAgent(), None, {}, FailingLogger()) == [0, 2, Config.MIN_GREEN_DURATION + 1]
 
     class SavingAgent:
         def __init__(self):

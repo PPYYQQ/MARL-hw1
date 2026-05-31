@@ -1050,3 +1050,18 @@
   - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
 - 下一步：
   - 平台环境可用后确认样本批次偶发异常不会影响 reward/data_length 监控上报和后续样本发送。
+
+### Step 71 - env.step 前动作合法化
+
+- 状态：完成
+- Commit：`bc5a7fc`
+- 内容：
+  - workflow 增加 `_safe_action()`，在每次 `env.step()` 前统一清洗最终动作。
+  - 非决策帧动作保持 `[None, None, None]`，不改变平台跳帧语义。
+  - 决策帧动作强制 `junction_id=0`，相位裁剪到 `0-3`，duration 裁剪到 `MIN_GREEN_DURATION` 到 `MIN_GREEN_DURATION + DIM_OF_ACTION_DURATION - 1`。
+  - 动作结构异常、NaN/Inf 或不可转数值时记录 `invalid action, use default action` 并回退为 `[0, 0, MIN_GREEN_DURATION]`。
+  - 无平台依赖测试覆盖合法动作、越界动作、非决策帧动作、字符串动作和 NaN 动作；静态测试增加 final action sanitation 锚点。
+- 验证：
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 平台环境可用后确认异常预测或规则兜底动作不会触发环境非法动作错误，且非决策帧 `[None, None, None]` 语义保持不变。

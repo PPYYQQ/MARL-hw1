@@ -97,6 +97,7 @@ python tests/test_target_dqn_smoke.py
 - `sample reward read failed` / `sample batch length failed`：当前 workflow 会把异常样本批次按可读部分或零 reward 统计，训练发送路径仍单独处理；如果反复出现，检查 `sample_process()` 返回对象是否为 `SampleData` 列表。
 - `latest` 模型结构不兼容：当前联合动作模型会跳过不兼容的旧 `latest` checkpoint，并从当前参数继续训练；若要强制加载指定模型 ID，结构不兼容仍会抛错。
 - `legal_action` 是标量而不是列表：当前 workflow 会先归一化为 4 维相位 mask，再判断是否需要决策；若平台提供相位级 mask，也会沿用相位约束。
+- `invalid action, use default action`：当前 workflow 会在进入 `env.step()` 前把异常动作回退为 `[0, 0, MIN_GREEN_DURATION]`；如果频繁出现，检查 `predict()`、`action_process()` 或规则兜底返回值。
 - `env reset failed`：当前 workflow 会跳过当前 episode 并在下一 epoch 重试；如果持续出现，检查环境配置、平台任务状态和 reset 返回协议。
 - `env step failed`：当前 workflow 会中止当前 episode 并丢弃未完成 collector；如果持续出现，优先确认动作合法性、平台环境状态和前一帧 observation。
 - `agent reset failed`：当前 workflow 会跳过本局 episode，避免使用半初始化 agent 状态继续采样；如果反复出现，优先检查 `FeatureProcess.reset()` 和 agent 初始化状态。

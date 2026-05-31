@@ -114,6 +114,7 @@ Target-DQN 关键文件：
 - 训练 workflow 读取 `train_env_conf.toml` 时会隔离配置校验工具异常，读取失败会记录错误并清晰退出入口。
 - 训练 workflow 调用平台容灾 helper 时会隔离异常，容灾检测失败会记录错误并按无容灾信号继续。
 - 训练 workflow 的预测动作通过 `_predict_action()` 统一处理，模型预测返回空或异常时会回退到规则策略，规则策略再失败则输出 `[0, 0, MIN_GREEN_DURATION]`。
+- 训练 workflow 在进入 `env.step()` 前会统一清洗最终动作：非决策帧保持 `[None, None, None]`，决策帧强制 `junction_id=0`、相位裁剪到 `0-3`、duration 裁剪到模型动作空间可表达秒数。
 - 训练 workflow 抛错时会保留原始异常信息和异常链，便于平台日志定位真实崩溃点。
 - workflow 和 `Algorithm.learn()` 的日志/监控上报已隔离异常，`logger` 或 `monitor.put_data()` 后端失败不会中断训练。
 - `Agent` 的 `exploit()`、`save_model()` 和 `load_model()` 日志调用已隔离异常，日志后端失败不会打断评估兜底或 checkpoint 流程。

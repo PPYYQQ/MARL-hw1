@@ -85,6 +85,7 @@ def main():
         _process_observation,
         _put_monitor_data,
         _read_usr_conf,
+        _reset_env,
         _reset_agent,
         _reward_components,
         _safe_done_flag,
@@ -96,6 +97,7 @@ def main():
         _send_sample_data,
         _shape_reward,
         _should_log_progress,
+        _step_env,
         _update_traffic_info,
     )
 
@@ -418,6 +420,24 @@ def main():
     }
     assert _normalize_reset_result({"observation": {}}) == {"observation": {}}
     assert _normalize_reset_result(None) == {}
+
+    class ResetEnv:
+        def __init__(self):
+            self.usr_conf = None
+
+        def reset(self, usr_conf):
+            self.usr_conf = usr_conf
+            return {"observation": {"legal_action": 1}}
+
+    class FailingResetEnv:
+        def reset(self, usr_conf):
+            raise RuntimeError("env reset failed")
+
+    reset_env = ResetEnv()
+    assert _reset_env(reset_env, {"weather": 0}, EarlyFailingLogger()) == {"observation": {"legal_action": 1}}
+    assert reset_env.usr_conf == {"weather": 0}
+    assert _reset_env(FailingResetEnv(), {}, EarlyFailingLogger()) is None
+
     two_item_reward, two_item_obs = _normalize_step_result((0.5, {"frame_no": 3}))
     assert two_item_reward == 0.5
     assert two_item_obs == {"frame_no": 3}
@@ -430,6 +450,24 @@ def main():
     assert six_item_obs["extra_info"] == {"x": 1}
     assert _normalize_step_result({"frame_no": 4}) == (0.0, {"frame_no": 4})
     assert _normalize_step_result(None) == (0.0, {})
+
+    class StepEnv:
+        def __init__(self):
+            self.act = None
+
+        def step(self, act):
+            self.act = act
+            return 0.25, {"frame_no": 9}
+
+    class FailingStepEnv:
+        def step(self, act):
+            raise RuntimeError("env step failed")
+
+    step_env = StepEnv()
+    assert _step_env(step_env, [0, 1, Config.MIN_GREEN_DURATION], EarlyFailingLogger()) == (0.25, {"frame_no": 9})
+    assert step_env.act == [0, 1, Config.MIN_GREEN_DURATION]
+    assert _step_env(FailingStepEnv(), [0, 1, Config.MIN_GREEN_DURATION], EarlyFailingLogger()) is None
+
     assert _safe_observation({"observation": {"legal_action": 1}}) == {"legal_action": 1}
     assert _safe_observation({"observation": None}) == {}
     assert _safe_extra_info({"extra_info": {"init_state": {}}}) == {"init_state": {}}

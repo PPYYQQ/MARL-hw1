@@ -111,7 +111,9 @@ def run_episodes(n_episode, env, agent, usr_conf, logger):
 
             # Reset the environment and get the initial extra_info
             # 重置环境, 并获取初始状态
-            env_obs = _normalize_reset_result(env.reset(usr_conf=usr_conf))
+            env_obs = _reset_env(env, usr_conf, logger)
+            if env_obs is None:
+                continue
             # Disaster recovery
             # 容灾
             if _handle_disaster_recovery(env_obs, logger):
@@ -151,7 +153,10 @@ def run_episodes(n_episode, env, agent, usr_conf, logger):
 
                 # Interact with the environment, execute actions, get the next extra_info
                 # 与环境交互, 执行动作, 获取下一步的状态, 如果遇到不需要预测的帧，则env.step直到得到需要预测的帧
-                env_reward, env_obs = _normalize_step_result(env.step(act))
+                step_result = _step_env(env, act, logger)
+                if step_result is None:
+                    break
+                env_reward, env_obs = step_result
                 # Disaster recovery
                 # 容灾
                 if _handle_disaster_recovery(env_obs, logger):
@@ -305,6 +310,22 @@ def _finite_float(value):
     if not math.isfinite(value):
         return 0.0
     return value
+
+
+def _reset_env(env, usr_conf, logger):
+    try:
+        return _normalize_reset_result(env.reset(usr_conf=usr_conf))
+    except Exception as err:
+        _log_error(logger, f"env reset failed: {err}")
+        return None
+
+
+def _step_env(env, act, logger):
+    try:
+        return _normalize_step_result(env.step(act))
+    except Exception as err:
+        _log_error(logger, f"env step failed: {err}")
+        return None
 
 
 def _normalize_reset_result(reset_result):

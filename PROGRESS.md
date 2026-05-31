@@ -1318,3 +1318,18 @@
   - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
 - 下一步：
   - 平台训练后观察 duration 分布、duration_reward 和切换惩罚，确认 20 个分桶覆盖 `8-40` 秒是否优于原先线性 `8+idx`。
+
+### Step 89 - 平台评分指标监控
+
+- 状态：完成
+- Commit：`08e045c`
+- 内容：
+  - workflow 新增 `ENV_SCORE_ALIASES`、`_env_score_metrics()` 和 `_update_env_metric_snapshot()`，从 `env.step()` 的 score、`env_obs.score`、`extra_info.score_info` 或对象属性中安全提取平台评分项。
+  - 训练监控和 epoch 日志增加 `env_score`、`avg_delay`、`avg_queue_length`、`avg_waiting_time` 和 `switch_penalty`，方便平台短训后直接对齐作业评分指标。
+  - 无平台依赖测试增加 dict、对象属性、NaN 和缺失 snapshot 的评分指标提取覆盖；静态测试增加 score metric 监控锚点。
+- 验证：
+  - 已运行 `python -m compileall agent_target_dqn/workflow tests/test_target_dqn_features.py tests/test_target_dqn_static.py`，通过。
+  - 已运行 `python tests/test_target_dqn_features.py` 和 `python tests/test_target_dqn_static.py`，均通过。
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 平台运行后确认 score 字段实际名称是否命中当前 alias；若监控长期为 0，需要保存一次 `score` / `extra_info` 样例后补 alias。

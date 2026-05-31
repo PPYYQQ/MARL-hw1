@@ -58,10 +58,13 @@ python tests/test_target_dqn_smoke.py
 - `reward`：总平均 step reward，应避免长期固定为 0。
 - `phase_reward`：相位选择奖励，观察是否有方向性改善。
 - `duration_reward`：持续时间奖励，观察是否长期强负。
+- `env_score`：平台返回的最新总分或 score 快照。
+- `avg_delay` / `avg_queue_length` / `avg_waiting_time`：平台评分三项，优先用于比较实验结果。
+- `switch_penalty`：平台信号切换惩罚或切换次数快照。
 - `value_loss`：DQN TD loss，先看是否有限值且不爆炸。
 - `q_value` / `target_q_value`：观察 Q 值是否数值稳定。
 - `model_grad_norm`：梯度范数，频繁过大说明奖励或学习率可能不稳。
-- 平台评分项：平均延误、平均排队长度、平均等待时间、信号切换惩罚。
+- 平台评分项：若平台监控字段为空，以评估任务页面中的平均延误、平均排队长度、平均等待时间、信号切换惩罚为准。
 
 ## 每次实验回填格式
 

@@ -127,6 +127,7 @@ Target-DQN 关键文件：
 - `Agent.exploit()`、`observation_process()` 和 `rule_based_action()` 的关键映射读取会走安全 helper，异常 dict-like observation 不会绕过评估兜底。
 - 训练 workflow 发送样本时会传递 `g_data` 的浅拷贝，再清理本地列表，避免异步消费时引用被清空。
 - 训练 workflow 的进度日志只在 episode 结束或真实预测计数达到间隔时打印，避免无决策帧刷屏。
+- 训练 workflow 会安全提取平台 `score`、`score_info` 或对象属性里的 `env_score`、`avg_delay`、`avg_queue_length`、`avg_waiting_time` 和 `switch_penalty`，用于平台监控和调参记录。
 - `sample_process()` 会把训练样本中的 `legal_action` 设置为下一状态相位 mask，供 Double DQN target 选择下一相位时使用。
 - `sample_process()` 对空轨迹、全无效轨迹、缺失 reward 和无效动作帧会保守跳过或补零，避免样本转换边界崩溃。
 - `sample_process()` 读取 Frame 的 `obs`、`act`、`rew`、`done`、`legal_action` 属性时会隔离属性访问异常，坏属性只影响当前字段或当前帧，不再导致整段 collector 转换失败。

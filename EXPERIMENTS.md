@@ -36,6 +36,11 @@
   - `reward`：
   - `phase_reward`：
   - `duration_reward`：
+  - `env_score`：
+  - `avg_delay`：
+  - `avg_queue_length`：
+  - `avg_waiting_time`：
+  - `switch_penalty`：
   - `value_loss`：
   - `q_value`：
   - `target_q_value`：
@@ -59,5 +64,5 @@
   3. 调整 reward 权重。
   4. 调整 `LR`、`EPSILON_DECAY`、`TARGET_UPDATE_FREQ`。
   5. 增加环境复杂度。
-  6. 考虑改为 80 维联合动作。
+  6. 调整 duration 分桶、reward 权重或训练环境难度。
 - 每次实验结束后，将结果同步回 `REPORT_DRAFT.md` 的平台实验表。

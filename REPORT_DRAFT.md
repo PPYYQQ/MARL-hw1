@@ -225,6 +225,9 @@ workflow 当前监控：
 - phase reward。
 - duration reward。
 - data length。
+- 平台 score 快照、平均延误、平均排队长度、平均等待时间和信号切换惩罚。
+
+平台 score 监控会同时尝试从 `env.step()` 返回的 `score`、`env_obs.score`、`extra_info.score_info` 和对象属性中读取常见字段；读取失败或字段缺失时保留默认值，不影响训练样本发送和模型更新。
 
 workflow、算法训练以及 `Agent` 的模型保存/加载和评估兜底日志都通过容错 helper 执行；如果平台日志后端或 `monitor.put_data()` 临时失败，训练路径会继续运行，避免非核心观测上报故障中断 episode。
 

@@ -1134,3 +1134,17 @@
   - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
 - 下一步：
   - 平台环境可用后确认样本池终局 transition 的 `done` / `not_done` 语义与 learner target 一致。
+
+### Step 77 - 样本 Frame 属性异常隔离
+
+- 状态：完成
+- Commit：`e70b479`
+- 内容：
+  - `sample_process()` 新增 `_safe_getattr()`，隔离 Frame 属性访问异常。
+  - `obs` 或 `act` 属性读取失败时跳过当前帧；`rew`、`done` 或 `legal_action` 读取失败时使用默认值继续构造样本。
+  - 无平台依赖测试增加 `rew`、`done`、`legal_action` 属性抛错的 Frame 覆盖；静态测试增加 `_safe_getattr()` 锚点。
+- 验证：
+  - 已运行 `python tests/test_target_dqn_features.py` 和 `python tests/test_target_dqn_static.py`，均通过。
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 平台环境可用后确认 sample collector 中个别异常 Frame 不再导致整段样本转换失败。

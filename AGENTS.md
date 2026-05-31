@@ -125,6 +125,7 @@ Target-DQN 关键文件：
 - 训练 workflow 的进度日志只在 episode 结束或真实预测计数达到间隔时打印，避免无决策帧刷屏。
 - `sample_process()` 会把训练样本中的 `legal_action` 设置为下一状态相位 mask，供 Double DQN target 选择下一相位时使用。
 - `sample_process()` 对空轨迹、全无效轨迹、缺失 reward 和无效动作帧会保守跳过或补零，避免样本转换边界崩溃。
+- `sample_process()` 读取 Frame 的 `obs`、`act`、`rew`、`done`、`legal_action` 属性时会隔离属性访问异常，坏属性只影响当前字段或当前帧，不再导致整段 collector 转换失败。
 - `sample_process()` 会显式解析 `done` 的 bool、数值和 true/false 字符串形式，避免字符串终局标记误写为非终局 TD target。
 - `sample_process()` 在创建 `SampleData` 前会对 `obs`、`act`、`rew` 和 `done` 做定宽归一化、NaN/Inf 清洗和动作边界裁剪，避免畸形轨迹污染样本池。
 - `normalize_phase_legal_action()` 会将合法动作里的 NaN/Inf 显式归零，避免非有限值被误判为可选相位。

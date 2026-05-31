@@ -45,32 +45,46 @@ class Algorithm:
 
         batch_size = len(list_sample_data)
         obs = self._stack_tensor(
-            [frame.obs for frame in list_sample_data],
+            [self._sample_field(frame, "obs", []) for frame in list_sample_data],
             dtype=torch.float32,
             width=Config.DIM_OF_OBSERVATION,
         ).view(batch_size, -1)
         action = self._stack_tensor(
-            [frame.act for frame in list_sample_data],
+            [
+                self._sample_field(
+                    frame,
+                    "act",
+                    [0, 0, Config.MIN_GREEN_DURATION],
+                )
+                for frame in list_sample_data
+            ],
             dtype=torch.float32,
             width=3,
         ).view(batch_size, -1)
         rew = self._stack_tensor(
-            [frame.rew for frame in list_sample_data],
+            [self._sample_field(frame, "rew", [0.0, 0.0]) for frame in list_sample_data],
             dtype=torch.float32,
             width=2,
         ).view(batch_size, -1)
         _obs = self._stack_tensor(
-            [frame._obs for frame in list_sample_data],
+            [self._sample_field(frame, "_obs", []) for frame in list_sample_data],
             dtype=torch.float32,
             width=Config.DIM_OF_OBSERVATION,
         ).view(batch_size, -1)
         not_done = self._stack_tensor(
-            [frame.done for frame in list_sample_data],
+            [self._sample_field(frame, "done", 1.0) for frame in list_sample_data],
             dtype=torch.float32,
             width=1,
         ).view(batch_size)
         legal_action = self._stack_tensor(
-            [frame.legal_action for frame in list_sample_data],
+            [
+                self._sample_field(
+                    frame,
+                    "legal_action",
+                    [1] * Config.DIM_OF_ACTION_PHASE,
+                )
+                for frame in list_sample_data
+            ],
             dtype=torch.float32,
             width=Config.DIM_OF_ACTION_PHASE,
         ).view(batch_size, -1)
@@ -173,10 +187,16 @@ class Algorithm:
         tensors = [self._normalize_tensor(value, dtype=dtype, width=width) for value in values]
         return torch.stack(tensors)
 
+    def _sample_field(self, frame, name, default):
+        try:
+            return getattr(frame, name, default)
+        except Exception:
+            return default
+
     def _normalize_tensor(self, value, dtype, width=None):
         try:
             tensor = self._as_tensor(value, dtype=dtype).view(-1)
-        except (TypeError, ValueError, RuntimeError):
+        except Exception:
             tensor = self._as_tensor([], dtype=dtype).view(-1)
         tensor = self._finite_tensor(tensor)
         if width is None:

@@ -198,7 +198,7 @@ duration reward 主要考虑：
 9. 发送样本浅拷贝到训练组件，再清理本地 collector。
 10. 定期保存 `latest` checkpoint，供后续 episode 或训练进程恢复。
 
-checkpoint 保存采用临时文件加 `os.replace()` 的方式发布，避免训练进程中断时把半写文件暴露为 `latest`；workflow 的周期性 `latest` 保存失败会记录错误并在下一保存周期重试，不会中断当前训练循环。加载侧会继续跳过缺失、不可读或结构不兼容的 `latest`，保证后续 episode 可以继续启动。
+checkpoint 保存采用临时文件加 `os.replace()` 的方式发布，避免训练进程中断时把半写文件暴露为 `latest`；workflow 的周期性 `latest` 保存失败会记录错误并在下一保存周期重试，不会中断当前训练循环。加载侧会继续跳过缺失、不可读或结构不兼容的 `latest`；如果平台文件系统或模型目录出现未预期加载异常，workflow 会记录错误并继续使用当前模型参数，保证后续 episode 可以继续启动。
 
 workflow 会先归一化 `env.reset()` 和 `env.step()` 返回值：既兼容当前封装中的二元返回，也兼容作业文档给出的六元 `env.step()` 返回。随后对 `observation`、`extra_info`、`frame_no`、结束标记和采样帧 `legal_action` 使用安全读取；字段缺失或类型异常时按空 observation、空 extra info 或默认结束状态处理，避免不完整平台响应直接中断 episode。
 

@@ -917,3 +917,18 @@
   - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
 - 下一步：
   - 平台环境可用后确认样本池或 learner 通道短暂异常时 actor 继续产生后续 episode，服务恢复后样本发送恢复。
+
+### Step 62 - latest checkpoint 加载失败隔离
+
+- 状态：完成
+- Commit：`ee9f9bd`
+- 内容：
+  - workflow 增加 `_load_latest_model()`，封装每局开始时的 `agent.load_model(id="latest")`。
+  - `latest` checkpoint 意外加载异常时记录 `load latest model failed` 并返回失败，不再让文件系统、并发写入或 target network 同步异常直接终止 episode。
+  - 加载失败后 workflow 继续使用当前进程内模型参数运行，保持 actor 训练循环可恢复。
+  - 无平台依赖测试覆盖加载成功、加载失败且 logger 后端也失败的路径；静态测试增加 safe latest load helper 锚点。
+- 验证：
+  - 已运行 `python -m compileall agent_target_dqn tests`、`python tests/test_target_dqn_features.py` 和 `python tests/test_target_dqn_static.py`，均通过。
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 平台环境可用后确认 checkpoint 文件权限、并发写入或坏文件导致的加载异常不会阻止后续 episode 启动。

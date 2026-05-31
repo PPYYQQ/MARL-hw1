@@ -1429,3 +1429,20 @@
   - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
 - 下一步：
   - 平台运行后确认 `env.reset()` / `env.step()` 真实返回形态；如果返回 custom tuple 或 protobuf repeated wrapper，再按原始 repr 扩展归一化。
+
+## 2026-05-31
+
+### Step 96 - 完整代码包复核并更新 AGENTS
+
+- 状态：完成
+- Commit：待提交
+- 内容：
+  - 复核平台完整 `codebase/`、四套 agent、配置入口、测试目录、打包脚本和文档台账。
+  - 更新 `AGENTS.md` 的实际项目结构，补充 `tests/`、`scripts/check_offline.sh`、`scripts/package_submission.sh`、`RUNBOOK.md`、`EXPERIMENTS.md`、`REPORT_DRAFT.md` 和 `PROGRESS.md` 的职责。
+  - 在 `AGENTS.md` 增加本次完整代码包复核结论，明确当前主线仍是 `agent_target_dqn`，其它三套 agent 仍视为平台模板/备选代码。
+  - 在 `AGENTS.md` 补充剩余风险：真实平台 `frame_state.lanes` 还没有作为 vehicles 稀疏时的 fallback 信号，dict 形态 repeated 字段需要真实样例后再扩展。
+  - 将实施计划和测试计划更新为当前实际流程：普通本地优先跑 `./scripts/check_offline.sh`，平台环境再跑 `cd codebase && python train_test.py`。
+- 验证：
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 平台环境可用后采集真实 observation 样例，优先确认 `vehicles` / `lanes` / `legal_action` 的实际协议形态。

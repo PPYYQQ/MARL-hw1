@@ -43,6 +43,7 @@ github 目录：https://github.com/PPYYQQ/MARL-hw1.git
 └── codebase
     ├── kaiwu.json
     ├── train_test.py
+    ├── tests/
     ├── conf
     │   ├── app_conf_intelligent_traffic_lights.toml
     │   ├── algo_conf_intelligent_traffic_lights.toml
@@ -53,6 +54,18 @@ github 目录：https://github.com/PPYYQQ/MARL-hw1.git
     ├── agent_diy/
     └── log/
 ```
+
+辅助资产：
+
+- `scripts/check_offline.sh`：根目录一键离线检查脚本，会进入 `codebase/` 编译、运行无平台依赖测试、运行 smoke、检查空白并打包。
+- `scripts/package_submission.sh`：根目录打包脚本，输出 `dist/marl_hw1_codebase.zip`，只打包 `codebase/`，排除日志、`__pycache__`、checkpoint 和模型 pkl。
+- `codebase/tests/test_target_dqn_features.py`：无 `torch` / KaiwuDRL 依赖的功能边界测试。
+- `codebase/tests/test_target_dqn_static.py`：无 `torch` / KaiwuDRL 依赖的源码锚点测试。
+- `codebase/tests/test_target_dqn_smoke.py`：需要 `torch` 的模型和 Agent smoke 测试；当前普通本地环境缺少 `torch` 时会明确 skip。
+- `RUNBOOK.md`：平台运行、打包、调参、常见错误和实验回填指南。
+- `EXPERIMENTS.md`：平台训练/评估实验台账；平台跑完后要把真实指标写入这里。
+- `REPORT_DRAFT.md`：报告草稿；平台实验后补齐真实分数、曲线和问题分析。
+- `PROGRESS.md`：开发过程记录；关键修改、验证和 commit 必须追加记录。
 
 算法入口：
 
@@ -75,6 +88,16 @@ Target-DQN 关键文件：
 
 当前代码包来自官方教学模板。主线已集中在 `agent_target_dqn`，并完成了一批从模板到可训练闭环所需的基础修复。后续仍应优先维护 `agent_target_dqn`，除非用户明确要求切换算法。
 
+本次完整代码包复核结论：
+
+- 仓库现在包含平台完整 `codebase/`、本地 `tests/`、打包/检查脚本和文档台账；`codebase/log/` 是运行产物，不应纳入开发修改范围。
+- `codebase/conf/app_conf_intelligent_traffic_lights.toml` 和 `codebase/train_test.py` 都默认选择 `target_dqn`，当前平台入口与主线一致。
+- `agent_target_dqn` 是唯一被系统性修复和测试覆盖的算法包；`agent_dqn`、`agent_ppo`、`agent_diy` 仍应视为平台模板/备选代码，除非用户明确切换算法，不要把后续改动扩散过去。
+- `tests/test_target_dqn_features.py` 和 `tests/test_target_dqn_static.py` 是当前普通本地环境最可靠的回归检查；`tests/test_target_dqn_smoke.py` 依赖 `torch`，平台或安装 PyTorch 后再补跑。
+- `scripts/package_submission.sh` 当前只打包 `codebase/`；根目录文档、截图、日志、checkpoint、模型 pkl 和 `icml2022.zip` 不会进入提交包。
+- `.gitignore` 已忽略 `__pycache__`、`.pyc`、`dist/`、`codebase/log/` 和 checkpoint；如果本地看到缓存文件，不要手动纳入提交。
+- 普通本地环境仍无法运行真实 `python train_test.py`，因为缺少 `kaiwudrl`、`common_python` 和 `torch`；真实 reset/step、样本池、模型池和评分必须在腾讯开悟/KaiwuDRL 环境确认。
+
 已处理的高优先级问题：
 
 - Target-DQN 使用独立 target network，并按 `TARGET_UPDATE_FREQ` 同步。
@@ -86,7 +109,7 @@ Target-DQN 关键文件：
 - `FeatureProcess` 会清洗 `frame_no`、`frame_time`、车辆 ID、车速和车道位置，等待时间/行驶距离/车道计数统计遇到异常动态字段会跳过单车而不是中断整帧。
 - 训练 workflow 调用 `observation_process()` 和非决策帧 `update_traffic_info()` 时会隔离异常，特征处理失败会回退到规则动作和零特征样本。
 - `observation_process()`、`rule_based_action()` 和共享交通统计工具会保守处理缺失 `frame_state`、缺失 `vehicles`、缺失 `obs` 包装和畸形车辆/相位记录。
-- workflow、Agent、reward、preprocessor 和交通统计 helper 的关键协议字段读取已兼容普通 dict 与属性对象，贴合作业文档中的 Observation / FrameState / Vehicle / Phase 消息形态；标量字段不会被误当成协议对象，单个对象式 vehicles/phases 容器也会按一条记录处理。
+- workflow、Agent、reward、preprocessor 和交通统计 helper 的关键协议字段读取已兼容普通 dict 与属性对象，贴合作业文档中的 Observation / FrameState / Vehicle / Phase 消息形态；标量字段不会被误当成协议对象，单个非 dict 对象式 vehicles/phases 容器也会按一条记录处理。
 - 共享交通统计工具不再要求车辆记录必须包含 `target_junction`；缺失时会按单路口进口车道车辆处理，等待时间统计也会复用同一默认目标路口，贴合作业文档字段列表。
 - `action_process()` 已将 duration index 映射为实际秒数。
 - `predict()` 对空 observation batch 会返回空列表；`action_process()` 会固定 `junction_id=0` 并清洗异常相位/时长索引，确保输出合法动作。
@@ -156,6 +179,8 @@ Target-DQN 关键文件：
 - 平台文档中 `legal_action` 更像是否需要决策的标量门控；当前 Target-DQN 已保守兼容标量门控和 4 维相位 mask，但仍需在真实平台 observation 上确认是否存在相位级 mask 语义。
 - `agent_dqn`、`agent_ppo`、`agent_diy` 仍基本保留模板状态，不是当前主线。
 - 当前状态特征包含占用/速度网格、当前相位、相位服务年龄、持续时间、剩余时间、相位压力、全局等待/延误统计、一帧交通趋势、4 帧滚动交通历史和逐车道车辆/排队/等待统计。
+- 作业文档定义了 `frame_state.lanes` 的 `lane_id`、`v_count`、`congestion`、`queue_length` 字段；当前主线主要依赖 `vehicles` 推导车道和相位压力，尚未把 `lanes` 作为车辆列表缺失或稀疏时的 fallback 信号。
+- 当前列表字段解析支持 list、tuple、iterable 和单个非 dict 协议对象；如果平台把 `vehicles`、`phases` 或 `lanes` 编码成单条 dict 记录或 dict-of-records，现有逻辑会保守忽略，需要拿真实样例后再扩展，不能盲目把任意 dict 当作列表展开。
 - reward 权重尚未经过平台训练调优。
 - 本地普通 Python 缺少 `torch`、`kaiwudrl`、`common_python`，真实 `train_test.py` 仍需在平台环境验证。
 
@@ -253,6 +278,7 @@ coding agent 无法单独保证：
 - 如继续增加更长历史窗口等特征，必须同步修改 `Config.DIM_OF_OBSERVATION` 和模型输入层。
 - 坐标单位必须通过真实 observation 确认；若 `position_in_lane["y"]` 是毫米，应使用 `/ 1000` 后再按 `GRID_LENGTH` 分桶。
 - 原始 observation、frame_state、vehicle、phase、extra_info 可能是 dict，也可能是平台协议对象；新增解析逻辑必须使用安全字段读取 helper，不要直接假设 `.get()` 或下标访问一定可用。注意区分协议对象和标量，避免把 `1`、`False` 这类坏字段当成有效 observation。
+- `frame_state.lanes` 是文档中明确存在的车道聚合字段；如果平台真实 observation 里 `vehicles` 为空但 `lanes` 有值，下一步应优先把 lanes 聚合成相位压力和逐车道统计 fallback，同时保持 638 维特征总长不变或同步更新 `Config.DIM_OF_OBSERVATION`。
 - 车辆记录可能没有 `target_junction`，进口车道判断和交叉口等待时间统计不能强依赖该字段；单路口场景下缺失且能识别为进口车道时按目标路口 0 处理，无法识别目标的畸形记录应跳过。
 - 所有特征必须固定长度、无 NaN、范围稳定；空车辆和缺失字段要有默认值。
 
@@ -268,19 +294,22 @@ coding agent 无法单独保证：
 
 ## 实施计划
 
-1. 在 `codebase/` 运行离线检查：`python -m compileall agent_target_dqn tests`、`python tests/test_target_dqn_static.py`。
-2. 有 `torch` 时运行 `python tests/test_target_dqn_smoke.py`。
-3. 在腾讯开悟/KaiwuDRL 环境运行 `python train_test.py`。
-4. 通过 `./scripts/package_submission.sh` 生成平台上传包。
-5. 使用平台监控调参，记录每次配置、模型 ID、训练时长和评估得分。
-6. 将真实实验结果回填到 `PROGRESS.md` 和 `REPORT_DRAFT.md`。
-7. 如基础 Target-DQN 稳定，再根据平台指标调参。
+1. 每次修改前确认 `codebase/conf/app_conf_intelligent_traffic_lights.toml` 和 `codebase/train_test.py` 仍指向 `target_dqn`。
+2. 在 `codebase/` 运行局部检查：`python -m compileall agent_target_dqn tests`、`python tests/test_target_dqn_features.py`、`python tests/test_target_dqn_static.py`。
+3. 在根目录运行 `./scripts/check_offline.sh`，确认编译、静态/功能测试、smoke skip、空白检查和打包内容检查通过。
+4. 有 `torch` 时补跑 `cd codebase && python tests/test_target_dqn_smoke.py`。
+5. 在腾讯开悟/KaiwuDRL 环境运行 `cd codebase && python train_test.py`。
+6. 通过 `./scripts/package_submission.sh` 生成平台上传包，并确认压缩包里只有平台需要的 `codebase/` 内容。
+7. 使用平台监控调参，记录每次配置、模型 ID、训练时长和评估得分。
+8. 将真实实验结果回填到 `EXPERIMENTS.md`、`PROGRESS.md` 和 `REPORT_DRAFT.md`。
+9. 如基础 Target-DQN 稳定，再根据平台指标优先处理 reward 权重、lanes fallback、duration 分桶和训练配置调参。
 
 ## 测试计划
 
 基础检查：
 
-- 在 `codebase/` 运行 `python train_test.py`。
+- 普通本地环境优先运行 `./scripts/check_offline.sh`。
+- 平台环境再在 `codebase/` 运行 `python train_test.py`。
 - 所有新增模块能正常 import。
 - `Model.forward()` 对随机 batch 返回一个 joint Q head，形状为 `[batch, 80]`。
 - 无平台依赖时运行 `python tests/test_target_dqn_features.py`，覆盖特征工具和合法动作归一化。

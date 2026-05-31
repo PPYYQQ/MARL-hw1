@@ -116,6 +116,7 @@ python tests/test_target_dqn_smoke.py
 - `observation process failed` / `traffic info update failed`：当前 workflow 会回退到规则动作、零特征样本或跳过非决策帧预处理并继续；需要保留原始 observation 和 extra_info 定位特征处理异常。
 - 观测里有异常 frame 或车辆字段：当前预处理器会清洗 frame、车辆 ID、车速和位置；若仍异常，优先保存原始 observation 样例并检查是否不是 dict/list 结构。
 - 观测里有异常相位字段：当前相位 ID、duration、remaining duration、相位年龄和 workflow frame_no 都会清洗为有限值；若仍异常，优先保留原始 `frame_state.phases`。
+- 模型输入含 NaN/Inf 或异常 array-like：当前 `Model._prepare_input()` 会把非有限值归零，ragged 或转换失败的 Python observation 会补零或截断；如果仍出现非有限 Q 值，优先保留进入模型前的 feature。
 - reward 长期为 0：检查 `reward_shaping()` 是否收到真实车辆字段、`vehicles` 是否为空、相位压力是否一直为 0。
 - loss 爆炸或 NaN：当前特征、样本和 learner 都会清洗 NaN/Inf；若仍出现，优先降低 `Config.LR`，再缩小 reward 权重并保留异常 observation 样例。
 - 样本 shape 不一致或 `torch.stack` 报错：当前 `sample_process()` 和 `Algorithm.learn()` 都会定宽归一化样本字段；若仍出现，优先保留一局原始 collector 日志来定位平台返回的异常字段。

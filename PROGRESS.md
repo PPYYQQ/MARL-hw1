@@ -1177,3 +1177,17 @@
   - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
 - 下一步：
   - 平台环境可用后确认真实 `legal_action` 的异常格式是否应按全相位可选处理，或需要更严格地区分不可决策帧。
+
+### Step 80 - 模型输入非有限值清洗
+
+- 状态：完成
+- Commit：`03e171f`
+- 内容：
+  - `Model._prepare_input()` 在补零/截断后统一调用 `torch.nan_to_num()`，把输入 NaN/Inf 清零。
+  - `Model._as_numpy_array()` 对异常 array-like observation 转换失败使用零向量或零行兜底。
+  - 静态测试增加模型输入非有限值清洗和异常 numpy 转换隔离锚点。
+- 验证：
+  - 已运行 `python tests/test_target_dqn_static.py`，通过。
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 有 `torch` 环境后补跑 `python tests/test_target_dqn_smoke.py`，确认直接模型 forward 对 NaN/Inf 输入输出有限 Q 值。

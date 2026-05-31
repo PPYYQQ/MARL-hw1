@@ -93,6 +93,7 @@ Target-DQN 关键文件：
 - 相位时间特征、相位年龄、reward 公平性项和 workflow `frame_no` 会清洗 NaN/Inf/Overflow，避免异常相位字段或帧号中断推理和奖励计算。
 - `observation_process()` 会在返回前统一清洗最终特征向量，保证长度为 `Config.DIM_OF_OBSERVATION` 且非有限值归零。
 - `Model.forward()` 会把单条一维 observation 转成 batch，并对异常长度或 ragged Python batch observation 做补零或截断，避免输入形状差异直接触发线性层错误。
+- `Model.forward()` 的 `_prepare_input()` 会统一清洗 NaN/Inf，异常 array-like observation 转换失败会补零，避免直接模型调用产生非有限 Q 值。
 - optimizer 重复初始化已清理，当前使用 Adam。
 - `exploit()` 已有规则基线兜底。
 - `save_model()` / `load_model()` 已支持默认 checkpoint 路径和首次训练无 latest 模型的情况。

@@ -103,7 +103,7 @@
 如果后续平台评估显示当前状态表达不足，可增加更长时间窗口或更细粒度的车道趋势。
 
 增加特征时必须同步修改 `Config.DIM_OF_OBSERVATION` 和模型输入层。
-模型前向传播会把单条一维 observation 统一成 `[1, DIM_OF_OBSERVATION]` batch；如果输入长度短于配置维度则补零，长于配置维度则截断。对于 Python list 形式的 ragged batch，会先逐行补齐或截断再堆叠，以避免平台封装或测试入口的形状差异直接触发线性层错误。
+模型前向传播会把单条一维 observation 统一成 `[1, DIM_OF_OBSERVATION]` batch；如果输入长度短于配置维度则补零，长于配置维度则截断。对于 Python list 形式的 ragged batch，会先逐行补齐或截断再堆叠，以避免平台封装或测试入口的形状差异直接触发线性层错误。模型入口还会把 NaN/Inf 清零，异常 array-like 转换失败时使用零向量兜底，避免直接模型调用产生非有限 Q 值。
 
 ## 动作设计
 

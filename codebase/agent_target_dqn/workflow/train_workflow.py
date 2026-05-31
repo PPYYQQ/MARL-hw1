@@ -226,7 +226,10 @@ def _reward_components(reward):
 
 
 def _finite_float(value):
-    value = float(value)
+    try:
+        value = float(value)
+    except (TypeError, ValueError, OverflowError):
+        return 0.0
     if not math.isfinite(value):
         return 0.0
     return value
@@ -283,10 +286,7 @@ def _safe_extra_info(env_obs):
 
 
 def _safe_frame_no(env_obs):
-    try:
-        return int(_safe_env_value(env_obs, "frame_no", 0) or 0)
-    except (TypeError, ValueError):
-        return 0
+    return int(_finite_float(_safe_env_value(env_obs, "frame_no", 0)))
 
 
 def _safe_done_flag(env_obs, key):

@@ -25,6 +25,7 @@ def _configure_torch_threads():
 _configure_torch_threads()
 
 import os
+import math
 import time
 from agent_target_dqn.model.model import Model
 from agent_target_dqn.feature.definition import *
@@ -34,6 +35,24 @@ from kaiwudrl.interface.agent import BaseAgent
 from agent_target_dqn.conf.conf import Config
 from agent_target_dqn.algorithm.algorithm import Algorithm
 from agent_target_dqn.feature.preprocessor import FeatureProcess
+
+
+def _safe_float(value, default=0.0):
+    try:
+        value = float(value)
+    except (TypeError, ValueError, OverflowError):
+        return default
+    if not math.isfinite(value):
+        return default
+    return value
+
+
+def _safe_nonnegative_float(value, default=0.0):
+    return max(_safe_float(value, default), 0.0)
+
+
+def _safe_int(value, default=0):
+    return int(_safe_float(value, default))
 
 
 class Agent(BaseAgent):
@@ -288,8 +307,8 @@ class Agent(BaseAgent):
                     x_pos = get_lane_code(vehicle)
                     y_pos = int(get_lane_position_meters(vehicle) // Config.GRID_LENGTH)
                     vehicle_config = self.preprocess.vehicle_configs_dict.get(vehicle.get("v_config_id"), {})
-                    max_speed = max(float(vehicle_config.get("max_speed", Config.DEFAULT_MAX_SPEED)), 1.0)
-                    speed = float(vehicle.get("speed", 0.0) or 0.0)
+                    max_speed = max(_safe_float(vehicle_config.get("max_speed"), Config.DEFAULT_MAX_SPEED), 1.0)
+                    speed = _safe_nonnegative_float(vehicle.get("speed", 0.0))
                 except (KeyError, TypeError, ValueError, AttributeError):
                     continue
 
@@ -428,20 +447,12 @@ class Agent(BaseAgent):
         if not phase_info:
             return phase_feature + [0.0, 0.0, 0.0, 0.0]
 
-        try:
-            phase_id = int(
-                np.clip(
-                    phase_info.get("phase_id", phase_info.get("phase_idx", 0)),
-                    0,
-                    Config.DIM_OF_ACTION_PHASE - 1,
-                )
-            )
-            duration = max(float(phase_info.get("duration", 0.0) or 0.0), 0.0)
-            remaining_duration = max(float(phase_info.get("remaining_duration", 0.0) or 0.0), 0.0)
-        except (TypeError, ValueError):
-            phase_id = 0
-            duration = 0.0
-            remaining_duration = 0.0
+        phase_id = self._safe_action_index(
+            phase_info.get("phase_id", phase_info.get("phase_idx", 0)),
+            Config.DIM_OF_ACTION_PHASE,
+        )
+        duration = _safe_nonnegative_float(phase_info.get("duration", 0.0))
+        remaining_duration = _safe_nonnegative_float(phase_info.get("remaining_duration", 0.0))
         elapsed_duration = max(duration - remaining_duration, 0.0)
 
         phase_feature[phase_id] = 1.0
@@ -453,32 +464,24 @@ class Agent(BaseAgent):
         ]
 
     def _phase_age_feature(self, frame_state):
-        try:
-            frame_no = int(frame_state.get("frame_no", 0) or 0)
-        except (TypeError, ValueError):
-            frame_no = 0
+        frame_no = _safe_int(frame_state.get("frame_no", 0)) if isinstance(frame_state, dict) else 0
         phase_info = self._current_phase_info(frame_state)
         last_served = self.preprocess.phase_last_served_frame
-        if len(last_served) != Config.DIM_OF_ACTION_PHASE:
+        if not isinstance(last_served, list) or len(last_served) != Config.DIM_OF_ACTION_PHASE:
             last_served = [None] * Config.DIM_OF_ACTION_PHASE
-            self.preprocess.phase_last_served_frame = last_served
-        if all(served_frame is None for served_frame in last_served):
-            for phase_idx in range(Config.DIM_OF_ACTION_PHASE):
-                last_served[phase_idx] = frame_no
+        last_served = [
+            frame_no if served_frame is None else _safe_int(served_frame, frame_no)
+            for served_frame in last_served
+        ]
+        self.preprocess.phase_last_served_frame = last_served
         if phase_info:
-            try:
-                phase_id = int(
-                    np.clip(
-                        phase_info.get("phase_id", phase_info.get("phase_idx", 0)),
-                        0,
-                        Config.DIM_OF_ACTION_PHASE - 1,
-                    )
-                )
-            except (TypeError, ValueError):
-                phase_id = 0
+            phase_id = self._safe_action_index(
+                phase_info.get("phase_id", phase_info.get("phase_idx", 0)),
+                Config.DIM_OF_ACTION_PHASE,
+            )
             last_served[phase_id] = frame_no
         return [
-            float(np.clip((frame_no - (served_frame or frame_no)) / Config.PHASE_AGE_SCALE, 0.0, 1.0))
+            float(np.clip((frame_no - served_frame) / Config.PHASE_AGE_SCALE, 0.0, 1.0))
             for served_frame in last_served
         ]
 

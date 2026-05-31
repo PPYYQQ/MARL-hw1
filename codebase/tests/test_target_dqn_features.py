@@ -344,6 +344,34 @@ def main():
         0.0,
         0.0,
     )
+    assert reward_shaping(
+        {"frame_state": {"frame_no": 1, "vehicles": []}},
+        [0, 0, float("inf")],
+        dummy_agent,
+    ) == (0.0, 0.0)
+    dummy_agent.preprocess.old_waiting_time = 0.0
+    dummy_agent.preprocess.phase_last_served_frame = ["bad", float("inf"), None, -5]
+    dummy_agent.preprocess.last_phase_index = None
+    finite_reward = reward_shaping(
+        {
+            "frame_state": {
+                "frame_no": float("inf"),
+                "vehicles": [
+                    {
+                        "lane": 11,
+                        "junction": -1,
+                        "target_junction": 0,
+                        "speed": 0.0,
+                        "waiting_time": 12.0,
+                        "delay": 3.0,
+                    }
+                ],
+            }
+        },
+        [0, 0, Config.MIN_GREEN_DURATION],
+        dummy_agent,
+    )
+    assert all(math.isfinite(value) for value in finite_reward)
 
     assert _reward_components(None) == (0.0, 0.0)
     assert _reward_components((1.5, float("nan"))) == (1.5, 0.0)
@@ -372,6 +400,8 @@ def main():
     assert _safe_extra_info({"extra_info": {"init_state": {}}}) == {"init_state": {}}
     assert _safe_extra_info({"extra_info": None}) == {}
     assert _safe_frame_no({"frame_no": "bad"}) == 0
+    assert _safe_frame_no({"frame_no": float("inf")}) == 0
+    assert _safe_frame_no({"frame_no": 3.5}) == 3
     assert _safe_frame_no({"frame_no": 7}) == 7
     assert _safe_done_flag({"terminated": 1}, "terminated") is True
     assert _safe_done_flag({}, "terminated") is False

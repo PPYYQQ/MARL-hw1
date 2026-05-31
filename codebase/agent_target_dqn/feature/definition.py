@@ -37,6 +37,13 @@ ObsData = create_cls("ObsData", feature=None, legal_action=None)
 ActData = create_cls("ActData", junction_id=None, phase_index=None, duration=None)
 
 
+def _safe_int(value, default=0):
+    try:
+        return int(value)
+    except (TypeError, ValueError, OverflowError):
+        return int(default)
+
+
 def _fixed_float_list(value, width, default=0.0):
     try:
         values = np.asarray(value, dtype=np.float32).flatten()
@@ -63,7 +70,7 @@ def _fixed_action_list(value):
 def _not_done_flag(value):
     try:
         return 1 if int(value) == 0 else 0
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         return 1
 
 
@@ -156,7 +163,7 @@ def reward_shaping(_obs, act, agent):
             return 0.0, 0.0
         phase_index = int(np.clip(int(act[1]), 0, Config.DIM_OF_ACTION_PHASE - 1))
         duration = int(act[2])
-    except (TypeError, ValueError, IndexError):
+    except (TypeError, ValueError, IndexError, OverflowError):
         return 0.0, 0.0
 
     phase_reward, duration_reward = 0.0, 0.0
@@ -164,10 +171,7 @@ def reward_shaping(_obs, act, agent):
     frame_state = _obs.get("frame_state") if isinstance(_obs, dict) else None
     if not isinstance(frame_state, dict):
         return 0.0, 0.0
-    try:
-        frame_no = int(frame_state.get("frame_no", 0) or 0)
-    except (TypeError, ValueError):
-        frame_no = 0
+    frame_no = _safe_int(frame_state.get("frame_no", 0))
     vehicles = frame_state.get("vehicles", []) or []
     if not isinstance(vehicles, list):
         vehicles = []
@@ -231,7 +235,9 @@ def _fairness_reward(agent, phase_index, frame_no, phase_pressure):
     last_served = _ensure_phase_served(agent)
     phase_ages = np.array(
         [
-            frame_no - served_frame if served_frame is not None else 0.0
+            max(frame_no - _safe_int(served_frame, frame_no), 0)
+            if served_frame is not None
+            else 0.0
             for served_frame in last_served
         ],
         dtype=np.float32,
@@ -251,7 +257,7 @@ def _fairness_reward(agent, phase_index, frame_no, phase_pressure):
 def _mark_phase_served(agent, phase_index, frame_no):
     last_served = _ensure_phase_served(agent)
     phase_index = int(np.clip(phase_index, 0, Config.DIM_OF_ACTION_PHASE - 1))
-    last_served[phase_index] = frame_no
+    last_served[phase_index] = _safe_int(frame_no)
 
 
 def _ensure_phase_served(agent):

@@ -99,6 +99,8 @@
 
 预处理器会清洗 `frame_no`、`frame_time`、车辆 ID、车速和车道位置；等待时间、行驶距离、车道车辆数和交叉口等待时间统计遇到异常车辆字段时跳过单车或按 0 处理，避免一个异常车辆破坏跨帧状态。路网初始化、车辆统计、reward 和 workflow 环境返回解析都通过安全字段读取处理 dict / 属性对象差异，并明确排除 int、float、bool 等标量伪记录。
 
+路网初始化会同时兼容模板字段 `j_id/e_id/l_id/v_config_id` 和文档式字段 `junction_id/edge_id/lane_id/vehicle_config_id`，避免真实平台 init_state 命名差异导致路口、边、车道或车辆配置未写入预处理器。
+
 交通统计工具会清洗车辆速度、等待时间、延误、相位压力、交通趋势和历史统计中的 NaN/Inf；最终 observation 返回前也会统一补齐或截断到 `DIM_OF_OBSERVATION`，并把非有限特征归零。这样即使平台返回少量异常车辆字段，也不会把 NaN/Inf 送入模型推理或 reward 计算。
 
 相位时间特征、相位服务年龄、reward 公平性项和 workflow 帧号读取也使用有限值清洗；异常 `phase_id`、`duration`、`remaining_duration`、`frame_no` 或旧相位服务记录会回退为保守默认值。

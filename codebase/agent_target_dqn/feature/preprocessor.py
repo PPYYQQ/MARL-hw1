@@ -44,17 +44,20 @@ def _is_record(value):
 
 _RECORD_FIELD_KEYS = {
     "j_id",
+    "junction_id",
     "e_id",
+    "edge_id",
     "l_id",
+    "lane_id",
     "v_id",
     "v_config_id",
+    "vehicle_config_id",
     "lane",
     "junction",
     "position_in_lane",
     "speed",
     "delay",
     "waiting_time",
-    "lane_id",
     "v_count",
     "congestion",
     "queue_length",
@@ -64,6 +67,14 @@ _RECORD_FIELD_KEYS = {
     "vehicle_configs",
     "max_speed",
 }
+
+
+def _first_record_value(record, *keys, default=None):
+    for key in keys:
+        value = record_value(record, key, None)
+        if value is not None:
+            return value
+    return default
 
 
 def _dict_list_items(value):
@@ -193,7 +204,7 @@ class FeatureProcess:
         # Store road structure information in various variables
         # 将道路结构信息存储到各个变量
         for junction in junctions:
-            junction_id = record_value(junction, "j_id")
+            junction_id = _first_record_value(junction, "j_id", "junction_id")
             if junction_id is None:
                 continue
             self.junction_dict[junction_id] = junction
@@ -206,19 +217,23 @@ class FeatureProcess:
                     index += 1
 
             for edge in edges:
-                edge_id = record_value(edge, "e_id")
+                edge_id = _first_record_value(edge, "e_id", "edge_id")
                 if edge_id is not None:
                     self.edge_dict[edge_id] = edge
             for lane in lane_configs:
-                lane_id = record_value(lane, "l_id")
+                lane_id = _first_record_value(lane, "l_id", "lane_id")
                 if lane_id is not None:
                     self.lane_dict[lane_id] = lane
             for vehicle_config in vehicle_configs:
-                vehicle_config_id = record_value(vehicle_config, "v_config_id")
+                vehicle_config_id = _first_record_value(
+                    vehicle_config,
+                    "v_config_id",
+                    "vehicle_config_id",
+                )
                 if vehicle_config_id is not None:
                     self.vehicle_configs_dict[vehicle_config_id] = vehicle_config
             for lane in lane_configs:
-                lane_id = record_value(lane, "l_id")
+                lane_id = _first_record_value(lane, "l_id", "lane_id")
                 if lane_id is not None:
                     self.lane_volume[lane_id] = []
 

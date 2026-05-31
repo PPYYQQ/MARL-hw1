@@ -107,6 +107,7 @@ Target-DQN 关键文件：
 - 训练 workflow 调用 reward shaping 时会隔离异常，奖励计算失败会记录错误并使用 `(0.0, 0.0)`。
 - `FeatureProcess.update_traffic_info()` 对缺失 `frame_state`、缺失 `vehicles` 或畸形车辆记录会保守跳过，避免异常帧中断特征处理。
 - `FeatureProcess` 会清洗 `frame_no`、`frame_time`、车辆 ID、车速和车道位置，等待时间/行驶距离/车道计数统计遇到异常动态字段会跳过单车而不是中断整帧。
+- `FeatureProcess.init_road_info()` 已兼容模板字段 `j_id/e_id/l_id/v_config_id` 和文档式字段 `junction_id/edge_id/lane_id/vehicle_config_id`，避免真实 init_state 使用不同命名时路网配置被漏载。
 - 训练 workflow 调用 `observation_process()` 和非决策帧 `update_traffic_info()` 时会隔离异常，特征处理失败会回退到规则动作和零特征样本。
 - `observation_process()`、`rule_based_action()` 和共享交通统计工具会保守处理缺失 `frame_state`、缺失 `vehicles`、缺失 `obs` 包装和畸形车辆/相位记录。
 - workflow、Agent、reward、preprocessor 和交通统计 helper 的关键协议字段读取已兼容普通 dict 与属性对象，贴合作业文档中的 Observation / FrameState / Vehicle / Phase / Lane 消息形态；标量字段不会被误当成协议对象，单个 dict 记录、dict-of-records 和单个非 dict 对象式 vehicles/phases/lanes 容器都会按有效记录处理。

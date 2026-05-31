@@ -1481,3 +1481,19 @@
   - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
 - 下一步：
   - 平台运行后如果仍遇到 protobuf repeated wrapper 或特殊容器，保存原始类型、repr 和迭代行为，再继续扩展解析。
+
+### Step 99 - 兼容文档式路网初始化字段别名
+
+- 状态：完成
+- Commit：待提交
+- 内容：
+  - `FeatureProcess.init_road_info()` 新增 `_first_record_value()`，统一读取多个字段别名。
+  - 路口、边、车道和车辆配置初始化同时兼容模板字段 `j_id/e_id/l_id/v_config_id` 与文档式字段 `junction_id/edge_id/lane_id/vehicle_config_id`。
+  - 无平台依赖测试增加文档式 `init_state` 样例，覆盖 dict-of-records 的 junctions、edges、lane_configs、vehicle_configs 和 `enter_lanes_on_directions`。
+  - 静态测试增加路网初始化字段别名锚点；`AGENTS.md`、`RUNBOOK.md` 和 `REPORT_DRAFT.md` 记录当前兼容范围。
+- 验证：
+  - 已运行 `python -m compileall agent_target_dqn/feature/preprocessor.py tests/test_target_dqn_features.py tests/test_target_dqn_static.py`，通过。
+  - 已运行 `python tests/test_target_dqn_features.py` 和 `python tests/test_target_dqn_static.py`，均通过。
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 平台运行后确认 `extra_info.init_state` 的真实字段名；如仍有未识别命名，保存样例后继续扩展别名。

@@ -409,6 +409,26 @@ def main():
     assert object_preprocess.waiting_time_store[10] == 2.0
     assert object_preprocess.vehicle_distance_store[10] == 5.0
     assert object_preprocess.lane_volume[11] == [10]
+    doc_alias_preprocess = FeatureProcess(None)
+    doc_alias_start_info = {
+        "junctions": {
+            "main": {
+                "junction_id": 0,
+                "enter_lanes_on_directions": {"north": {"lanes": [11, 10]}},
+            }
+        },
+        "edges": {"edge_main": {"edge_id": 101}},
+        "lane_configs": {"lane_main": {"lane_id": 11}},
+        "vehicle_configs": {"car_cfg": {"vehicle_config_id": 3, "max_speed": 15.0}},
+    }
+    doc_alias_preprocess.init_road_info(doc_alias_start_info)
+    assert 0 in doc_alias_preprocess.junction_dict
+    assert 101 in doc_alias_preprocess.edge_dict
+    assert 11 in doc_alias_preprocess.lane_dict
+    assert 11 in doc_alias_preprocess.lane_volume
+    assert doc_alias_preprocess.vehicle_configs_dict[3]["max_speed"] == 15.0
+    assert doc_alias_preprocess.l_id_to_index[0][11] == 0
+    assert doc_alias_preprocess.l_id_to_index[0][10] == 1
     object_preprocess.waiting_time_store[11] = 4.0
     assert object_preprocess.get_all_junction_waiting_time(
         [AttrObject(v_id=11, junction=-1, lane=11)]

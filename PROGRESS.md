@@ -977,3 +977,19 @@
   - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
 - 下一步：
   - 平台环境可用后确认单步 reward 计算异常只影响该 transition 奖励，不会导致 episode 或 workflow 崩溃。
+
+### Step 66 - observation 处理失败隔离
+
+- 状态：完成
+- Commit：`0aaa71f`
+- 内容：
+  - workflow 增加 `_process_observation()`，封装决策帧 `agent.observation_process()` 调用。
+  - observation 特征处理抛错时记录 `observation process failed`，预测路径回退到规则动作；如果仍需构造样本，则 `_obs_feature()` 使用全零固定维度特征占位。
+  - workflow 增加 `_update_traffic_info()`，封装非决策帧 `agent.preprocess.update_traffic_info()`，失败时记录 `traffic info update failed` 并继续推进环境。
+  - `_predict_action()` 对空 `obs_data` 直接走规则动作兜底，规则动作失败时仍返回 `[0, 0, MIN_GREEN_DURATION]`。
+  - 无平台依赖测试覆盖 observation 处理成功/失败、零特征兜底、非决策帧 traffic update 成功/失败和空 obs_data 预测兜底；静态测试增加相关锚点。
+- 验证：
+  - 已运行 `python -m compileall agent_target_dqn tests`、`python tests/test_target_dqn_features.py` 和 `python tests/test_target_dqn_static.py`，均通过。
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 平台环境可用后确认单帧 observation/preprocess 异常只影响该帧特征质量，不会导致 actor episode 崩溃。

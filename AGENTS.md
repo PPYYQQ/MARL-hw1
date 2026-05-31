@@ -83,6 +83,7 @@ Target-DQN 关键文件：
 - 训练 workflow 调用 reward shaping 时会隔离异常，奖励计算失败会记录错误并使用 `(0.0, 0.0)`。
 - `FeatureProcess.update_traffic_info()` 对缺失 `frame_state`、缺失 `vehicles` 或畸形车辆记录会保守跳过，避免异常帧中断特征处理。
 - `FeatureProcess` 会清洗 `frame_no`、`frame_time`、车辆 ID、车速和车道位置，等待时间/行驶距离/车道计数统计遇到异常动态字段会跳过单车而不是中断整帧。
+- 训练 workflow 调用 `observation_process()` 和非决策帧 `update_traffic_info()` 时会隔离异常，特征处理失败会回退到规则动作和零特征样本。
 - `observation_process()`、`rule_based_action()` 和共享交通统计工具会保守处理缺失 `frame_state`、缺失 `vehicles`、缺失 `obs` 包装和畸形车辆/相位记录。
 - `action_process()` 已将 duration index 映射为实际秒数。
 - `predict()` 对空 observation batch 会返回空列表；`action_process()` 会固定 `junction_id=0` 并清洗异常相位/时长索引，确保输出合法动作。

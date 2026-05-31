@@ -991,6 +991,25 @@ def main():
     assert nested_score_metrics["env_score"] == 66.0
     assert nested_score_metrics["avg_waiting_time"] == 6.0
     assert nested_score_metrics["switch_penalty"] == 3.0
+    camel_score_metrics = _env_score_metrics(
+        {"scoreInfo": {"totalScore": 77.0, "avgDelay": 2.2}},
+        {
+            "info": {
+                "envInfo": {
+                    "metrics": {
+                        "avgQueueLength": 5.0,
+                        "avgWaitingTime": 6.5,
+                        "switchPenalty": 4.0,
+                    }
+                }
+            }
+        },
+    )
+    assert camel_score_metrics["env_score"] == 77.0
+    assert camel_score_metrics["avg_delay"] == 2.2
+    assert camel_score_metrics["avg_queue_length"] == 5.0
+    assert camel_score_metrics["avg_waiting_time"] == 6.5
+    assert camel_score_metrics["switch_penalty"] == 4.0
 
     env_metric_snapshot = _default_env_metric_snapshot()
     assert env_metric_snapshot["env_score"] == 0.0

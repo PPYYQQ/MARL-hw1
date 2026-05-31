@@ -68,10 +68,22 @@ def _fixed_action_list(value):
 
 
 def _not_done_flag(value):
+    if isinstance(value, bool):
+        return 0 if value else 1
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        if normalized in ("true", "1", "yes", "y"):
+            return 0
+        if normalized in ("false", "0", "no", "n", ""):
+            return 1
+        return 1
     try:
-        return 1 if int(value) == 0 else 0
+        value = float(value)
     except (TypeError, ValueError, OverflowError):
         return 1
+    if not np.isfinite(value):
+        return 1
+    return 1 if value == 0.0 else 0
 
 
 def sample_process(list_game_data):

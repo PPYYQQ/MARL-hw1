@@ -104,6 +104,8 @@ def main():
     require("_fixed_float_list(obs, Config.DIM_OF_OBSERVATION)" in definition, "sample_process should normalize obs width")
     require("_fixed_action_list(act)" in definition, "sample_process should normalize action width and bounds")
     require("_not_done_flag" in definition, "sample_process should normalize done flags")
+    require('"true", "1", "yes", "y"' in definition, "sample_process should parse string true done flags")
+    require('"false", "0", "no", "n", ""' in definition, "sample_process should parse string false done flags")
     require('reward = getattr(data, "rew", None)' in definition, "sample_process should handle missing rewards")
     require("sample_datas[i].legal_action = sample_datas[i + 1].legal_action" in definition, "samples should carry next-state phase legality")
     require("def _safe_int" in definition, "reward should sanitize scalar integer fields")

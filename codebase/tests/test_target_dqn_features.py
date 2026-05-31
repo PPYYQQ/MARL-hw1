@@ -60,7 +60,7 @@ def main():
     install_workflow_stubs()
 
     from agent_target_dqn.conf.conf import Config
-    from agent_target_dqn.feature.definition import SampleData, reward_shaping, sample_process
+    from agent_target_dqn.feature.definition import SampleData, _not_done_flag, reward_shaping, sample_process
     from agent_target_dqn.feature.preprocessor import FeatureProcess
     from agent_target_dqn.feature.traffic_utils import (
         get_phase_pressure,
@@ -346,6 +346,12 @@ def main():
     ]
     assert ragged_samples[1].rew == [0.25, 0.0]
     assert ragged_samples[1].done == 0
+    assert _not_done_flag(False) == 1
+    assert _not_done_flag(True) == 0
+    assert _not_done_flag("false") == 1
+    assert _not_done_flag("true") == 0
+    assert _not_done_flag("bad") == 1
+    assert _not_done_flag(float("inf")) == 1
 
     preprocess_type = type("Preprocess", (), {})
     agent_type = type("Agent", (), {})

@@ -106,6 +106,7 @@ Target-DQN 关键文件：
 - 训练 workflow 已用同一归一化逻辑判断是否需要决策，兼容平台文档中的 `int32` 标量门控和 4 维相位 mask。
 - 训练 workflow 会归一化 `env.reset()` 的二元 tuple 返回和 `env.step()` 的二元/六元 tuple 返回，兼容当前封装与作业文档形式。
 - 训练 workflow 对 reset/step 返回的 `observation`、`extra_info`、`frame_no`、结束标记和采样帧 `legal_action` 会安全读取，避免不完整环境响应直接触发 `KeyError`。
+- 训练 workflow 读取 `train_env_conf.toml` 时会隔离配置校验工具异常，读取失败会记录错误并清晰退出入口。
 - 训练 workflow 的预测动作通过 `_predict_action()` 统一处理，模型预测返回空或异常时会回退到规则策略，规则策略再失败则输出 `[0, 0, MIN_GREEN_DURATION]`。
 - 训练 workflow 抛错时会保留原始异常信息和异常链，便于平台日志定位真实崩溃点。
 - workflow 和 `Algorithm.learn()` 的日志/监控上报已隔离异常，`logger` 或 `monitor.put_data()` 后端失败不会中断训练。

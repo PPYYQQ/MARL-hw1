@@ -85,6 +85,7 @@ python tests/test_target_dqn_smoke.py
 
 - `ModuleNotFoundError: kaiwudrl`：需要在腾讯开悟/KaiwuDRL 环境运行，普通本地 Python 不包含该依赖。
 - `ModuleNotFoundError: torch`：安装 PyTorch 或使用平台镜像。
+- `read usr conf failed`：当前 workflow 会记录配置读取/校验异常并退出训练入口；检查 `agent_target_dqn/conf/train_env_conf.toml` 格式、路径和平台配置校验工具。
 - `load latest model` 找不到文件：当前代码会跳过首次 `latest` 加载，属于从零训练的正常情况。
 - `load latest model failed`：当前 workflow 会记录错误并继续使用当前模型参数；如果长期出现，检查 checkpoint 文件权限、路径挂载或模型文件是否被平台并发写坏。
 - 训练中恢复 `latest`：当前 workflow 周期保存 `model.ckpt-latest.pkl`，后续 episode 会加载同名 checkpoint。

@@ -932,3 +932,18 @@
   - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
 - 下一步：
   - 平台环境可用后确认 checkpoint 文件权限、并发写入或坏文件导致的加载异常不会阻止后续 episode 启动。
+
+### Step 63 - 训练配置读取失败隔离
+
+- 状态：完成
+- Commit：`5095119`
+- 内容：
+  - workflow 增加 `_read_usr_conf()`，封装 `read_usr_conf("agent_target_dqn/conf/train_env_conf.toml", logger)`。
+  - 配置读取或平台校验工具抛错时记录 `read usr conf failed` 并返回 `None`，入口沿用已有 `usr_conf is None` 逻辑清晰退出。
+  - 配置工具返回非字典结果时也按无效配置处理，避免未知配置对象传入 `env.reset()`。
+  - 无平台依赖测试覆盖读取成功、返回非 dict 和抛错且 logger 后端也失败的路径；静态测试增加 safe config read helper 锚点。
+- 验证：
+  - 已运行 `python -m compileall agent_target_dqn tests`、`python tests/test_target_dqn_features.py` 和 `python tests/test_target_dqn_static.py`，均通过。
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 平台环境可用后确认配置文件缺失、格式错误或校验工具异常时训练入口给出明确日志且不会产生二次崩溃。

@@ -1468,7 +1468,7 @@
 ### Step 98 - 兼容 dict 形态 repeated 字段
 
 - 状态：完成
-- Commit：待提交
+- Commit：`22239d3`
 - 内容：
   - Agent 的 `_as_record_list()` 支持单条 dict 协议记录和 dict-of-records，同时用已知 Vehicle / Phase / Lane 字段限制展开范围，避免把任意 dict 当作有效车辆。
   - reward 和 preprocessor 的 `_safe_list()` 支持单条 dict 记录、dict-of-records、dict-of-scalar lane ID 容器和嵌套 list/tuple 容器。

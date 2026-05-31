@@ -83,19 +83,20 @@ class Model(nn.Module):
             s = F.pad(s, (0, Config.DIM_OF_OBSERVATION - feature_dim))
         elif feature_dim > Config.DIM_OF_OBSERVATION:
             s = s[:, : Config.DIM_OF_OBSERVATION]
+        s = torch.nan_to_num(s, nan=0.0, posinf=0.0, neginf=0.0)
         return s
 
     def _as_numpy_array(self, s):
         try:
             return np.asarray(s, dtype=np.float32)
-        except (TypeError, ValueError):
+        except Exception:
             if not isinstance(s, (list, tuple)):
                 return np.zeros((1, 0), dtype=np.float32)
             rows = []
             for item in s:
                 try:
                     row = np.asarray(item, dtype=np.float32).reshape(-1)
-                except (TypeError, ValueError):
+                except Exception:
                     row = np.zeros(0, dtype=np.float32)
                 rows.append(self._fit_numpy_width(row))
             if not rows:

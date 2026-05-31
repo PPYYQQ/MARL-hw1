@@ -53,7 +53,9 @@ def main():
     require("s.unsqueeze(0)" in model, "model should batch one-dimensional observations")
     require("F.pad(s" in model, "model should pad short observation vectors")
     require("s[:, : Config.DIM_OF_OBSERVATION]" in model, "model should truncate long observation vectors")
+    require("torch.nan_to_num(s" in model, "model should sanitize non-finite input tensors")
     require("def _as_numpy_array" in model, "model should tolerate ragged Python observation batches")
+    require("except Exception:" in model, "model should isolate unexpected numpy conversion failures")
     require("np.stack(rows)" in model, "model should stack normalized ragged rows")
     require("def _fit_numpy_width" in model, "model should normalize ragged row width before tensor conversion")
     for agent_path, agent_source in agent_entrypoints:

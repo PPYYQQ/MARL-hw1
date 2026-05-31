@@ -61,6 +61,7 @@ def main():
 
     from agent_target_dqn.conf.conf import Config
     from agent_target_dqn.feature.definition import SampleData, reward_shaping, sample_process
+    from agent_target_dqn.feature.preprocessor import FeatureProcess
     from agent_target_dqn.feature.traffic_utils import (
         get_phase_pressure,
         get_lane_statistics,
@@ -193,6 +194,82 @@ def main():
     assert all(math.isfinite(value) for value in get_traffic_trend(nonfinite_summary, noisy_previous_summary))
     noisy_history = [nonfinite_summary, noisy_previous_summary, "bad-summary"]
     assert all(math.isfinite(value) for value in get_traffic_history_feature(noisy_history))
+
+    preprocess = FeatureProcess(None)
+    preprocess.junction_dict = {0: {}}
+    first_vehicle_frame = {
+        "frame_state": {
+            "frame_no": 1,
+            "frame_time": 1.0,
+            "vehicles": [
+                {
+                    "v_id": 1,
+                    "lane": 11,
+                    "junction": -1,
+                    "target_junction": 0,
+                    "speed": 0.0,
+                    "position_in_lane": {"x": 0.0, "y": 0.0},
+                }
+            ],
+        }
+    }
+    second_vehicle_frame = {
+        "frame_state": {
+            "frame_no": 2,
+            "frame_time": 3.0,
+            "vehicles": [
+                {
+                    "v_id": 1,
+                    "lane": 11,
+                    "junction": -1,
+                    "target_junction": 0,
+                    "speed": 0.0,
+                    "position_in_lane": {"x": 3.0, "y": 4.0},
+                }
+            ],
+        }
+    }
+    preprocess.update_traffic_info(first_vehicle_frame, None)
+    preprocess.update_traffic_info(second_vehicle_frame, None)
+    assert preprocess.waiting_time_store[1] == 2.0
+    assert preprocess.vehicle_distance_store[1] == 5.0
+    assert preprocess.lane_volume[11] == [1]
+    bad_preprocess_frame = {
+        "frame_state": {
+            "frame_no": float("inf"),
+            "frame_time": float("nan"),
+            "vehicles": [
+                None,
+                {"v_id": [], "lane": 11, "junction": -1, "target_junction": 0},
+                {
+                    "v_id": 2,
+                    "lane": 11,
+                    "junction": -1,
+                    "target_junction": 0,
+                    "speed": float("nan"),
+                    "position_in_lane": {"x": float("inf"), "y": 1.0},
+                },
+            ],
+        }
+    }
+    preprocess.update_traffic_info(bad_preprocess_frame, "bad-extra-info")
+    assert all(math.isfinite(float(value)) for value in preprocess.waiting_time_store.values())
+    waiting_by_store = preprocess.get_all_junction_waiting_time(
+        [
+            {"v_id": 1, "junction": -1, "target_junction": 0},
+            {"v_id": [], "junction": -1, "target_junction": 0},
+            {"bad": "vehicle"},
+        ]
+    )
+    assert waiting_by_store == {0: 2.0}
+    waiting_by_origin = preprocess.get_all_junction_waiting_time_by_origin(
+        [
+            {"junction": -1, "target_junction": 0, "waiting_time": 6.0},
+            {"junction": -1, "target_junction": 0, "waiting_time": float("inf")},
+            {"bad": "vehicle"},
+        ]
+    )
+    assert waiting_by_origin == {0: 3.0}
 
     frame_type = type("Frame", (), {})
     assert sample_process([]) == []

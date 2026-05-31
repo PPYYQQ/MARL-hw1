@@ -229,7 +229,7 @@ coding agent 无法单独保证：
 
 - 当前使用 80 维联合动作 Q 头：`action_id = phase_idx * 20 + duration_idx`。
 - `phase_idx` 必须落在 `0-3`。
-- `duration_idx` 必须映射为环境接受的秒数；保守建议从 `8 + duration_idx` 或离散档位开始，避免低于 8 秒的切灯惩罚。
+- `duration_idx` 必须通过 `Config.duration_index_to_seconds()` 映射为环境接受的秒数；当前 20 个 duration 桶覆盖 `MIN_GREEN_DURATION=8` 到 `MAX_GREEN_DURATION=40`。
 - `legal_action` 需要先通过 `normalize_phase_legal_action()` 转为 4 维相位 mask；如果真实平台只给标量门控，则非零表示四个相位都可选。
 - 训练 workflow 判断是否调用 `predict()` 时也必须走 `normalize_phase_legal_action()`，不要直接写 `legal_action[0]`。
 - 训练样本里的 `legal_action` 代表 `_obs` 对应的下一状态相位 mask，不是当前已执行动作的 mask。
@@ -256,7 +256,7 @@ coding agent 无法单独保证：
 - 切换惩罚：相位变化过快或持续时间小于 8 秒时惩罚。
 - 公平性惩罚：某方向长期排队但未放行时惩罚。
 - 当前公平性实现会跟踪四个相位上次服务帧，高压且长时间未服务的相位被选中时给小额正奖励，否则给小额负项。
-- duration reward 的目标时长必须限制在模型动作空间可表达范围内：当前为 `MIN_GREEN_DURATION` 到 `MIN_GREEN_DURATION + DIM_OF_ACTION_DURATION - 1`。
+- duration reward 的目标时长必须限制在模型动作空间可表达范围内；当前 20 个 duration 桶覆盖 `MIN_GREEN_DURATION` 到 `MAX_GREEN_DURATION`。
 - 奖励量级应归一化，避免单项过大导致训练不稳定。
 
 ## 实施计划

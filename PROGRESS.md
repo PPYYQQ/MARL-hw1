@@ -1302,3 +1302,19 @@
   - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
 - 下一步：
   - 平台训练后观察 `duration_reward` 是否仍长期强负；若是，继续校准压力尺度或扩大 duration 动作空间。
+
+### Step 88 - duration 分桶覆盖完整绿灯范围
+
+- 状态：完成
+- Commit：`ed4beac`
+- 内容：
+  - `Config` 新增 `DURATION_STEP`、`duration_index_to_seconds()` 和 `duration_seconds_to_index()`，集中管理 duration bin 与秒数互转。
+  - 保持 80 维联合动作 Q head 不变，20 个 duration bin 从只覆盖 `8-27` 秒改为覆盖 `MIN_GREEN_DURATION=8` 到 `MAX_GREEN_DURATION=40` 秒。
+  - `action_process()`、规则兜底、workflow 动作清洗、样本动作裁剪、reward target 和 learner 反向索引统一使用同一 duration 范围/分桶。
+  - 无平台依赖测试增加 duration 映射端点覆盖；smoke 期望同步到 `MAX_GREEN_DURATION`。
+- 验证：
+  - 已运行 `python -m compileall agent_target_dqn tests/test_target_dqn_features.py tests/test_target_dqn_static.py tests/test_target_dqn_smoke.py`，通过。
+  - 已运行 `python tests/test_target_dqn_features.py` 和 `python tests/test_target_dqn_static.py`，均通过。
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 平台训练后观察 duration 分布、duration_reward 和切换惩罚，确认 20 个分桶覆盖 `8-40` 秒是否优于原先线性 `8+idx`。

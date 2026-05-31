@@ -1270,3 +1270,19 @@
   - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
 - 下一步：
   - 有 `torch` 环境后补跑 smoke，确认异常 observation 评估入口会返回默认合法动作而不是抛错。
+
+### Step 86 - Agent 预测批次归一化
+
+- 状态：完成
+- Commit：`a007acd`
+- 内容：
+  - `Agent.__predict_detail()` 入口新增 `_obs_batch()`，先把 ObsData batch 安全归一化为 list。
+  - 支持 generator 式 ObsData batch；无法迭代的异常 batch 会记录 `predict observation batch failed` 并返回空动作列表。
+  - 新增 `_obs_data_field()`，读取 `feature` 和 `legal_action` 属性时隔离异常 property。
+  - 静态测试增加预测 batch 归一化、异常 batch 日志和异常 ObsData 属性隔离锚点。
+- 验证：
+  - 已运行 `python -m compileall agent_target_dqn/agent.py tests/test_target_dqn_static.py`，通过。
+  - 已运行 `python tests/test_target_dqn_static.py`，通过。
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 有 `torch` 环境后补跑 smoke，确认 generator 式 ObsData batch 和异常属性不会中断直接 `predict()` 调用。

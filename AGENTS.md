@@ -87,6 +87,7 @@ Target-DQN 关键文件：
 - `observation_process()`、`rule_based_action()` 和共享交通统计工具会保守处理缺失 `frame_state`、缺失 `vehicles`、缺失 `obs` 包装和畸形车辆/相位记录。
 - `action_process()` 已将 duration index 映射为实际秒数。
 - `predict()` 对空 observation batch 会返回空列表；`action_process()` 会固定 `junction_id=0` 并清洗异常相位/时长索引，确保输出合法动作。
+- `predict()` 会先把 ObsData batch 安全归一化为 list，并隔离异常 ObsData 属性，避免直接预测调用被坏 batch 或坏属性中断。
 - 训练时已将 `[phase_idx, duration_seconds]` 转换为 80 维联合动作索引，避免 Q head gather 越界。
 - 观测处理已兼容 `position_in_lane["y"]` 的米/毫米单位。
 - 交通统计工具会清洗车辆 `speed`、`waiting_time`、`delay`、历史趋势和相位压力中的 NaN/Inf，避免异常车辆字段污染 reward、规则兜底和观测统计。

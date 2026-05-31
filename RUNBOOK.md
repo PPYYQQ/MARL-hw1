@@ -103,6 +103,7 @@ python tests/test_target_dqn_smoke.py
 - `latest` 模型结构不兼容：当前联合动作模型会跳过不兼容的旧 `latest` checkpoint，并从当前参数继续训练；若要强制加载指定模型 ID，结构不兼容仍会抛错。
 - `legal_action` 是标量而不是列表：当前 workflow 会先归一化为 4 维相位 mask，再判断是否需要决策；若平台提供相位级 mask，也会沿用相位约束。
 - 空合法动作 mask 或 `ValueError: 'a' cannot be empty`：当前 Agent 推理侧会把全零相位 mask 和空 joint mask 行回退为可选全集；如果仍出现，优先检查是否有新代码绕过了 `_phase_action_mask()` / `_joint_action_mask()`。
+- `predict observation batch failed`：当前 `predict()` 会丢弃无法迭代的异常 ObsData batch，generator 式 batch 会先转成 list；如果反复出现，检查平台传入 `Agent.predict()` 的数据类型。
 - `invalid action, use default action`：当前 workflow 会在进入 `env.step()` 前把异常动作回退为 `[0, 0, MIN_GREEN_DURATION]`；如果频繁出现，检查 `predict()`、`action_process()` 或规则兜底返回值。
 - `rule_based_action failed, use default action`：评估 `exploit()` 的最终规则兜底失败时会返回默认动作；如果反复出现，保存评估 observation 并检查规则策略输入结构。
 - 评估 observation 字段读取失败：当前 `Agent.exploit()`、`observation_process()` 和 `rule_based_action()` 会对异常 dict-like observation 使用安全读取并进入规则/默认兜底；如果反复出现，需要保存原始 observation 类型和 repr。

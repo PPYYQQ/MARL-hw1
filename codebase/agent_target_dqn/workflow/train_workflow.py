@@ -543,18 +543,20 @@ def _looks_like_observation(value):
 
 
 def _safe_observation(env_obs):
-    observation = _safe_env_value(env_obs, "observation", None)
-    if _is_record(observation):
-        return observation
+    for key in ("observation", "obs", "_obs"):
+        observation = _safe_env_value(env_obs, key, None)
+        if _is_record(observation):
+            return observation
     if _looks_like_observation(env_obs):
         return env_obs
     return {}
 
 
 def _safe_extra_info(env_obs):
-    extra_info = _safe_env_value(env_obs, "extra_info", {})
-    if _is_record(extra_info):
-        return extra_info
+    for key in ("extra_info", "_state", "state"):
+        extra_info = _safe_env_value(env_obs, key, None)
+        if _is_record(extra_info):
+            return extra_info
     return {}
 
 

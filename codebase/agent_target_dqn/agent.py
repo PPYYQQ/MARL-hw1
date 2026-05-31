@@ -121,6 +121,14 @@ _RECORD_FIELD_KEYS = {
 }
 
 
+def _first_record_field(record, keys, default=None):
+    for key in keys:
+        value = _safe_mapping_get(record, key, None)
+        if _is_record(value):
+            return value
+    return default
+
+
 def _dict_record_items(value):
     try:
         if any(key in value for key in _RECORD_FIELD_KEYS):
@@ -238,8 +246,8 @@ class Agent(BaseAgent):
         return self.__predict_detail(list_obs_data, exploit_flag=False)
 
     def exploit(self, observation):
-        raw_obs = _safe_mapping_get(observation, "obs", observation)
-        extra_info = _safe_mapping_get(observation, "extra_info")
+        raw_obs = _first_record_field(observation, ("obs", "observation", "_obs"), observation)
+        extra_info = _first_record_field(observation, ("extra_info", "_state", "state"), None)
         if raw_obs is None:
             raw_obs = {}
         try:

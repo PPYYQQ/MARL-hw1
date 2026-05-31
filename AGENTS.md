@@ -142,7 +142,7 @@ Target-DQN 关键文件：
 - 训练 workflow 已用同一归一化逻辑判断是否需要决策，兼容平台文档中的 `int32` 标量门控和 4 维相位 mask。
 - 训练 workflow 会归一化 `env.reset()` 的对象式返回、二元 tuple 返回和 `env.step()` 的对象式返回、二元、Gym 四元、Gymnasium 五元、作业文档六元 tuple 返回，兼容当前封装、常见环境封装与作业文档形式。
 - 训练 workflow 会隔离 `env.reset()` 和 `env.step()` 抛出的平台异常；reset 失败跳过当前 episode，step 失败中止当前 episode。
-- 训练 workflow 对 reset/step 返回的 `observation`、`extra_info`、`frame_no`、结束标记和采样帧 `legal_action` 会安全读取；如果平台直接返回带 `frame_state` / `legal_action` 的裸 observation dict 或对象，也会按原始 observation 处理，避免被误归一化为空观测。
+- 训练 workflow 对 reset/step 返回的 `observation` / `obs` / `_obs`、`extra_info` / `_state` / `state`、`frame_no`、结束标记和采样帧 `legal_action` 会安全读取；如果平台直接返回带 `frame_state` / `legal_action` 的裸 observation dict 或对象，也会按原始 observation 处理，避免被误归一化为空观测。
 - step/reset 归一化阶段会保留对象式 env_obs 和对象式 extra_info，避免先前字段读取兼容逻辑在进入安全 helper 前丢失平台 score 或 observation payload。
 - 训练 workflow 对 env_obs/obs 映射读取异常会统一回退默认值，避免异常 dict-like 返回对象中断预测门控和状态解析。
 - 训练 workflow 会显式解析 `terminated` / `truncated` 的 bool、数值和字符串形式，避免 `"False"` 这类非空字符串被误判为结束。
@@ -156,6 +156,7 @@ Target-DQN 关键文件：
 - `Agent` 的 `exploit()`、`save_model()` 和 `load_model()` 日志调用已隔离异常，日志后端失败不会打断评估兜底或 checkpoint 流程。
 - `Agent.exploit()` 的规则策略兜底也会隔离异常；规则策略失败时返回 `[0, 0, MIN_GREEN_DURATION]`，避免评估入口因最终兜底失败崩溃。
 - `Agent.exploit()`、`observation_process()` 和 `rule_based_action()` 的关键映射读取会走安全 helper，异常 dict-like observation 不会绕过评估兜底。
+- `Agent.exploit()` 会兼容评估入口传入的 `obs`、`observation`、`_obs` 观测包装和 `extra_info`、`_state`、`state` 额外信息包装，避免平台字段别名导致评估只看到空 observation。
 - 训练 workflow 发送样本时会传递 `g_data` 的浅拷贝，再清理本地列表，避免异步消费时引用被清空。
 - 训练 workflow 的进度日志只在 episode 结束或真实预测计数达到间隔时打印，避免无决策帧刷屏。
 - 训练 workflow 会安全提取平台 `score`、`score_info` 或对象属性里的 `env_score`、`avg_delay`、`avg_queue_length`、`avg_waiting_time` 和 `switch_penalty`，用于平台监控和调参记录。

@@ -159,6 +159,9 @@ def main():
     require("junction_id = 0" in agent, "action_process should force single-junction actions")
     require("np.isfinite(value)" in agent, "action_process should reject NaN/Inf indices")
     require("def _safe_mapping_get" in agent, "agent should isolate mapping field reads")
+    require("def _first_record_field" in agent, "agent should read wrapper observation aliases safely")
+    require('"obs", "observation", "_obs"' in agent, "exploit should accept common observation wrapper aliases")
+    require('"extra_info", "_state", "state"' in agent, "exploit should accept common extra info aliases")
     require("def _safe_optional_int" in agent, "agent should sanitize optional numeric protocol ids")
     require("def _mapping_key" in agent, "agent should match string and numeric mapping keys")
     require("getattr(mapping, key, default)" in agent, "agent should read object-style protocol fields")
@@ -192,8 +195,8 @@ def main():
         "observation should append phase, phase-age, traffic, trend, history, and lane-stat features",
     )
     require(
-        'raw_obs = _safe_mapping_get(observation, "obs", observation)' in agent,
-        "exploit should tolerate missing or malformed obs wrapper",
+        'raw_obs = _first_record_field(observation, ("obs", "observation", "_obs"), observation)' in agent,
+        "exploit should tolerate common observation wrappers",
     )
     require('frame_state = _safe_mapping_get(raw_obs, "frame_state", {})' in agent, "observation should tolerate missing frame_state")
     require('_safe_mapping_get(frame_state, "vehicles", [])' in agent, "observation should tolerate missing vehicles")
@@ -338,6 +341,8 @@ def main():
     require("agent reset failed" in workflow, "workflow should log agent reset failures")
     require("def _looks_like_observation" in workflow, "workflow should recognize raw observation returns")
     require("return env_obs" in workflow, "workflow should pass through raw observation env results")
+    require('"observation", "obs", "_obs"' in workflow, "workflow should accept common observation field aliases")
+    require('"extra_info", "_state", "state"' in workflow, "workflow should accept common extra info aliases")
     require("def _need_to_predict" in workflow, "workflow should normalize legal_action before prediction gating")
     require("def _finite_float" in workflow, "workflow reward monitor should sanitize non-finite rewards")
     require("except (TypeError, ValueError, OverflowError)" in workflow, "workflow finite float helper should catch malformed scalars")

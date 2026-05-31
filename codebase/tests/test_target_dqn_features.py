@@ -1051,6 +1051,8 @@ def main():
     assert _step_env(FailingStepEnv(), [0, 1, Config.MIN_GREEN_DURATION], EarlyFailingLogger()) is None
 
     assert _safe_observation({"observation": {"legal_action": 1}}) == {"legal_action": 1}
+    assert _safe_observation({"obs": {"legal_action": 1}}) == {"legal_action": 1}
+    assert _safe_observation({"_obs": {"legal_action": 1}}) == {"legal_action": 1}
     raw_observation = {"frame_state": {}, "legal_action": 1}
     assert _looks_like_observation(raw_observation) is True
     assert _safe_observation(raw_observation) is raw_observation
@@ -1058,6 +1060,12 @@ def main():
     assert _safe_observation({"observation": None}) == {}
     assert _safe_observation({"observation": 1}) == {}
     assert _safe_extra_info({"extra_info": {"init_state": {}}}) == {"init_state": {}}
+    assert _safe_extra_info({"_state": {"init_state": {"source": "_state"}}}) == {
+        "init_state": {"source": "_state"}
+    }
+    assert _safe_extra_info({"state": {"init_state": {"source": "state"}}}) == {
+        "init_state": {"source": "state"}
+    }
     assert _safe_extra_info({"extra_info": None}) == {}
     assert _safe_extra_info({"extra_info": 2}) == {}
     object_env_obs = AttrObject(
@@ -1072,6 +1080,9 @@ def main():
     assert _safe_done_flag(object_env_obs, "terminated") is False
     assert _safe_legal_action(_safe_observation(object_env_obs)) == 1
     assert _need_to_predict(_safe_observation(object_env_obs)) is True
+    object_alias_env_obs = AttrObject(obs=AttrObject(legal_action=1), _state=AttrObject(init_state={}))
+    assert _safe_observation(object_alias_env_obs).legal_action == 1
+    assert _safe_extra_info(object_alias_env_obs).init_state == {}
     raw_object_observation = AttrObject(frame_state=AttrObject(), legal_action=1)
     assert _looks_like_observation(raw_object_observation) is True
     assert _safe_observation(raw_object_observation) is raw_object_observation

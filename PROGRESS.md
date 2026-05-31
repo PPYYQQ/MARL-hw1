@@ -1532,3 +1532,20 @@
   - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
 - 下一步：
   - 平台运行后确认真实 observation 是否还有非数字 ID 或额外字段别名；如有，保留原始样例再扩展字段清洗和 alias 映射。
+
+### Step 102 - 兼容裸 observation 环境返回
+
+- 状态：完成
+- Commit：`05befef`
+- 内容：
+  - workflow 新增 `_looks_like_observation()`，可识别直接包含 `frame_state` 或 `legal_action` 的原始 observation dict / 对象。
+  - `_safe_observation()` 在缺少嵌套 `observation` 字段时，会将裸 observation 原样传给后续决策逻辑，避免 reset/step 直接返回原始 observation 时被误归一化为空 dict。
+  - 保留现有嵌套 `observation`、对象式 env_obs、二元 step/reset、Gym 四元、Gymnasium 五元和文档六元 step 返回兼容逻辑。
+  - 无平台依赖测试增加裸 dict observation、裸对象 observation、reset 原样返回和 step 原样返回覆盖；静态测试增加 workflow 裸 observation 识别锚点。
+  - 更新 `AGENTS.md`、`RUNBOOK.md` 和 `REPORT_DRAFT.md`，记录 workflow 已兼容直接返回原始 observation 的平台封装。
+- 验证：
+  - 已运行 `python -m compileall agent_target_dqn/workflow/train_workflow.py tests/test_target_dqn_features.py tests/test_target_dqn_static.py`，通过。
+  - 已运行 `python tests/test_target_dqn_features.py` 和 `python tests/test_target_dqn_static.py`，均通过。
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 平台运行后确认 `env.reset()` / `env.step()` 的真实返回是否为裸 observation、嵌套 env_obs 或其它封装；若仍有空观测日志，保存原始返回 repr 后继续扩展归一化。

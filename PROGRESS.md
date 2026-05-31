@@ -1349,3 +1349,19 @@
   - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
 - 下一步：
   - 平台训练后观察 `value_loss`、`model_grad_norm` 和平均 reward；如仍爆炸，优先降低 `LR` 或继续收紧 reward 权重。
+
+### Step 91 - 兼容缺失 target_junction 的车辆记录
+
+- 状态：完成
+- Commit：`61a1ea7`
+- 内容：
+  - `traffic_utils` 新增 `_vehicle_value()`，隔离车辆字段读取，并支持 dict 或对象属性形式。
+  - `on_enter_lane()` 不再要求车辆必须包含 `target_junction`；缺失时按单路口目标路口处理，避免作业文档式车辆记录被全部跳过。
+  - `in_junction()` 和 `on_depart_lane()` 改用安全字段读取，减少车辆字段缺失导致的 KeyError。
+  - 无平台依赖测试增加缺失 `target_junction` 的车辆样例，覆盖进口车道判断、车道统计和相位压力统计；静态测试增加字段兼容锚点。
+- 验证：
+  - 已运行 `python -m compileall agent_target_dqn/feature tests/test_target_dqn_features.py tests/test_target_dqn_static.py`，通过。
+  - 已运行 `python tests/test_target_dqn_features.py` 和 `python tests/test_target_dqn_static.py`，均通过。
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 平台运行后确认真实车辆记录是否提供 `target_junction`；如没有，观察相位压力、排队统计和 reward 是否不再长期为 0。

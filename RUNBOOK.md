@@ -124,6 +124,7 @@ python tests/test_target_dqn_smoke.py
 - duration reward 长期为负：当前 20 个 duration 桶覆盖 `8-40` 秒，reward 目标也限制在同一范围；如果仍长期强负，优先检查压力尺度、`DIM_OF_ACTION_DURATION` 和实际平台动作秒数是否一致。
 - `observation process failed` / `traffic info update failed`：当前 workflow 会回退到规则动作、零特征样本或跳过非决策帧预处理并继续；需要保留原始 observation 和 extra_info 定位特征处理异常。
 - 观测里有异常 frame 或车辆字段：当前预处理器会清洗 frame、车辆 ID、车速和位置；若仍异常，优先保存原始 observation 样例并检查是否不是 dict/list 结构。
+- 车辆字段缺少 `target_junction`：当前进口车道判断会按单路口目标路口处理；若平台实际上用其它字段区分车辆目标，需要保存原始车辆样例再扩展映射。
 - 观测里有异常相位字段：当前相位 ID、duration、remaining duration、相位年龄和 workflow frame_no 都会清洗为有限值；若仍异常，优先保留原始 `frame_state.phases`。
 - 模型输入含 NaN/Inf 或异常 array-like：当前 `Model._prepare_input()` 会把非有限值归零，ragged 或转换失败的 Python observation 会补零或截断；如果仍出现非有限 Q 值，优先保留进入模型前的 feature。
 - reward 长期为 0：检查 `reward_shaping()` 是否收到真实车辆字段、`vehicles` 是否为空、相位压力是否一直为 0。

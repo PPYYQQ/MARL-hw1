@@ -95,6 +95,7 @@ python tests/test_target_dqn_smoke.py
 - `send sample data failed`：当前 workflow 会丢弃本批未发送成功的样本并继续后续 episode；如果长期出现，检查样本池、learner 服务和平台通信状态。
 - `sample process failed`：当前 workflow 会丢弃当前 episode 或容灾 collector 并继续后续 episode；如果长期出现，保存原始 collector、最后两帧 observation/action/reward 来定位样本转换输入。
 - Frame 属性读取失败：当前 `sample_process()` 会隔离 `obs`、`act`、`rew`、`done`、`legal_action` 的属性访问异常；`obs` / `act` 失败会跳过当前帧，其他字段失败会使用默认 reward、done 或 legal action。
+- Frame 字段转换失败：异常 array-like 的 `obs` / `rew` 会按零向量处理；`act` 对象长度或索引异常会跳过当前帧，避免整段 collector 转换失败。
 - `sample reward read failed` / `sample batch length failed`：当前 workflow 会把异常样本批次按可读部分或零 reward 统计，训练发送路径仍单独处理；如果反复出现，检查 `sample_process()` 返回对象是否为 `SampleData` 列表。
 - `learn failed`：当前 `Agent.learn()` 会跳过当前 batch 并保留 learner 进程；如果连续出现，优先保存样本池中的原始 batch，检查字段 shape、dtype 和 `Algorithm.learn()` traceback。
 - `latest` 模型结构不兼容：当前联合动作模型会跳过不兼容的旧 `latest` checkpoint，并从当前参数继续训练；若要强制加载指定模型 ID，结构不兼容仍会抛错。

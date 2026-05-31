@@ -127,6 +127,7 @@ Target-DQN 关键文件：
 - `sample_process()` 对空轨迹、全无效轨迹、缺失 reward 和无效动作帧会保守跳过或补零，避免样本转换边界崩溃。
 - `sample_process()` 读取 Frame 的 `obs`、`act`、`rew`、`done`、`legal_action` 属性时会隔离属性访问异常，坏属性只影响当前字段或当前帧，不再导致整段 collector 转换失败。
 - `sample_process()` 会显式解析 `done` 的 bool、数值和 true/false 字符串形式，避免字符串终局标记误写为非终局 TD target。
+- `sample_process()` 的字段定宽转换会隔离异常 array-like 对象，异常 observation/reward 按默认零向量处理；畸形 action 对象会跳过当前帧。
 - `sample_process()` 在创建 `SampleData` 前会对 `obs`、`act`、`rew` 和 `done` 做定宽归一化、NaN/Inf 清洗和动作边界裁剪，避免畸形轨迹污染样本池。
 - `normalize_phase_legal_action()` 会将合法动作里的 NaN/Inf 显式归零，避免非有限值被误判为可选相位。
 - workflow 聚合样本批次 reward 监控时会隔离异常样本、异常 `rew` 字段和异常 batch 长度；坏样本只按零 reward 统计。

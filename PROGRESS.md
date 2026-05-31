@@ -1148,3 +1148,17 @@
   - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
 - 下一步：
   - 平台环境可用后确认 sample collector 中个别异常 Frame 不再导致整段样本转换失败。
+
+### Step 78 - 样本字段转换异常隔离
+
+- 状态：完成
+- Commit：`4798ecd`
+- 内容：
+  - `_fixed_float_list()` 捕获异常 array-like 转换失败，异常 observation 或 reward 会归一化为零向量。
+  - `sample_process()` 检查 action 长度和前三个字段时隔离未预期异常，畸形 action 对象只跳过当前帧。
+  - 无平台依赖测试增加 `__array__` 抛错的 obs/reward 和 `__len__` 抛错的 action 覆盖；静态测试增加字段转换异常锚点。
+- 验证：
+  - 已运行 `python tests/test_target_dqn_features.py` 和 `python tests/test_target_dqn_static.py`，均通过。
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 平台环境可用后确认异常样本字段不会触发 `sample process failed` 并导致整段 collector 被丢弃。

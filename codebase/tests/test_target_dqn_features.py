@@ -894,6 +894,13 @@ def main():
     assert score_metrics["avg_waiting_time"] == 7.0
     assert score_metrics["switch_penalty"] == 2.0
     assert _env_score_metrics(3.5)["env_score"] == 3.5
+    nested_score_metrics = _env_score_metrics(
+        {"metrics": {"total_score": 66.0}},
+        {"info": {"env_info": {"metrics": {"avg_wait_time": 6.0, "switch_count": 3.0}}}},
+    )
+    assert nested_score_metrics["env_score"] == 66.0
+    assert nested_score_metrics["avg_waiting_time"] == 6.0
+    assert nested_score_metrics["switch_penalty"] == 3.0
 
     env_metric_snapshot = _default_env_metric_snapshot()
     assert env_metric_snapshot["env_score"] == 0.0

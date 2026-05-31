@@ -315,7 +315,10 @@ def main():
         "_update_env_metric_snapshot(env_metric_snapshot, env_reward, env_obs)" in workflow,
         "workflow should update platform score metrics after env.step",
     )
+    require("METRIC_SOURCE_KEYS" in workflow, "workflow metric source aliases should be centralized")
     require("score_info" in workflow and "scoreInfo" in workflow, "workflow should inspect common score info containers")
+    require("metrics" in workflow and "env_info" in workflow, "workflow should inspect nested platform metric containers")
+    require("_append_metric_sources(sources, nested_source, depth + 1, seen)" in workflow, "workflow should recursively inspect bounded metric sources")
     require("def _optional_finite_float" in workflow, "workflow score metrics should reject non-finite values")
     require("def _shape_reward" in workflow, "workflow reward shaping should be isolated")
     require("_shape_reward(obs, last_predict_act, agent, logger)" in workflow, "workflow should shape intermediate rewards through helper")

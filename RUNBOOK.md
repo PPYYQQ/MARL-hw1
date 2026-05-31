@@ -95,6 +95,7 @@ python tests/test_target_dqn_smoke.py
 - 训练中恢复 `latest`：当前 workflow 周期保存 `model.ckpt-latest.pkl`，后续 episode 会加载同名 checkpoint。
 - `save latest model failed`：当前 workflow 会记录错误并继续训练，同时节流到下一保存周期再重试；需要检查 checkpoint 路径权限、磁盘空间或平台模型目录挂载。
 - `get training metrics failed`：当前 workflow 会忽略本轮平台训练指标读取失败并继续 episode；如果长期出现，检查平台 metrics 服务或 SDK 状态。
+- 平台 score 监控字段为空：当前 workflow 会从 `score`、`score_info`、`scoreInfo`、`metrics`、`env_info`、`info` 等容器中有界递归查找评分字段；如果仍为空，以评估页面为准，并保存 env_reward/env_obs/info 原始样例继续补 alias。
 - `send sample data failed`：当前 workflow 会丢弃本批未发送成功的样本并继续后续 episode；如果长期出现，检查样本池、learner 服务和平台通信状态。
 - `sample process failed`：当前 workflow 会丢弃当前 episode 或容灾 collector 并继续后续 episode；如果长期出现，保存原始 collector、最后两帧 observation/action/reward 来定位样本转换输入。
 - Frame 属性读取失败：当前 `sample_process()` 会隔离 `obs`、`act`、`rew`、`done`、`legal_action` 的属性访问异常；`obs` / `act` 失败会跳过当前帧，其他字段失败会使用默认 reward、done 或 legal action。

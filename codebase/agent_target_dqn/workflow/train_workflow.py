@@ -47,6 +47,19 @@ ENV_SCORE_ALIASES = {
     ),
 }
 
+METRIC_SOURCE_KEYS = (
+    "score",
+    "score_info",
+    "scoreInfo",
+    "metrics",
+    "metric",
+    "env_metrics",
+    "envMetrics",
+    "env_info",
+    "envInfo",
+    "info",
+)
+
 
 def workflow(envs, agents, logger=None, monitor=None, *args, **kwargs):
     env, agent = envs[0], agents[0]
@@ -300,14 +313,22 @@ def _env_score_metrics(env_reward, env_obs=None):
     return metrics
 
 
-def _append_metric_sources(sources, source):
+def _append_metric_sources(sources, source, depth=0, seen=None):
     if source is None:
         return
+    if seen is None:
+        seen = set()
+    source_id = id(source)
+    if source_id in seen:
+        return
+    seen.add(source_id)
     sources.append(source)
-    for key in ("score", "score_info", "scoreInfo"):
+    if depth >= 3:
+        return
+    for key in METRIC_SOURCE_KEYS:
         nested_source = _source_raw_value(source, key)
         if nested_source is not None and nested_source is not source:
-            sources.append(nested_source)
+            _append_metric_sources(sources, nested_source, depth + 1, seen)
 
 
 def _source_metric_value(source, aliases):

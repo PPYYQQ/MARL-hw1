@@ -1413,3 +1413,19 @@
   - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
 - 下一步：
   - 平台运行后如果 observation 容器还有 list/dict 之外的特殊 repeated 类型，保存原始类型、repr 和可迭代行为后继续扩展解析。
+
+### Step 95 - workflow 保留对象式环境返回
+
+- 状态：完成
+- Commit：`e20ba7d`
+- 内容：
+  - `_normalize_reset_result()` 支持对象式 reset 返回，避免平台直接返回 env_obs 对象时被归一化为空 dict。
+  - `_normalize_step_result()` 的二元 step 返回保留对象式 env_obs，裸对象式 step 返回也按 env_obs 处理。
+  - Gym 四元、Gymnasium 五元 step 返回中的对象式 `extra_info` 不再被替换为空 dict，保留 score_info、frame_no 等平台字段给后续安全读取 helper。
+  - 无平台依赖测试覆盖对象式 reset、二元对象式 env_obs、四元/五元对象式 extra_info 和裸对象式 step 返回；静态测试增加归一化阶段对象保留锚点。
+- 验证：
+  - 已运行 `python -m compileall agent_target_dqn/workflow/train_workflow.py tests/test_target_dqn_features.py tests/test_target_dqn_static.py`，通过。
+  - 已运行 `python tests/test_target_dqn_features.py` 和 `python tests/test_target_dqn_static.py`，均通过。
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 平台运行后确认 `env.reset()` / `env.step()` 真实返回形态；如果返回 custom tuple 或 protobuf repeated wrapper，再按原始 repr 扩展归一化。

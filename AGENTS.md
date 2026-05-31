@@ -113,9 +113,10 @@ Target-DQN 关键文件：
 - Target-DQN 已将 `legal_action` 归一化为 4 维相位 mask，用于贪心预测、随机探索和规则兜底选相位。
 - Agent 推理侧对全零相位 mask 会回退为四个相位都可选，joint action mask 的空行也会回退为全动作可选，避免直接调用 `predict()` / `exploit()` 时无可采样动作导致崩溃。
 - 训练 workflow 已用同一归一化逻辑判断是否需要决策，兼容平台文档中的 `int32` 标量门控和 4 维相位 mask。
-- 训练 workflow 会归一化 `env.reset()` 的二元 tuple 返回和 `env.step()` 的二元、Gym 四元、Gymnasium 五元、作业文档六元 tuple 返回，兼容当前封装、常见环境封装与作业文档形式。
+- 训练 workflow 会归一化 `env.reset()` 的对象式返回、二元 tuple 返回和 `env.step()` 的对象式返回、二元、Gym 四元、Gymnasium 五元、作业文档六元 tuple 返回，兼容当前封装、常见环境封装与作业文档形式。
 - 训练 workflow 会隔离 `env.reset()` 和 `env.step()` 抛出的平台异常；reset 失败跳过当前 episode，step 失败中止当前 episode。
 - 训练 workflow 对 reset/step 返回的 `observation`、`extra_info`、`frame_no`、结束标记和采样帧 `legal_action` 会安全读取，避免不完整环境响应直接触发 `KeyError`。
+- step/reset 归一化阶段会保留对象式 env_obs 和对象式 extra_info，避免先前字段读取兼容逻辑在进入安全 helper 前丢失平台 score 或 observation payload。
 - 训练 workflow 对 env_obs/obs 映射读取异常会统一回退默认值，避免异常 dict-like 返回对象中断预测门控和状态解析。
 - 训练 workflow 会显式解析 `terminated` / `truncated` 的 bool、数值和字符串形式，避免 `"False"` 这类非空字符串被误判为结束。
 - 训练 workflow 调用 `agent.reset(env_obs)` 时会隔离异常，reset 失败会记录错误并跳过当前 episode，避免半初始化状态继续采样。

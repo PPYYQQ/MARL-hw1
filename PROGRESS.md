@@ -1514,3 +1514,21 @@
   - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
 - 下一步：
   - 平台运行后确认真实车辆 `junction` / `target_junction` 的哨兵值是否只使用 `-1`；如存在其它目标字段或哨兵值，保存原始车辆样例后扩展清洗规则。
+
+### Step 101 - 归一化数字协议 ID
+
+- 状态：完成
+- Commit：`3e6fe4e`
+- 内容：
+  - `FeatureProcess.init_road_info()` 会将 `junction_id`、`edge_id`、`lane_id`、`vehicle_config_id` 以及模板字段 `j_id/e_id/l_id/v_config_id` 清洗为整数后写入路网字典。
+  - `FeatureProcess.cal_v_num_in_lane()` 会将车辆 `lane` 清洗为整数后更新 `lane_volume`，避免 `"11"` 和 `11` 形成两套车道 key。
+  - `get_phase_pressure()` 改用清洗后的车辆 lane ID 查相位，避免字符串 lane 让 reward 和交通摘要压力变成 0。
+  - `Agent.observation_process()` 新增字符串/整数 key 匹配 helper，车辆 `v_config_id` / `vehicle_config_id` 为字符串时仍能命中 `vehicle_configs_dict`，路网 key 异常时也会保留默认单路口网格。
+  - 无平台依赖测试增加字符串 lane、字符串路网 ID、字符串车辆配置 ID 和字符串车道统计覆盖；静态测试增加 ID 清洗锚点。
+  - 更新 `AGENTS.md`、`RUNBOOK.md` 和 `REPORT_DRAFT.md`，记录数字协议 ID 字符串化已处理。
+- 验证：
+  - 已运行 `python -m compileall agent_target_dqn/agent.py agent_target_dqn/feature/traffic_utils.py agent_target_dqn/feature/preprocessor.py tests/test_target_dqn_features.py tests/test_target_dqn_static.py`，通过。
+  - 已运行 `python tests/test_target_dqn_features.py` 和 `python tests/test_target_dqn_static.py`，均通过。
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 平台运行后确认真实 observation 是否还有非数字 ID 或额外字段别名；如有，保留原始样例再扩展字段清洗和 alias 映射。

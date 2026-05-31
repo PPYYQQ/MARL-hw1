@@ -96,6 +96,7 @@ python tests/test_target_dqn_smoke.py
 - `sample process failed`：当前 workflow 会丢弃当前 episode 或容灾 collector 并继续后续 episode；如果长期出现，保存原始 collector、最后两帧 observation/action/reward 来定位样本转换输入。
 - `latest` 模型结构不兼容：当前联合动作模型会跳过不兼容的旧 `latest` checkpoint，并从当前参数继续训练；若要强制加载指定模型 ID，结构不兼容仍会抛错。
 - `legal_action` 是标量而不是列表：当前 workflow 会先归一化为 4 维相位 mask，再判断是否需要决策；若平台提供相位级 mask，也会沿用相位约束。
+- `agent reset failed`：当前 workflow 会跳过本局 episode，避免使用半初始化 agent 状态继续采样；如果反复出现，优先检查 `FeatureProcess.reset()` 和 agent 初始化状态。
 - `run_episodes error: ...`：优先看冒号后的原始异常信息和 Python chained traceback，当前 workflow 不再只抛通用错误。
 - 日志或监控异常：当前 workflow、learner 和 `Agent` checkpoint/评估兜底日志失败不会中断训练；如果平台看不到指标，先查 monitor 后端或日志权限。
 - 日志过多：当前进度日志只在 episode 结束或每 20 次真实预测后打印；若平台日志仍过密，优先检查是否有异常反复重启。

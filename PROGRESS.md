@@ -1007,3 +1007,16 @@
   - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
 - 下一步：
   - 平台环境可用后确认容灾或终局样本转换异常只丢弃当前 collector，不会导致 actor 训练循环崩溃。
+
+### Step 68 - agent reset 失败隔离
+
+- 状态：完成
+- Commit：`cb0ec9d`
+- 内容：
+  - workflow 增加 `_reset_agent()`，封装每局 `agent.reset(env_obs)` 调用。
+  - agent reset 抛错时记录 `agent reset failed` 并跳过当前 episode，避免半初始化的 `FeatureProcess` 状态继续参与特征、reward 和样本构造。
+  - 无平台依赖测试覆盖 reset 成功、reset 失败且 logger 后端也失败的路径；静态测试增加 safe agent reset helper 锚点。
+- 验证：
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 平台环境可用后确认偶发 agent reset 异常只影响当前 episode，不会导致 workflow 进程退出。

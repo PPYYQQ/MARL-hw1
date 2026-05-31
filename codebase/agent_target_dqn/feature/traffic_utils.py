@@ -81,21 +81,30 @@ def vehicle_value(vehicle, key, default=None):
 _vehicle_value = vehicle_value
 
 
-def on_enter_lane(vehicle):
-    """
-    This function determines whether the vehicle is located on the enter lane
+def lane_value(lane, key, default=None):
+    return record_value(lane, key, default)
 
-    Args:
-        - vehicle
-    """
-    """
-    此函数判断车辆是否位于进口车道上
 
-    参数:
-        - vehicle
-    """
-    lane_id = vehicle_value(vehicle, "lane")
-    inlane_code = {
+def _safe_lane_id(value):
+    try:
+        lane_id = float(value)
+    except (TypeError, ValueError, OverflowError):
+        return None
+    if not np.isfinite(lane_id):
+        return None
+    return int(lane_id)
+
+
+def _lane_id_from_record(lane):
+    for key in ("lane_id", "lane", "l_id", "id"):
+        lane_id = _safe_lane_id(lane_value(lane, key))
+        if lane_id is not None:
+            return lane_id
+    return None
+
+
+def get_enter_lane_code():
+    return {
         11: 0,
         10: 1,
         9: 2,
@@ -111,8 +120,31 @@ def on_enter_lane(vehicle):
         163: 12,
         162: 13,
     }
+
+
+def get_lane_code_by_id(lane_id):
+    lane_id = _safe_lane_id(lane_id)
+    if lane_id is None:
+        return None
+    return get_enter_lane_code().get(lane_id)
+
+
+def on_enter_lane(vehicle):
+    """
+    This function determines whether the vehicle is located on the enter lane
+
+    Args:
+        - vehicle
+    """
+    """
+    此函数判断车辆是否位于进口车道上
+
+    参数:
+        - vehicle
+    """
+    lane_id = vehicle_value(vehicle, "lane")
     target_junction = vehicle_value(vehicle, "target_junction", 0)
-    if lane_id in inlane_code and target_junction != -1:
+    if get_lane_code_by_id(lane_id) is not None and target_junction != -1:
         return True
     else:
         return False
@@ -182,23 +214,7 @@ def get_lane_code(vehicle):
         - lane_code: 根据划分规则分配给该车道的编号
     """
     lane_id = vehicle_value(vehicle, "lane")
-    lane_code = {
-        11: 0,
-        10: 1,
-        9: 2,
-        8: 3,
-        129: 4,
-        128: 5,
-        127: 6,
-        126: 7,
-        23: 8,
-        22: 9,
-        21: 10,
-        20: 11,
-        163: 12,
-        162: 13,
-    }
-    return lane_code.get(lane_id)
+    return get_lane_code_by_id(lane_id)
 
 
 def get_lane_position_meters(vehicle):
@@ -244,12 +260,97 @@ def get_lane_statistics(vehicles, waiting_speed_threshold=0.1, lane_count=14):
     }
 
 
-def get_traffic_summary(vehicles, waiting_speed_threshold=0.1, phase_count=4):
+def get_lane_observation_statistics(lanes, lane_count=14):
+    counts = np.zeros(lane_count, dtype=np.float32)
+    queues = np.zeros(lane_count, dtype=np.float32)
+    avg_waiting_times = np.zeros(lane_count, dtype=np.float32)
+
+    for lane in lanes:
+        try:
+            lane_code = get_lane_code_by_id(_lane_id_from_record(lane))
+            if lane_code is None or lane_code < 0 or lane_code >= lane_count:
+                continue
+
+            vehicle_count = _nonnegative_float(lane_value(lane, "v_count", 0.0))
+            queue_length = _nonnegative_float(lane_value(lane, "queue_length", 0.0))
+        except (KeyError, TypeError, ValueError, AttributeError):
+            continue
+
+        counts[lane_code] = max(counts[lane_code], vehicle_count)
+        queues[lane_code] = max(queues[lane_code], queue_length)
+
+    return {
+        "counts": counts,
+        "queues": queues,
+        "avg_waiting_times": avg_waiting_times,
+    }
+
+
+def _lane_to_phase_map():
+    lane_to_phase = {}
+    for phase, lanes in get_webster_lane_group().items():
+        for lane in lanes:
+            lane_to_phase[lane] = int(phase)
+    return lane_to_phase
+
+
+def get_lane_observation_phase_pressure(lanes, phase_count=4):
+    lane_to_phase = _lane_to_phase_map()
+    phase_pressure = np.zeros(phase_count, dtype=np.float32)
+    totals = {
+        "waiting_time": 0.0,
+        "delay": 0.0,
+        "queue": 0.0,
+        "vehicle_count": 0.0,
+    }
+
+    for lane in lanes:
+        try:
+            lane_id = _lane_id_from_record(lane)
+            lane_phase = lane_to_phase.get(lane_id)
+            if lane_phase is None or lane_phase < 0 or lane_phase >= phase_count:
+                continue
+
+            vehicle_count = _nonnegative_float(lane_value(lane, "v_count", 0.0))
+            queue_length = _nonnegative_float(lane_value(lane, "queue_length", 0.0))
+            congestion = _nonnegative_float(lane_value(lane, "congestion", 0.0))
+        except (KeyError, TypeError, ValueError, AttributeError):
+            continue
+
+        pressure = vehicle_count + 2.0 * queue_length + min(congestion, 1.0) * 5.0
+        if pressure <= 0.0:
+            continue
+        estimated_vehicle_count = max(vehicle_count, queue_length)
+        if estimated_vehicle_count <= 0.0:
+            estimated_vehicle_count = 1.0
+        phase_pressure[lane_phase] += pressure
+        totals["queue"] += queue_length
+        totals["vehicle_count"] += estimated_vehicle_count
+
+    return phase_pressure, totals
+
+
+def merge_lane_observation_statistics(vehicle_stats, lane_stats):
+    if lane_stats is None:
+        return vehicle_stats
+
+    merged = {}
+    for key in ("counts", "queues", "avg_waiting_times"):
+        vehicle_values = _phase_array(vehicle_stats.get(key, []), len(lane_stats[key]))
+        lane_values = _phase_array(lane_stats.get(key, []), len(vehicle_values))
+        merged[key] = np.maximum(vehicle_values, lane_values)
+    return merged
+
+
+def get_traffic_summary(vehicles, waiting_speed_threshold=0.1, phase_count=4, lanes=None):
     phase_pressure, totals = get_phase_pressure(
         vehicles,
         waiting_speed_threshold=waiting_speed_threshold,
         phase_count=phase_count,
     )
+    if _nonnegative_float(totals["vehicle_count"]) <= 0.0 and lanes:
+        phase_pressure, totals = get_lane_observation_phase_pressure(lanes, phase_count=phase_count)
+
     vehicle_count = _nonnegative_float(totals["vehicle_count"])
     queue_count = _nonnegative_float(totals["queue"])
     waiting_time = _nonnegative_float(totals["waiting_time"])

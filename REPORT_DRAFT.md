@@ -87,12 +87,14 @@
 - 14 条进口车道的归一化排队车辆数。
 - 14 条进口车道的归一化平均等待时间。
 
+如果 `vehicles` 列表为空或无法推导有效进口车道压力，代码会使用 `frame_state.lanes` 中的 `lane_id`、`v_count`、`queue_length` 和 `congestion` 作为 fallback，聚合四个相位压力，并把 lanes 聚合统计与逐车道统计特征取最大值合并。这保持了 638 维输入不变，同时避免真实平台只提供 lane 级聚合信息时交通压力长期为 0。
+
 代码中对 `position_in_lane["y"]` 做了单位兼容：
 
 - 当绝对值大于 `200` 时，按毫米处理并除以 `1000`。
 - 否则按米处理。
 
-特征预处理和观测编码对缺失 `frame_state`、缺失 `vehicles`、缺失 `obs` 包装、畸形车辆记录和异常相位字段采用保守跳过或默认值策略，避免异常帧中断训练循环。字段读取同时兼容普通 dict 和作业协议对象属性，覆盖 Observation、FrameState、Vehicle、Phase、ExtraInfo 等消息形态；若平台把单个 Vehicle/Phase 直接作为对象返回，也会按单条记录处理，而标量坏字段会被视为无效输入。
+特征预处理和观测编码对缺失 `frame_state`、缺失 `vehicles`、缺失 `obs` 包装、畸形车辆记录和异常相位字段采用保守跳过或默认值策略，避免异常帧中断训练循环。字段读取同时兼容普通 dict 和作业协议对象属性，覆盖 Observation、FrameState、Vehicle、Phase、Lane、ExtraInfo 等消息形态；若平台把单个 Vehicle/Phase/Lane 直接作为对象返回，也会按单条记录处理，而标量坏字段会被视为无效输入。
 作业文档列出的车辆字段不一定包含 `target_junction`，因此进口车道判断和交叉口等待时间统计会在该字段缺失、且车辆可识别为进口车道时按单路口目标路口处理，避免真实 observation 只包含 `lane` 和 `junction` 时把进口车辆全部忽略。
 
 预处理器会清洗 `frame_no`、`frame_time`、车辆 ID、车速和车道位置；等待时间、行驶距离、车道车辆数和交叉口等待时间统计遇到异常车辆字段时跳过单车或按 0 处理，避免一个异常车辆破坏跨帧状态。路网初始化、车辆统计、reward 和 workflow 环境返回解析都通过安全字段读取处理 dict / 属性对象差异，并明确排除 int、float、bool 等标量伪记录。
@@ -178,6 +180,7 @@ workflow 调用奖励函数时还有一层兜底：如果奖励计算因异常 o
 `exploit()` 中加入 `rule_based_action()`：
 
 - 统计四个相位对应进口车道组的压力。
+- 当车辆明细不可用时，使用 lanes 聚合压力作为兜底。
 - 在合法相位中选择压力最高的相位。
 - 根据压力大小设置绿灯持续时间。
 

@@ -1446,3 +1446,21 @@
   - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
 - 下一步：
   - 平台环境可用后采集真实 observation 样例，优先确认 `vehicles` / `lanes` / `legal_action` 的实际协议形态。
+
+### Step 97 - 接入 lanes 聚合压力 fallback
+
+- 状态：完成
+- Commit：待提交
+- 内容：
+  - `traffic_utils` 新增 lane 字段读取、进口车道 ID 映射、lane 聚合统计、lane 聚合相位压力和车辆/lane 统计合并 helper。
+  - `observation_process()` 在解析 `frame_state.lanes` 后，将 lanes 传入交通统计，并把 lanes 逐车道统计与车辆逐车道统计合并，保持 `Config.DIM_OF_OBSERVATION = 638` 不变。
+  - `rule_based_action()` 在车辆相位压力全 0 时使用 lanes 聚合压力，避免车辆明细缺失时评估兜底固定选择 0 相位。
+  - `reward_shaping()` 在 `vehicles` 无有效进口车辆但 `lanes` 有有效聚合信息时，使用 lanes 聚合压力计算 phase/duration reward。
+  - 无平台依赖测试覆盖 dict/object lane 记录、非有限 lane 字段、lane-only 交通摘要和 lane-only reward；静态测试增加 lanes fallback 代码锚点。
+  - 更新 `AGENTS.md`、`RUNBOOK.md` 和 `REPORT_DRAFT.md`，记录 lanes fallback 已处理及真实平台待确认点。
+- 验证：
+  - 已运行 `python -m compileall agent_target_dqn tests/test_target_dqn_features.py tests/test_target_dqn_static.py`，通过。
+  - 已运行 `python tests/test_target_dqn_features.py` 和 `python tests/test_target_dqn_static.py`，均通过。
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 平台运行后确认 `frame_state.lanes` 的真实容器类型、字段名、数值尺度，以及 lanes fallback 是否能避免 reward/压力长期为 0。

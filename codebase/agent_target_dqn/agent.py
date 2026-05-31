@@ -341,6 +341,7 @@ class Agent(BaseAgent):
         # Parse frame_state
         # 解析 frame_state
         vehicles = _as_record_list(_safe_mapping_get(frame_state, "vehicles", []))
+        lanes = _as_record_list(_safe_mapping_get(frame_state, "lanes", []))
 
         # Divide the lane into several grids along the lane direction and the vehicle driving direction
         # 沿车道方向和车辆行驶方向将车道划分为数个栅格
@@ -407,11 +408,12 @@ class Agent(BaseAgent):
             vehicles,
             waiting_speed_threshold=Config.WAITING_SPEED_THRESHOLD,
             phase_count=Config.DIM_OF_ACTION_PHASE,
+            lanes=lanes,
         )
         traffic_feature = self._traffic_feature(traffic_summary)
         traffic_trend_feature = self._traffic_trend_feature(traffic_summary)
         traffic_history_feature = self._traffic_history_feature(traffic_summary)
-        lane_stat_feature = self._lane_stat_feature(vehicles)
+        lane_stat_feature = self._lane_stat_feature(vehicles, lanes)
         observation = (
             position
             + speed
@@ -473,11 +475,17 @@ class Agent(BaseAgent):
         if not _is_record(frame_state):
             frame_state = {}
         vehicles = _as_record_list(_safe_mapping_get(frame_state, "vehicles", []))
+        lanes = _as_record_list(_safe_mapping_get(frame_state, "lanes", []))
         phase_pressure, _ = get_phase_pressure(
             vehicles,
             waiting_speed_threshold=Config.WAITING_SPEED_THRESHOLD,
             phase_count=Config.DIM_OF_ACTION_PHASE,
         )
+        if not np.any(phase_pressure) and lanes:
+            phase_pressure, _ = get_lane_observation_phase_pressure(
+                lanes,
+                phase_count=Config.DIM_OF_ACTION_PHASE,
+            )
         phase_age_feature = np.asarray(self._phase_age_feature(frame_state), dtype=np.float32)
         fair_pressure = phase_pressure * (1.0 + Config.FAIRNESS_BONUS_SCALE * phase_age_feature)
         legal_mask = self._phase_action_mask(_safe_mapping_get(raw_obs, "legal_action"))
@@ -591,12 +599,17 @@ class Agent(BaseAgent):
             del self.preprocess.traffic_history[0 : len(self.preprocess.traffic_history) - Config.TRAFFIC_HISTORY_SIZE]
         return history_feature
 
-    def _lane_stat_feature(self, vehicles):
+    def _lane_stat_feature(self, vehicles, lanes=None):
         lane_stats = get_lane_statistics(
             vehicles,
             waiting_speed_threshold=Config.WAITING_SPEED_THRESHOLD,
             lane_count=Config.GRID_WIDTH,
         )
+        if lanes:
+            lane_stats = merge_lane_observation_statistics(
+                lane_stats,
+                get_lane_observation_statistics(lanes, lane_count=Config.GRID_WIDTH),
+            )
         lane_feature = [
             float(np.clip(count / Config.LANE_COUNT_SCALE, 0.0, 1.0)) for count in lane_stats["counts"]
         ]

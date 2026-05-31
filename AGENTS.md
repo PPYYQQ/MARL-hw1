@@ -111,6 +111,7 @@ Target-DQN 关键文件：
 - `observation_process()`、`rule_based_action()` 和共享交通统计工具会保守处理缺失 `frame_state`、缺失 `vehicles`、缺失 `obs` 包装和畸形车辆/相位记录。
 - workflow、Agent、reward、preprocessor 和交通统计 helper 的关键协议字段读取已兼容普通 dict 与属性对象，贴合作业文档中的 Observation / FrameState / Vehicle / Phase 消息形态；标量字段不会被误当成协议对象，单个非 dict 对象式 vehicles/phases 容器也会按一条记录处理。
 - 共享交通统计工具不再要求车辆记录必须包含 `target_junction`；缺失时会按单路口进口车道车辆处理，等待时间统计也会复用同一默认目标路口，贴合作业文档字段列表。
+- `frame_state.lanes` 已作为车辆列表缺失或稀疏时的 fallback 信号；观测交通统计、逐车道统计、规则兜底和 reward 都能复用 `lane_id`、`v_count`、`queue_length`、`congestion` 聚合出的相位压力。
 - `action_process()` 已将 duration index 映射为实际秒数。
 - `predict()` 对空 observation batch 会返回空列表；`action_process()` 会固定 `junction_id=0` 并清洗异常相位/时长索引，确保输出合法动作。
 - `predict()` 会先把 ObsData batch 安全归一化为 list，并隔离异常 ObsData 属性，避免直接预测调用被坏 batch 或坏属性中断。
@@ -179,7 +180,7 @@ Target-DQN 关键文件：
 - 平台文档中 `legal_action` 更像是否需要决策的标量门控；当前 Target-DQN 已保守兼容标量门控和 4 维相位 mask，但仍需在真实平台 observation 上确认是否存在相位级 mask 语义。
 - `agent_dqn`、`agent_ppo`、`agent_diy` 仍基本保留模板状态，不是当前主线。
 - 当前状态特征包含占用/速度网格、当前相位、相位服务年龄、持续时间、剩余时间、相位压力、全局等待/延误统计、一帧交通趋势、4 帧滚动交通历史和逐车道车辆/排队/等待统计。
-- 作业文档定义了 `frame_state.lanes` 的 `lane_id`、`v_count`、`congestion`、`queue_length` 字段；当前主线主要依赖 `vehicles` 推导车道和相位压力，尚未把 `lanes` 作为车辆列表缺失或稀疏时的 fallback 信号。
+- 作业文档定义了 `frame_state.lanes` 的 `lane_id`、`v_count`、`congestion`、`queue_length` 字段；当前已接入 lanes fallback，但仍需在真实 observation 上确认字段单位、是否为 list/tuple/对象 repeated container，以及是否存在 dict-of-records 形态。
 - 当前列表字段解析支持 list、tuple、iterable 和单个非 dict 协议对象；如果平台把 `vehicles`、`phases` 或 `lanes` 编码成单条 dict 记录或 dict-of-records，现有逻辑会保守忽略，需要拿真实样例后再扩展，不能盲目把任意 dict 当作列表展开。
 - reward 权重尚未经过平台训练调优。
 - 本地普通 Python 缺少 `torch`、`kaiwudrl`、`common_python`，真实 `train_test.py` 仍需在平台环境验证。
@@ -278,7 +279,7 @@ coding agent 无法单独保证：
 - 如继续增加更长历史窗口等特征，必须同步修改 `Config.DIM_OF_OBSERVATION` 和模型输入层。
 - 坐标单位必须通过真实 observation 确认；若 `position_in_lane["y"]` 是毫米，应使用 `/ 1000` 后再按 `GRID_LENGTH` 分桶。
 - 原始 observation、frame_state、vehicle、phase、extra_info 可能是 dict，也可能是平台协议对象；新增解析逻辑必须使用安全字段读取 helper，不要直接假设 `.get()` 或下标访问一定可用。注意区分协议对象和标量，避免把 `1`、`False` 这类坏字段当成有效 observation。
-- `frame_state.lanes` 是文档中明确存在的车道聚合字段；如果平台真实 observation 里 `vehicles` 为空但 `lanes` 有值，下一步应优先把 lanes 聚合成相位压力和逐车道统计 fallback，同时保持 638 维特征总长不变或同步更新 `Config.DIM_OF_OBSERVATION`。
+- `frame_state.lanes` 是文档中明确存在的车道聚合字段；当前会在 `vehicles` 推导压力为空时，用 lanes 聚合相位压力，并将 lanes 统计与逐车道统计特征取最大值合并，保持 638 维特征总长不变。
 - 车辆记录可能没有 `target_junction`，进口车道判断和交叉口等待时间统计不能强依赖该字段；单路口场景下缺失且能识别为进口车道时按目标路口 0 处理，无法识别目标的畸形记录应跳过。
 - 所有特征必须固定长度、无 NaN、范围稳定；空车辆和缺失字段要有默认值。
 
@@ -302,7 +303,7 @@ coding agent 无法单独保证：
 6. 通过 `./scripts/package_submission.sh` 生成平台上传包，并确认压缩包里只有平台需要的 `codebase/` 内容。
 7. 使用平台监控调参，记录每次配置、模型 ID、训练时长和评估得分。
 8. 将真实实验结果回填到 `EXPERIMENTS.md`、`PROGRESS.md` 和 `REPORT_DRAFT.md`。
-9. 如基础 Target-DQN 稳定，再根据平台指标优先处理 reward 权重、lanes fallback、duration 分桶和训练配置调参。
+9. 如基础 Target-DQN 稳定，再根据平台指标优先处理 reward 权重、duration 分桶和训练配置调参。
 
 ## 测试计划
 
@@ -317,7 +318,7 @@ coding agent 无法单独保证：
 单元测试：
 
 - 构造 fake observation，验证 `observation_process()` 输出固定长度、无 NaN、数值范围合理。
-- 构造边界 observation：无车辆、全拥堵、只存在部分车道、相位缺失、`extra_info` 无 `init_state`。
+- 构造边界 observation：无车辆但 lanes 有值、全拥堵、只存在部分车道、相位缺失、`extra_info` 无 `init_state`。
 - 验证 `action_process()` 对任意模型输出都能产生合法 `phase_idx` 和合法秒数 duration。
 - 验证 `reward_shaping()` 对排队/等待下降给出更高奖励，对频繁切灯给出惩罚。
 - 验证 `sample_process()` 中 `_obs`、`done`、`rew`、`act` 的 tensor 形状与 `Algorithm.learn()` 一致。

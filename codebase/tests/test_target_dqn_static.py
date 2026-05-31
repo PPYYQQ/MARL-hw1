@@ -137,6 +137,8 @@ def main():
     require("_safe_int(served_frame" in definition, "fairness reward should sanitize phase service history")
     require('_safe_record_value(_obs, "frame_state")' in definition, "reward should tolerate missing frame_state")
     require('_safe_record_value(frame_state, "vehicles", [])' in definition, "reward should tolerate missing vehicles")
+    require('_safe_record_value(frame_state, "lanes", [])' in definition, "reward should tolerate missing lanes")
+    require("get_lane_observation_phase_pressure" in definition, "reward should use lane observations when vehicles are absent")
     require("def _safe_list" in definition, "reward should tolerate iterable protocol containers")
     require("bool, int, float, complex" in definition, "reward should not treat scalar values as protocol records")
     require("return [value]" in definition, "reward should accept singleton protocol containers")
@@ -192,6 +194,13 @@ def main():
         'vehicles = _as_record_list(_safe_mapping_get(frame_state, "vehicles", []))' in agent,
         "observation should filter malformed vehicle records",
     )
+    require(
+        'lanes = _as_record_list(_safe_mapping_get(frame_state, "lanes", []))' in agent,
+        "observation should filter malformed lane records",
+    )
+    require("lanes=lanes" in agent, "traffic summaries should use lane observations as a fallback")
+    require("get_lane_observation_phase_pressure" in agent, "rule fallback should use lane observations when vehicles are absent")
+    require("merge_lane_observation_statistics" in agent, "lane stat features should merge lane observations")
     require("def rule_based_action" in agent, "exploit should have a rule-based fallback")
     require("def _joint_action_mask" in agent, "prediction should expand phase legality to joint actions")
     require("if not mask.any()" in agent and "mask[:] = True" in agent, "prediction should recover empty phase masks")
@@ -228,6 +237,9 @@ def main():
 
     require("def get_phase_pressure" in traffic_utils, "shared phase pressure helper is required")
     require("def get_lane_statistics" in traffic_utils, "shared lane statistics helper is required")
+    require("def get_lane_observation_statistics" in traffic_utils, "lane observation statistics helper is required")
+    require("def get_lane_observation_phase_pressure" in traffic_utils, "lane observation pressure helper is required")
+    require("def merge_lane_observation_statistics" in traffic_utils, "lane observation stats should merge with vehicle stats")
     require("def get_traffic_summary" in traffic_utils, "shared traffic summary helper is required")
     require("def get_traffic_trend" in traffic_utils, "shared traffic trend helper is required")
     require("def get_traffic_history_feature" in traffic_utils, "shared traffic history helper is required")

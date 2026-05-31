@@ -76,12 +76,15 @@ def main():
     )
     from agent_target_dqn.feature.preprocessor import FeatureProcess
     from agent_target_dqn.feature.traffic_utils import (
+        get_lane_observation_phase_pressure,
+        get_lane_observation_statistics,
         get_phase_pressure,
         get_lane_statistics,
         get_lane_position_meters,
         get_traffic_history_feature,
         get_traffic_summary,
         get_traffic_trend,
+        merge_lane_observation_statistics,
         normalize_phase_legal_action,
         on_enter_lane,
     )
@@ -210,6 +213,38 @@ def main():
     assert traffic_summary["queue_count"] == 1.0
     assert traffic_summary["queue_ratio"] == 0.5
 
+    lanes = [
+        {"lane_id": 11, "v_count": 5, "queue_length": 3, "congestion": 0.5},
+        {"lane_id": 126, "v_count": 2, "queue_length": 1, "congestion": 0.25},
+        {"lane_id": 999, "v_count": 9, "queue_length": 9, "congestion": 1.0},
+    ]
+    lane_observation_stats = get_lane_observation_statistics(lanes)
+    assert lane_observation_stats["counts"][0] == 5.0
+    assert lane_observation_stats["queues"][0] == 3.0
+    assert lane_observation_stats["counts"][7] == 2.0
+    assert lane_observation_stats["queues"][7] == 1.0
+    lane_phase_pressure, lane_totals = get_lane_observation_phase_pressure(lanes)
+    assert lane_phase_pressure[0] > 0.0
+    assert lane_phase_pressure[3] > 0.0
+    assert lane_totals["vehicle_count"] == 7.0
+    assert lane_totals["queue"] == 4.0
+    lane_summary = get_traffic_summary([], lanes=lanes)
+    assert lane_summary["vehicle_count"] == 7.0
+    assert lane_summary["queue_count"] == 4.0
+    assert lane_summary["phase_pressure"][0] > 0.0
+    merged_lane_stats = merge_lane_observation_statistics(lane_stats, lane_observation_stats)
+    assert merged_lane_stats["counts"][0] == 5.0
+    assert merged_lane_stats["queues"][0] == 3.0
+    object_lane = AttrObject(lane_id=11, v_count=4, queue_length=2, congestion=0.3)
+    object_lane_pressure, object_lane_totals = get_lane_observation_phase_pressure([object_lane])
+    assert object_lane_pressure[0] > 0.0
+    assert object_lane_totals["vehicle_count"] == 4.0
+    congestion_only_pressure, congestion_only_totals = get_lane_observation_phase_pressure(
+        [{"lane_id": 11, "congestion": 0.5}]
+    )
+    assert congestion_only_pressure[0] > 0.0
+    assert congestion_only_totals["vehicle_count"] == 1.0
+
     zero_trend = get_traffic_trend(traffic_summary, None)
     assert zero_trend == [0.0] * 8
 
@@ -259,6 +294,12 @@ def main():
     assert all(math.isfinite(float(value)) for value in nonfinite_phase_pressure)
     assert all(math.isfinite(float(value)) for value in nonfinite_totals.values())
     assert nonfinite_totals["vehicle_count"] == 2
+    nonfinite_lanes = [
+        {"lane_id": 11, "v_count": float("nan"), "queue_length": float("inf"), "congestion": float("-inf")}
+    ]
+    nonfinite_lane_pressure, nonfinite_lane_totals = get_lane_observation_phase_pressure(nonfinite_lanes)
+    assert all(math.isfinite(float(value)) for value in nonfinite_lane_pressure)
+    assert all(math.isfinite(float(value)) for value in nonfinite_lane_totals.values())
     nonfinite_summary = get_traffic_summary(nonfinite_vehicles)
     assert all(math.isfinite(float(value)) for value in nonfinite_summary["phase_pressure"])
     assert math.isfinite(nonfinite_summary["avg_waiting_time"])
@@ -562,6 +603,21 @@ def main():
         dummy_agent,
     )
     assert all(math.isfinite(value) for value in finite_reward)
+    dummy_agent.preprocess.old_waiting_time = 0.0
+    dummy_agent.preprocess.phase_last_served_frame = [None] * Config.DIM_OF_ACTION_PHASE
+    dummy_agent.preprocess.last_phase_index = None
+    lane_only_reward = reward_shaping(
+        {
+            "frame_state": {
+                "frame_no": 2,
+                "vehicles": [],
+                "lanes": [{"lane_id": 11, "v_count": 5, "queue_length": 3, "congestion": 0.5}],
+            }
+        },
+        [0, 0, Config.MIN_GREEN_DURATION + 12],
+        dummy_agent,
+    )
+    assert lane_only_reward[0] > 0.0
     dummy_agent.preprocess.old_waiting_time = 0.0
     dummy_agent.preprocess.phase_last_served_frame = [None] * Config.DIM_OF_ACTION_PHASE
     object_reward = reward_shaping(

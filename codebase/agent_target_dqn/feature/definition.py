@@ -221,12 +221,18 @@ def reward_shaping(_obs, act, agent):
     vehicles = [
         vehicle for vehicle in _safe_list(_safe_record_value(frame_state, "vehicles", [])) if _is_record(vehicle)
     ]
+    lanes = [lane for lane in _safe_list(_safe_record_value(frame_state, "lanes", [])) if _is_record(lane)]
 
     phase_pressure, pressure_totals = get_phase_pressure(
         vehicles,
         waiting_speed_threshold=Config.WAITING_SPEED_THRESHOLD,
         phase_count=Config.DIM_OF_ACTION_PHASE,
     )
+    if pressure_totals["vehicle_count"] == 0 and lanes:
+        phase_pressure, pressure_totals = get_lane_observation_phase_pressure(
+            lanes,
+            phase_count=Config.DIM_OF_ACTION_PHASE,
+        )
     enter_vehicle_count = pressure_totals["vehicle_count"]
 
     if enter_vehicle_count == 0:

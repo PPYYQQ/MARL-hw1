@@ -124,10 +124,11 @@ python tests/test_target_dqn_smoke.py
 - duration reward 长期为负：当前 20 个 duration 桶覆盖 `8-40` 秒，reward 目标也限制在同一范围；如果仍长期强负，优先检查压力尺度、`DIM_OF_ACTION_DURATION` 和实际平台动作秒数是否一致。
 - `observation process failed` / `traffic info update failed`：当前 workflow 会回退到规则动作、零特征样本或跳过非决策帧预处理并继续；需要保留原始 observation 和 extra_info 定位特征处理异常。
 - 观测里有异常 frame 或车辆字段：当前预处理器会兼容 dict、属性对象和单个对象式列表字段，并清洗 frame、车辆 ID、车速和位置；标量坏字段会跳过。若仍异常，优先保存原始 observation 样例和 repr。
+- 观测里 `vehicles` 为空但 `lanes` 有值：当前观测、规则兜底和 reward 会用 lanes 的 `lane_id`、`v_count`、`queue_length`、`congestion` 聚合压力；若平台字段名或单位不同，保存 `frame_state.lanes` 原始样例后扩展字段映射。
 - 车辆字段缺少 `target_junction`：当前进口车道判断和交叉口等待时间统计会在车辆可识别为进口车道时按单路口目标路口处理；没有车辆 ID 或无法识别进口车道的畸形 targetless 记录会跳过。若平台实际上用其它字段区分车辆目标，需要保存原始车辆样例再扩展映射。
 - 观测里有异常相位字段：当前相位 ID、duration、remaining duration、相位年龄和 workflow frame_no 都会清洗为有限值；若仍异常，优先保留原始 `frame_state.phases`。
 - 模型输入含 NaN/Inf 或异常 array-like：当前 `Model._prepare_input()` 会把非有限值归零，ragged 或转换失败的 Python observation 会补零或截断；如果仍出现非有限 Q 值，优先保留进入模型前的 feature。
-- reward 长期为 0：检查 `reward_shaping()` 是否收到真实车辆字段、`vehicles` 是否为空、相位压力是否一直为 0。
+- reward 长期为 0：检查 `reward_shaping()` 是否收到真实车辆字段或 lane 字段，`vehicles` 和 `lanes` 是否同时为空，以及相位压力是否一直为 0。
 - loss 爆炸或 NaN：当前特征、样本和 learner 都会清洗 NaN/Inf，reward 还会限制极端延误项并裁剪到 `[-Config.REWARD_CLIP, Config.REWARD_CLIP]`；若仍出现，优先降低 `Config.LR`，再缩小 reward 权重并保留异常 observation 样例。
 - 样本 shape 不一致或 `torch.stack` 报错：当前 `sample_process()` 和 `Algorithm.learn()` 都会定宽归一化样本字段；若仍出现，优先保留一局原始 collector 日志来定位平台返回的异常字段。
 - learner 样本属性读取失败：当前 `Algorithm.learn()` 会对 `obs`、`act`、`rew`、`_obs`、`done` 和 `legal_action` 使用安全读取；坏字段按默认值训练，不会直接跳过整批。

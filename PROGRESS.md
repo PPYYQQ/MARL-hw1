@@ -1583,3 +1583,19 @@
   - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
 - 下一步：
   - 平台运行后确认 `env.step()` 是否还有其它字段名，例如独立 `info` 或自定义 score 容器；若有，保存原始返回样例后继续扩展。
+
+### Step 105 - 兼容嵌套帧号别名
+
+- 状态：完成
+- Commit：`901f50d`
+- 内容：
+  - workflow 的 `_safe_frame_no()` 先读取顶层 `frame_no` / `frameNo`，缺失时再从 `extra_info` / `_state` / `state` 中回退读取同名帧号字段。
+  - Gym 四元、Gymnasium 五元和 dict/object step envelope 的帧号归一化都改走 `_safe_frame_no()`，避免平台把帧号放入 extra info 或对象属性时日志和终局路径长期显示 0。
+  - 无平台依赖测试增加对象式 `frameNo`、嵌套 `extra_info`、`_state` 和 `state` 帧号覆盖；静态测试增加帧号 alias 和 step fallback 锚点。
+  - 更新 `AGENTS.md`、`RUNBOOK.md` 和 `REPORT_DRAFT.md`，记录 workflow 帧号读取已支持顶层与嵌套字段别名。
+- 验证：
+  - 已运行 `python -m compileall agent_target_dqn/workflow/train_workflow.py tests/test_target_dqn_features.py tests/test_target_dqn_static.py`，通过。
+  - 已运行 `python tests/test_target_dqn_features.py` 和 `python tests/test_target_dqn_static.py`，均通过。
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 平台运行后保存一次真实 env_obs / step_result 样例，确认帧号字段是否还有 `frame`、`frameId` 或独立 `info` 容器等新别名。

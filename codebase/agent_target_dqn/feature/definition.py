@@ -56,7 +56,7 @@ def _safe_record_value(record, name, default=None):
 
 
 def _is_record(value):
-    return value is not None and not isinstance(value, (str, bytes))
+    return value is not None and not isinstance(value, (str, bytes, bool, int, float, complex))
 
 
 def _safe_list(value):
@@ -71,7 +71,7 @@ def _safe_list(value):
     try:
         return list(value)
     except Exception:
-        return []
+        return [value]
 
 
 def _fixed_float_list(value, width, default=0.0):

@@ -39,7 +39,7 @@ def _is_hashable(value):
 
 
 def _is_record(value):
-    return value is not None and not isinstance(value, (str, bytes))
+    return value is not None and not isinstance(value, (str, bytes, bool, int, float, complex))
 
 
 def _safe_list(value):
@@ -54,7 +54,7 @@ def _safe_list(value):
     try:
         return list(value)
     except Exception:
-        return []
+        return [value]
 
 
 def _safe_position_pair(vehicle):

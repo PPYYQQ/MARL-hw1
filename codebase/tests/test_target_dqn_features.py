@@ -315,49 +315,41 @@ def main():
     assert preprocess.lane_volume[11] == [1]
     object_preprocess = FeatureProcess(None)
     object_start_info = AttrObject(
-        junctions=[
-            AttrObject(
-                j_id=0,
-                enter_lanes_on_directions=[
-                    AttrObject(lanes=[11]),
-                ],
-            )
-        ],
+        junctions=AttrObject(
+            j_id=0,
+            enter_lanes_on_directions=AttrObject(lanes=11),
+        ),
         signals=[],
         edges=[],
-        lane_configs=[AttrObject(l_id=11)],
-        vehicle_configs=[AttrObject(v_config_id=1, max_speed=17.0)],
+        lane_configs=AttrObject(l_id=11),
+        vehicle_configs=AttrObject(v_config_id=1, max_speed=17.0),
     )
     object_first_frame = AttrObject(
         frame_state=AttrObject(
             frame_no=1,
             frame_time=1.0,
-            vehicles=[
-                AttrObject(
-                    v_id=10,
-                    v_config_id=1,
-                    lane=11,
-                    junction=-1,
-                    speed=0.0,
-                    position_in_lane=AttrObject(x=0.0, y=0.0),
-                )
-            ],
+            vehicles=AttrObject(
+                v_id=10,
+                v_config_id=1,
+                lane=11,
+                junction=-1,
+                speed=0.0,
+                position_in_lane=AttrObject(x=0.0, y=0.0),
+            ),
         )
     )
     object_second_frame = AttrObject(
         frame_state=AttrObject(
             frame_no=2,
             frame_time=3.0,
-            vehicles=[
-                AttrObject(
-                    v_id=10,
-                    v_config_id=1,
-                    lane=11,
-                    junction=-1,
-                    speed=0.0,
-                    position_in_lane=AttrObject(x=3.0, y=4.0),
-                )
-            ],
+            vehicles=AttrObject(
+                v_id=10,
+                v_config_id=1,
+                lane=11,
+                junction=-1,
+                speed=0.0,
+                position_in_lane=AttrObject(x=3.0, y=4.0),
+            ),
         )
     )
     object_preprocess.update_traffic_info(object_first_frame, AttrObject(init_state=object_start_info))
@@ -576,15 +568,13 @@ def main():
         AttrObject(
             frame_state=AttrObject(
                 frame_no=3,
-                vehicles=[
-                    AttrObject(
-                        lane=11,
-                        junction=-1,
-                        speed=0.0,
-                        waiting_time=12.0,
-                        delay=3.0,
-                    )
-                ],
+                vehicles=AttrObject(
+                    lane=11,
+                    junction=-1,
+                    speed=0.0,
+                    waiting_time=12.0,
+                    delay=3.0,
+                ),
             )
         ),
         [0, 0, Config.MIN_GREEN_DURATION],
@@ -798,8 +788,10 @@ def main():
 
     assert _safe_observation({"observation": {"legal_action": 1}}) == {"legal_action": 1}
     assert _safe_observation({"observation": None}) == {}
+    assert _safe_observation({"observation": 1}) == {}
     assert _safe_extra_info({"extra_info": {"init_state": {}}}) == {"init_state": {}}
     assert _safe_extra_info({"extra_info": None}) == {}
+    assert _safe_extra_info({"extra_info": 2}) == {}
     object_env_obs = AttrObject(
         observation=AttrObject(legal_action=1),
         extra_info=AttrObject(init_state={}),

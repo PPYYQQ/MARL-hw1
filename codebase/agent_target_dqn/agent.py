@@ -70,7 +70,7 @@ def _safe_mapping_get(mapping, key, default=None):
 
 
 def _is_record(value):
-    return value is not None and not isinstance(value, (str, bytes))
+    return value is not None and not isinstance(value, (str, bytes, bool, int, float, complex))
 
 
 def _as_record_list(value):
@@ -86,7 +86,7 @@ def _as_record_list(value):
         try:
             values = list(value)
         except Exception:
-            values = []
+            values = [value] if _is_record(value) else []
     return [item for item in values if _is_record(item)]
 
 

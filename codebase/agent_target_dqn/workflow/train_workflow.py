@@ -528,7 +528,7 @@ def _safe_env_value(env_obs, key, default):
 
 
 def _is_record(value):
-    return value is not None and not isinstance(value, (str, bytes))
+    return value is not None and not isinstance(value, (str, bytes, bool, int, float, complex))
 
 
 def _safe_observation(env_obs):

@@ -74,8 +74,23 @@ def record_value(record, key, default=None):
         return default
 
 
+VEHICLE_FIELD_ALIASES = {
+    "v_id": ("v_id", "vehicle_id", "vehicleId"),
+    "v_config_id": ("v_config_id", "vehicle_config_id", "vConfigId", "vehicleConfigId"),
+    "lane": ("lane", "lane_id", "laneId"),
+    "junction": ("junction", "junction_id", "junctionId"),
+    "target_junction": ("target_junction", "targetJunction", "target_junction_id", "targetJunctionId"),
+    "position_in_lane": ("position_in_lane", "positionInLane", "lane_position", "lanePosition"),
+    "waiting_time": ("waiting_time", "waitingTime"),
+}
+
+
 def vehicle_value(vehicle, key, default=None):
-    return record_value(vehicle, key, default)
+    for alias in VEHICLE_FIELD_ALIASES.get(key, (key,)):
+        value = record_value(vehicle, alias, None)
+        if value is not None:
+            return value
+    return default
 
 
 _vehicle_value = vehicle_value

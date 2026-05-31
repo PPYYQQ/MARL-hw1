@@ -126,11 +126,11 @@ python tests/test_target_dqn_smoke.py
 - `reward shaping failed`：当前 workflow 会将该步奖励回退为 `(0.0, 0.0)` 并继续 episode；需要保存对应 observation、action 和 agent 状态定位奖励函数异常。
 - duration reward 长期为负：当前 20 个 duration 桶覆盖 `8-40` 秒，reward 目标也限制在同一范围；如果仍长期强负，优先检查压力尺度、`DIM_OF_ACTION_DURATION` 和实际平台动作秒数是否一致。
 - `observation process failed` / `traffic info update failed`：当前 workflow 会回退到规则动作、零特征样本或跳过非决策帧预处理并继续；需要保留原始 observation 和 extra_info 定位特征处理异常。
-- 观测里有异常 frame 或车辆字段：当前预处理器会兼容 dict、属性对象和单个对象式列表字段，并清洗 frame、车辆 ID、车速和位置；标量坏字段会跳过。若仍异常，优先保存原始 observation 样例和 repr。
+- 观测里有异常 frame 或车辆字段：当前预处理器会兼容 dict、属性对象和单个对象式列表字段，并清洗 frame、车辆 ID、车速和位置；车辆字段会兼容 `vehicleId`、`vConfigId`、`laneId`、`junctionId`、`targetJunction`、`positionInLane`、`waitingTime` 等驼峰别名，标量坏字段会跳过。若仍异常，优先保存原始 observation 样例和 repr。
 - 观测里 `vehicles` 为空但 `lanes` 有值：当前观测、规则兜底和 reward 会用 lanes 的 `lane_id` / `laneId`、`v_count` / `vCount` / `vehicle_count`、`queue_length` / `queueLength` / `queue_count`、`congestion` / `congestionLevel` 聚合压力；若平台字段名或单位不同，保存 `frame_state.lanes` 原始样例后扩展字段映射。
-- 车辆字段缺少 `target_junction`：当前进口车道判断和交叉口等待时间统计会在车辆可识别为进口车道时按单路口目标路口处理；没有车辆 ID 或无法识别进口车道的畸形 targetless 记录会跳过。若平台实际上用其它字段区分车辆目标，需要保存原始车辆样例再扩展映射。
-- `junction` / `target_junction` 是字符串：当前会先转换成有限整数再判断进口车道、路口内状态和等待时间归属，`"0"` 会匹配单路口，`"-1"` 会按无目标或不在路口处理；若平台提供其它哨兵值，保存原始车辆样例后扩展清洗规则。
-- 路网或车辆 ID 是字符串：当前会清洗 `junction_id`、`edge_id`、`lane_id`、`vehicle_config_id`、车辆 `lane` 和 `v_config_id`，避免路网 key 与车辆字段一个是 `"11"`、一个是 `11` 时相位压力、车道统计或 max speed 查找失效。
+- 车辆字段缺少 `target_junction` / `targetJunction`：当前进口车道判断和交叉口等待时间统计会在车辆可识别为进口车道时按单路口目标路口处理；没有车辆 ID 或无法识别进口车道的畸形 targetless 记录会跳过。若平台实际上用其它字段区分车辆目标，需要保存原始车辆样例再扩展映射。
+- `junction` / `junctionId` / `target_junction` / `targetJunction` 是字符串：当前会先转换成有限整数再判断进口车道、路口内状态和等待时间归属，`"0"` 会匹配单路口，`"-1"` 会按无目标或不在路口处理；若平台提供其它哨兵值，保存原始车辆样例后扩展清洗规则。
+- 路网或车辆 ID 是字符串：当前会清洗 `junction_id`、`edge_id`、`lane_id`、`vehicle_config_id`、车辆 `lane` / `laneId` 和 `v_config_id` / `vConfigId` / `vehicleConfigId`，避免路网 key 与车辆字段一个是 `"11"`、一个是 `11` 时相位压力、车道统计或 max speed 查找失效。
 - init_state 字段命名差异：当前路网初始化兼容 `j_id/e_id/l_id/v_config_id` 与 `junction_id/edge_id/lane_id/vehicle_config_id`；如果平台还有其它字段名，保存 `extra_info.init_state` 原始样例后补充别名。
 - 观测里有异常相位字段或帧号字段：当前相位 ID、duration、remaining duration 和相位年龄都会清洗为有限值，并兼容 `signal_id` / `signalId`、`phase` / `current_phase` / `currentPhase`、`remaining_time` / `remainingTime` 等相位字段别名；workflow 会从顶层 `frame_no` / `frameNo` 或嵌套 `extra_info` / `_state` / `state` / `info` 中回退读取帧号并清洗。若仍异常，优先保留原始 `frame_state.phases` 和 env_obs 返回样例。
 - 模型输入含 NaN/Inf 或异常 array-like：当前 `Model._prepare_input()` 会把非有限值归零，ragged 或转换失败的 Python observation 会补零或截断；如果仍出现非有限 Q 值，优先保留进入模型前的 feature。

@@ -123,14 +123,29 @@ def _is_record(value):
 
 _RECORD_FIELD_KEYS = {
     "v_id",
+    "vehicle_id",
+    "vehicleId",
     "v_config_id",
     "vehicle_config_id",
+    "vConfigId",
+    "vehicleConfigId",
     "lane",
+    "laneId",
     "junction",
+    "junction_id",
+    "junctionId",
+    "target_junction",
+    "targetJunction",
+    "target_junction_id",
+    "targetJunctionId",
     "position_in_lane",
+    "positionInLane",
+    "lane_position",
+    "lanePosition",
     "speed",
     "delay",
     "waiting_time",
+    "waitingTime",
     "s_id",
     "signal_id",
     "signal_idx",
@@ -507,10 +522,9 @@ class Agent(BaseAgent):
                 try:
                     x_pos = get_lane_code(vehicle)
                     y_pos = int(get_lane_position_meters(vehicle) // Config.GRID_LENGTH)
-                    vehicle_config_id = _safe_mapping_get(
+                    vehicle_config_id = vehicle_value(
                         vehicle,
                         "v_config_id",
-                        _safe_mapping_get(vehicle, "vehicle_config_id"),
                     )
                     vehicle_config_key = _mapping_key(
                         vehicle_config_id,
@@ -530,7 +544,7 @@ class Agent(BaseAgent):
                     continue
 
                 target_junction = _mapping_key(
-                    _safe_mapping_get(vehicle, "target_junction", junction_id),
+                    vehicle_value(vehicle, "target_junction", junction_id),
                     speed_dict,
                     junction_id,
                 )

@@ -66,14 +66,14 @@ def make_fake_obs():
             "phases": [{"s_id": 0, "phase_id": 0, "duration": 20, "remaining_duration": 12}],
             "vehicles": [
                 {
-                    "v_id": 1,
-                    "v_config_id": 1,
-                    "lane": 11,
-                    "junction": -1,
-                    "target_junction": 0,
-                    "position_in_lane": {"x": 0, "y": 50000},
+                    "vehicleId": 1,
+                    "vConfigId": 1,
+                    "laneId": 11,
+                    "junctionId": -1,
+                    "targetJunction": 0,
+                    "positionInLane": {"x": 0, "y": 50000},
                     "speed": 0.0,
-                    "waiting_time": 20.0,
+                    "waitingTime": 20.0,
                     "delay": 30.0,
                 },
                 {

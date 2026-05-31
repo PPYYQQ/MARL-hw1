@@ -191,6 +191,26 @@ def main():
     string_phase_pressure, string_totals = get_phase_pressure([string_lane_vehicle])
     assert string_phase_pressure[0] > 0.0
     assert string_totals["vehicle_count"] == 1
+    alias_vehicle = {
+        "vehicleId": 101,
+        "vConfigId": 3,
+        "laneId": "11",
+        "junctionId": "-1",
+        "targetJunction": "0",
+        "positionInLane": {"x": 0.0, "y": 25000.0},
+        "speed": "0.0",
+        "waitingTime": "9.0",
+        "delay": "4.0",
+    }
+    assert on_enter_lane(alias_vehicle) is True
+    assert get_lane_position_meters(alias_vehicle) == 25.0
+    alias_lane_stats = get_lane_statistics([alias_vehicle])
+    assert alias_lane_stats["counts"][0] == 1.0
+    assert alias_lane_stats["avg_waiting_times"][0] == 9.0
+    alias_phase_pressure, alias_totals = get_phase_pressure([alias_vehicle])
+    assert alias_phase_pressure[0] > 0.0
+    assert alias_totals["waiting_time"] == 9.0
+    assert alias_totals["vehicle_count"] == 1
     assert get_lane_statistics([doc_style_vehicle])["counts"][0] == 1.0
     doc_phase_pressure, doc_totals = get_phase_pressure([doc_style_vehicle])
     assert doc_phase_pressure[0] > 0.0
@@ -498,6 +518,52 @@ def main():
         None,
     )
     assert string_id_preprocess.lane_volume[11] == [12]
+    alias_vehicle_preprocess = FeatureProcess(None)
+    alias_vehicle_preprocess.junction_dict = {0: {}}
+    alias_vehicle_preprocess.vehicle_configs_dict = {3: {"max_speed": 15.0}}
+    alias_vehicle_preprocess.update_traffic_info(
+        {
+            "frame_state": {
+                "frame_no": 1,
+                "frame_time": 1.0,
+                "vehicles": [
+                    {
+                        "vehicleId": 30,
+                        "vConfigId": "3",
+                        "laneId": "11",
+                        "junctionId": "-1",
+                        "targetJunction": "0",
+                        "speed": 0.0,
+                        "positionInLane": {"x": 0.0, "y": 0.0},
+                    }
+                ],
+            }
+        },
+        None,
+    )
+    alias_vehicle_preprocess.update_traffic_info(
+        {
+            "frame_state": {
+                "frame_no": 2,
+                "frame_time": 4.0,
+                "vehicles": [
+                    {
+                        "vehicleId": 30,
+                        "vConfigId": "3",
+                        "laneId": "11",
+                        "junctionId": "-1",
+                        "targetJunction": "0",
+                        "speed": 0.0,
+                        "positionInLane": {"x": 3.0, "y": 4.0},
+                    }
+                ],
+            }
+        },
+        None,
+    )
+    assert alias_vehicle_preprocess.waiting_time_store[30] == 3.0
+    assert alias_vehicle_preprocess.vehicle_distance_store[30] == 5.0
+    assert alias_vehicle_preprocess.lane_volume[11] == [30]
     object_preprocess.waiting_time_store[11] = 4.0
     assert object_preprocess.get_all_junction_waiting_time(
         [AttrObject(v_id=11, junction=-1, lane=11)]
@@ -577,13 +643,14 @@ def main():
             {"junction": -1, "target_junction": 0, "waiting_time": 6.0},
             {"junction": -1, "lane": 11, "waiting_time": 10.0},
             {"junction": "-1", "target_junction": "0", "waiting_time": 3.0},
+            {"junctionId": "-1", "targetJunction": "0", "waitingTime": 8.0},
             {"junction": "-1", "target_junction": "-1", "waiting_time": 99.0},
             {"junction": "-1", "target_junction": "bad", "waiting_time": 99.0},
             {"junction": -1, "target_junction": 0, "waiting_time": float("inf")},
             {"bad": "vehicle"},
         ]
     )
-    assert abs(waiting_by_origin[0] - (19.0 / 4.0)) < 1e-6
+    assert abs(waiting_by_origin[0] - (27.0 / 5.0)) < 1e-6
     string_key_preprocess = FeatureProcess(None)
     string_key_preprocess.junction_dict = {"0": {}}
     string_key_preprocess.waiting_time_store[7] = 2.0

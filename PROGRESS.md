@@ -1191,3 +1191,18 @@
   - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
 - 下一步：
   - 有 `torch` 环境后补跑 `python tests/test_target_dqn_smoke.py`，确认直接模型 forward 对 NaN/Inf 输入输出有限 Q 值。
+
+### Step 81 - learner 样本字段异常隔离
+
+- 状态：完成
+- Commit：`a793eaa`
+- 内容：
+  - `Algorithm.learn()` 新增 `_sample_field()`，读取样本字段时隔离属性访问异常。
+  - `obs`、`_obs` 字段读取失败时使用零 observation；`act` 失败时使用 `[0, 0, MIN_GREEN_DURATION]`；`rew` 失败时使用 `[0.0, 0.0]`；`done` 失败时按非终局；`legal_action` 失败时按全相位可选。
+  - `_normalize_tensor()` 捕获未预期 tensor 转换异常，坏字段转换为零张量后继续定宽补齐。
+  - 静态测试增加 learner 安全字段读取和异常 tensor 转换锚点。
+- 验证：
+  - 已运行 `python -m compileall agent_target_dqn/algorithm tests/test_target_dqn_static.py` 和 `python tests/test_target_dqn_static.py`，均通过。
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 有 `torch` 环境后补充/运行 smoke，确认异常样本字段不会让整批 `Algorithm.learn()` 失败。

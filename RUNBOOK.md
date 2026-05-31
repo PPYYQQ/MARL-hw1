@@ -120,3 +120,4 @@ python tests/test_target_dqn_smoke.py
 - reward 长期为 0：检查 `reward_shaping()` 是否收到真实车辆字段、`vehicles` 是否为空、相位压力是否一直为 0。
 - loss 爆炸或 NaN：当前特征、样本和 learner 都会清洗 NaN/Inf；若仍出现，优先降低 `Config.LR`，再缩小 reward 权重并保留异常 observation 样例。
 - 样本 shape 不一致或 `torch.stack` 报错：当前 `sample_process()` 和 `Algorithm.learn()` 都会定宽归一化样本字段；若仍出现，优先保留一局原始 collector 日志来定位平台返回的异常字段。
+- learner 样本属性读取失败：当前 `Algorithm.learn()` 会对 `obs`、`act`、`rew`、`_obs`、`done` 和 `legal_action` 使用安全读取；坏字段按默认值训练，不会直接跳过整批。

@@ -767,3 +767,17 @@
   - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
 - 下一步：
   - 平台环境可用后观察 learner 是否仍因样本 shape 不一致报错。
+
+### Step 52 - 模型 ragged batch 输入容错
+
+- 状态：完成
+- Commit：`e00679f`
+- 内容：
+  - `Model._prepare_input()` 的非 Tensor 输入现在先经过 `_as_numpy_array()`，避免 ragged Python list 在 `np.asarray(..., dtype=float32)` 阶段直接抛错。
+  - 对 ragged batch 逐行调用 `_fit_numpy_width()`，按 `Config.DIM_OF_OBSERVATION` 补齐或截断后再 `np.stack()`。
+  - 对单行非法值使用零宽数组并补齐为全零 observation，保证模型输出仍保持 batch 形状。
+  - smoke 测试覆盖短/长混合 ragged batch 和包含非法行的 batch；静态测试增加 ragged batch 归一化锚点。
+- 验证：
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 平台环境可用后确认模型入口不会因 Python batch 内各行 observation 长度不一致而失败。

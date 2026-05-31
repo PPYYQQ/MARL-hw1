@@ -1485,7 +1485,7 @@
 ### Step 99 - 兼容文档式路网初始化字段别名
 
 - 状态：完成
-- Commit：待提交
+- Commit：`6e6795f`
 - 内容：
   - `FeatureProcess.init_road_info()` 新增 `_first_record_value()`，统一读取多个字段别名。
   - 路口、边、车道和车辆配置初始化同时兼容模板字段 `j_id/e_id/l_id/v_config_id` 与文档式字段 `junction_id/edge_id/lane_id/vehicle_config_id`。

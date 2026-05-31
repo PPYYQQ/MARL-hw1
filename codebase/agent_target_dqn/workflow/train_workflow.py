@@ -72,7 +72,7 @@ def workflow(envs, agents, logger=None, monitor=None, *args, **kwargs):
         # 保存model文件
         now = time.time()
         if now - last_save_model_time >= 1800:
-            agent.save_model(id="latest")
+            _save_latest_model(agent, logger)
             last_save_model_time = now
 
         # Reporting training progress
@@ -322,6 +322,15 @@ def _predict_action(agent, obs_data, obs, logger):
     except Exception as err:
         _log_error(logger, f"rule_based_action failed, use default action: {err}")
         return [0, 0, Config.MIN_GREEN_DURATION]
+
+
+def _save_latest_model(agent, logger):
+    try:
+        agent.save_model(id="latest")
+        return True
+    except Exception as err:
+        _log_error(logger, f"save latest model failed: {err}")
+        return False
 
 
 def _log_info(logger, message):

@@ -84,6 +84,7 @@ def main():
         _safe_frame_no,
         _safe_legal_action,
         _safe_observation,
+        _save_latest_model,
         _should_log_progress,
     )
 
@@ -480,6 +481,22 @@ def main():
     assert _predict_action(EmptyPredictAgent(), object(), {}, None) == [0, 2, Config.MIN_GREEN_DURATION + 1]
     assert _predict_action(FailingPredictAgent(), object(), {}, None) == [0, 1, Config.MIN_GREEN_DURATION]
     assert _predict_action(FailingFallbackAgent(), object(), {}, None) == [0, 0, Config.MIN_GREEN_DURATION]
+
+    class SavingAgent:
+        def __init__(self):
+            self.saved_ids = []
+
+        def save_model(self, id):
+            self.saved_ids.append(id)
+
+    class FailingSaveAgent:
+        def save_model(self, id):
+            raise RuntimeError("save failed")
+
+    saving_agent = SavingAgent()
+    assert _save_latest_model(saving_agent, FailingLogger()) is True
+    assert saving_agent.saved_ids == ["latest"]
+    assert _save_latest_model(FailingSaveAgent(), FailingLogger()) is False
 
 
 if __name__ == "__main__":

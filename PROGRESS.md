@@ -1599,3 +1599,19 @@
   - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
 - 下一步：
   - 平台运行后保存一次真实 env_obs / step_result 样例，确认帧号字段是否还有 `frame`、`frameId` 或独立 `info` 容器等新别名。
+
+### Step 106 - 兼容 info 额外状态别名
+
+- 状态：完成
+- Commit：`9275fa5`
+- 内容：
+  - workflow 将 `info` 纳入 `extra_info` / `_state` / `state` 之后的额外状态别名，dict/object step envelope、帧号 fallback 和 score/状态读取都能复用该容器。
+  - `Agent.exploit()` 评估入口也会读取 `info` 作为额外信息，兼容 Gym 风格封装或评估侧把状态对象命名为 `info` 的情况。
+  - 无平台依赖测试增加 `info` step envelope、`info.frameNo` 帧号 fallback 和 `_safe_extra_info()` 覆盖；静态测试增加 workflow 与 exploit 的 `info` alias 锚点。
+  - 更新 `AGENTS.md`、`RUNBOOK.md` 和 `REPORT_DRAFT.md`，记录 `info` 已作为额外状态容器支持。
+- 验证：
+  - 已运行 `python -m compileall agent_target_dqn/agent.py agent_target_dqn/workflow/train_workflow.py tests/test_target_dqn_features.py tests/test_target_dqn_static.py`，通过。
+  - 已运行 `python tests/test_target_dqn_features.py` 和 `python tests/test_target_dqn_static.py`，均通过。
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 平台运行后确认 `info` 中是否还包含更细的 score 或环境状态子容器；若平台监控字段仍为空，保存原始 `info` 样例后扩展 score alias。

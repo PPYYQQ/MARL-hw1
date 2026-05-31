@@ -795,3 +795,18 @@
   - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
 - 下一步：
   - 平台环境可用后确认样本池中 `obs`、`_obs`、`act`、`rew`、`done` 和 `legal_action` 不再因原始轨迹异常产生 shape 不一致。
+
+### Step 54 - 交通统计非有限值清洗
+
+- 状态：完成
+- Commit：`6eced8c`
+- 内容：
+  - `traffic_utils` 增加 `_finite_float()`、`_nonnegative_float()` 和 `_phase_array()`，统一清洗标量交通指标和相位数组。
+  - `get_phase_pressure()`、`get_lane_statistics()`、`get_traffic_summary()`、`get_traffic_trend()` 和 `get_traffic_history_feature()` 会将 NaN/Inf 归零，并对等待、延误等非负指标做下界裁剪。
+  - `get_lane_position_meters()` 对非有限车道位置显式抛出 `ValueError`，由调用侧跳过异常车辆。
+  - `observation_process()` 返回前通过 `_sanitize_observation()` 保证最终特征固定为 `Config.DIM_OF_OBSERVATION`，且非有限值归零。
+  - 无平台依赖测试覆盖非有限车辆 speed、waiting_time、delay、趋势和历史统计；静态测试增加交通数值清洗和最终 observation 清洗锚点。
+- 验证：
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 平台环境可用后确认 reward、规则兜底和 observation 不再因单条异常车辆字段产生 NaN/Inf。

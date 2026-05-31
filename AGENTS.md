@@ -86,6 +86,8 @@ Target-DQN 关键文件：
 - `predict()` 对空 observation batch 会返回空列表；`action_process()` 会固定 `junction_id=0` 并清洗异常相位/时长索引，确保输出合法动作。
 - 训练时已将 `[phase_idx, duration_seconds]` 转换为 80 维联合动作索引，避免 Q head gather 越界。
 - 观测处理已兼容 `position_in_lane["y"]` 的米/毫米单位。
+- 交通统计工具会清洗车辆 `speed`、`waiting_time`、`delay`、历史趋势和相位压力中的 NaN/Inf，避免异常车辆字段污染 reward、规则兜底和观测统计。
+- `observation_process()` 会在返回前统一清洗最终特征向量，保证长度为 `Config.DIM_OF_OBSERVATION` 且非有限值归零。
 - `Model.forward()` 会把单条一维 observation 转成 batch，并对异常长度或 ragged Python batch observation 做补零或截断，避免输入形状差异直接触发线性层错误。
 - optimizer 重复初始化已清理，当前使用 Adam。
 - `exploit()` 已有规则基线兜底。

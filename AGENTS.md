@@ -129,6 +129,7 @@ Target-DQN 关键文件：
 - `Algorithm.learn()` 会清洗 observation、reward、action、not_done、legal_action 和 TD target 中的 NaN/Inf，workflow reward 监控也会把非有限值归零。
 - `Algorithm.learn()` 会在 `torch.stack()` 前对 obs、_obs、action、reward、done 和 legal_action 做定宽补齐/截断，避免畸形样本长度不一致时训练崩溃。
 - `Algorithm.learn()` 遇到非有限 loss 或梯度范数时会跳过本次 optimizer step，避免 NaN/Inf 参数污染模型。
+- `Agent.learn()` 会隔离 `Algorithm.learn()` 未预期异常，记录 `learn failed` 并跳过当前 batch，避免 learner 因单批异常样本退出。
 - `exploit()` 强制走贪心推理且不衰减训练用 `_eps`，避免评估调用改变训练探索状态。
 - 观测和 reward 已加入相位服务年龄，用于降低高压相位长期不被服务的风险。
 - Target-DQN 已从 phase/duration 双头改为 80 维联合动作 Q 头，可表达相位和时长组合价值。

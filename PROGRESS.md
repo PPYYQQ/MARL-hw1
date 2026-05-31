@@ -1079,3 +1079,16 @@
   - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
 - 下一步：
   - 平台环境可用后确认不同封装返回的 `terminated` / `truncated` 类型不会误触发结束或漏掉真实结束。
+
+### Step 73 - Agent.learn 失败隔离
+
+- 状态：完成
+- Commit：`29d0640`
+- 内容：
+  - `Agent.learn()` 增加 try/except，封装 `self.algorithm.learn(list_sample_data)`。
+  - `Algorithm.learn()` 未预期抛错时记录 `learn failed` 并返回 `None`，避免 learner 因单个异常 batch 直接退出。
+  - 静态测试增加 agent learn 失败日志和仍委托 algorithm 的锚点。
+- 验证：
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 平台环境可用后确认样本池偶发坏 batch 只影响该 batch 学习，不会导致 learner 进程退出；若连续出现，再保存 batch 定位字段问题。

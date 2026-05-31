@@ -88,6 +88,7 @@ def main():
         _reset_env,
         _reset_agent,
         _reward_components,
+        _sample_batch_stats,
         _safe_done_flag,
         _safe_extra_info,
         _safe_frame_no,
@@ -394,6 +395,30 @@ def main():
     assert _reward_components((1.5, float("nan"))) == (1.5, 0.0)
     assert _reward_components((float("inf"), 2.0)) == (0.0, 2.0)
     assert _reward_components("bad") == (0.0, 0.0)
+
+    class RewardData:
+        def __init__(self, reward):
+            self.rew = reward
+
+    class FailingRewardData:
+        @property
+        def rew(self):
+            raise RuntimeError("reward read failed")
+
+    batch_length, batch_phase_rew, batch_duration_rew = _sample_batch_stats(
+        [RewardData((1.0, 2.0)), RewardData((float("nan"), 3.0)), FailingRewardData()],
+        None,
+    )
+    assert batch_length == 3
+    assert batch_phase_rew == 1.0
+    assert batch_duration_rew == 5.0
+    assert _sample_batch_stats([], None) == (0, 0.0, 0.0)
+
+    class FailingLengthBatch:
+        def __len__(self):
+            raise RuntimeError("length failed")
+
+    assert _sample_batch_stats(FailingLengthBatch(), None) == (0, 0.0, 0.0)
 
     import agent_target_dqn.workflow.train_workflow as train_workflow
 

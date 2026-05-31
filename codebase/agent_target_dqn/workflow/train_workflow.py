@@ -50,11 +50,10 @@ def workflow(envs, agents, logger=None, monitor=None, *args, **kwargs):
 
         data_length = 0
         for g_data in run_episodes(episode_num_every_epoch, env, agent, usr_conf, logger):
-            data_length += len(g_data)
-            for data in g_data:
-                phase_rew, duration_rew = _reward_components(data.rew)
-                epoch_phase_rew += phase_rew
-                epoch_duration_rew += duration_rew
+            batch_length, batch_phase_rew, batch_duration_rew = _sample_batch_stats(g_data, logger)
+            data_length += batch_length
+            epoch_phase_rew += batch_phase_rew
+            epoch_duration_rew += batch_duration_rew
 
             epoch_total_rew = epoch_phase_rew + epoch_duration_rew
             _send_sample_data(agent, list(g_data), logger)
@@ -230,6 +229,34 @@ def _reward_components(reward):
     except (TypeError, ValueError, IndexError):
         return 0.0, 0.0
     return phase_reward, duration_reward
+
+
+def _sample_batch_stats(sample_data, logger):
+    if sample_data is None:
+        return 0, 0.0, 0.0
+    try:
+        data_length = len(sample_data)
+    except Exception as err:
+        _log_error(logger, f"sample batch length failed: {err}")
+        return 0, 0.0, 0.0
+    if data_length == 0:
+        return 0, 0.0, 0.0
+
+    phase_rew = 0.0
+    duration_rew = 0.0
+    try:
+        for data in sample_data:
+            try:
+                reward = getattr(data, "rew", None)
+            except Exception as err:
+                _log_error(logger, f"sample reward read failed: {err}")
+                reward = None
+            sample_phase_rew, sample_duration_rew = _reward_components(reward)
+            phase_rew += sample_phase_rew
+            duration_rew += sample_duration_rew
+    except Exception as err:
+        _log_error(logger, f"sample batch iteration failed: {err}")
+    return data_length, phase_rew, duration_rew
 
 
 def _shape_reward(obs, act, agent, logger):

@@ -60,7 +60,13 @@ def main():
     install_workflow_stubs()
 
     from agent_target_dqn.conf.conf import Config
-    from agent_target_dqn.feature.definition import SampleData, _not_done_flag, reward_shaping, sample_process
+    from agent_target_dqn.feature.definition import (
+        SampleData,
+        _max_action_duration,
+        _not_done_flag,
+        reward_shaping,
+        sample_process,
+    )
     from agent_target_dqn.feature.preprocessor import FeatureProcess
     from agent_target_dqn.feature.traffic_utils import (
         get_phase_pressure,
@@ -457,6 +463,37 @@ def main():
         dummy_agent,
     )
     assert all(math.isfinite(value) for value in finite_reward)
+    dummy_agent.preprocess.old_waiting_time = 300.0
+    dummy_agent.preprocess.phase_last_served_frame = [0, 0, 0, 0]
+    dummy_agent.preprocess.last_phase_index = None
+    _, saturated_duration_reward = reward_shaping(
+        {
+            "frame_state": {
+                "frame_no": 20,
+                "vehicles": [
+                    {
+                        "lane": 11,
+                        "junction": -1,
+                        "target_junction": 0,
+                        "speed": 0.0,
+                        "waiting_time": 300.0,
+                        "delay": 300.0,
+                    },
+                    {
+                        "lane": 10,
+                        "junction": -1,
+                        "target_junction": 0,
+                        "speed": 0.0,
+                        "waiting_time": 300.0,
+                        "delay": 300.0,
+                    },
+                ],
+            }
+        },
+        [0, 0, _max_action_duration()],
+        dummy_agent,
+    )
+    assert saturated_duration_reward == 0.0
 
     assert _reward_components(None) == (0.0, 0.0)
     assert _reward_components((1.5, float("nan"))) == (1.5, 0.0)

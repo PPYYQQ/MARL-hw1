@@ -67,11 +67,15 @@ def _fixed_float_list(value, width, default=0.0):
 
 def _fixed_action_list(value):
     action = _fixed_float_list(value, 3)
-    max_duration = Config.MIN_GREEN_DURATION + Config.DIM_OF_ACTION_DURATION - 1
+    max_duration = _max_action_duration()
     action[0] = 0.0
     action[1] = float(np.clip(action[1], 0, Config.DIM_OF_ACTION_PHASE - 1))
     action[2] = float(np.clip(action[2], Config.MIN_GREEN_DURATION, max_duration))
     return action
+
+
+def _max_action_duration():
+    return Config.MIN_GREEN_DURATION + Config.DIM_OF_ACTION_DURATION - 1
 
 
 def _not_done_flag(value):
@@ -231,7 +235,7 @@ def reward_shaping(_obs, act, agent):
         np.clip(
             Config.MIN_GREEN_DURATION + selected_pressure,
             Config.MIN_GREEN_DURATION,
-            Config.MAX_GREEN_DURATION,
+            _max_action_duration(),
         )
     )
     duration_reward -= abs(duration - target_duration) / Config.MAX_GREEN_DURATION

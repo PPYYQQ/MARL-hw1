@@ -1206,3 +1206,19 @@
   - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
 - 下一步：
   - 有 `torch` 环境后补充/运行 smoke，确认异常样本字段不会让整批 `Algorithm.learn()` 失败。
+
+### Step 82 - env.step 常见 tuple 兼容
+
+- 状态：完成
+- Commit：`d7176f4`
+- 内容：
+  - `_normalize_step_result()` 增加 Gym 四元返回 `(observation, reward, done, info)` 兼容。
+  - `_normalize_step_result()` 增加 Gymnasium 五元返回 `(observation, reward, terminated, truncated, info)` 兼容。
+  - 保留当前二元封装返回和作业文档六元返回路径，减少不同平台包装层切换时的训练入口差异。
+  - 无平台依赖测试增加四元/五元返回归一化覆盖；静态测试增加 tuple 格式锚点。
+- 验证：
+  - 已运行 `python -m compileall agent_target_dqn/workflow tests/test_target_dqn_features.py tests/test_target_dqn_static.py`，通过。
+  - 已运行 `python tests/test_target_dqn_features.py` 和 `python tests/test_target_dqn_static.py`，均通过。
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 平台环境可用后确认真实 `env.step()` 是否还存在其他返回结构，并将原始返回样例补入测试。

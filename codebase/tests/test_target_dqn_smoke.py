@@ -223,7 +223,7 @@ def main():
     high_duration_action = agent.action_process(ActData(junction_id=0, phase_index=99, duration=99))
     malformed_action = agent.action_process(ActData(junction_id=99, phase_index="bad", duration=float("nan")))
     assert low_duration_action == [0, 0, Config.MIN_GREEN_DURATION]
-    assert high_duration_action == [0, Config.DIM_OF_ACTION_PHASE - 1, Config.MIN_GREEN_DURATION + 19]
+    assert high_duration_action == [0, Config.DIM_OF_ACTION_PHASE - 1, Config.MAX_GREEN_DURATION]
     assert malformed_action == [0, 0, Config.MIN_GREEN_DURATION]
     assert agent.rule_based_action(make_fake_obs())[1] == 0
     assert agent.rule_based_action(None) == [0, 0, Config.MIN_GREEN_DURATION]

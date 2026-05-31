@@ -109,6 +109,11 @@ def main():
         _update_traffic_info,
     )
 
+    assert Config.duration_index_to_seconds(0) == Config.MIN_GREEN_DURATION
+    assert Config.duration_index_to_seconds(Config.DIM_OF_ACTION_DURATION - 1) == Config.MAX_GREEN_DURATION
+    assert Config.duration_seconds_to_index(Config.MIN_GREEN_DURATION) == 0
+    assert Config.duration_seconds_to_index(Config.MAX_GREEN_DURATION) == Config.DIM_OF_ACTION_DURATION - 1
+
     assert normalize_phase_legal_action(None) == [1, 1, 1, 1]
     assert normalize_phase_legal_action([]) == [1, 1, 1, 1]
     assert normalize_phase_legal_action(1) == [1, 1, 1, 1]
@@ -337,7 +342,7 @@ def main():
     ragged_first.legal_action = [1, float("nan"), float("inf"), float("-inf")]
     ragged_second = frame_type()
     ragged_second.obs = [1.0] * (Config.DIM_OF_OBSERVATION + 5)
-    ragged_second.act = [7, 3, Config.MIN_GREEN_DURATION + Config.DIM_OF_ACTION_DURATION + 5, 99]
+    ragged_second.act = [7, 3, Config.MAX_GREEN_DURATION + 5, 99]
     ragged_second.rew = (0.25,)
     ragged_second.done = "1"
     ragged_second.legal_action = [0, 1]
@@ -354,7 +359,7 @@ def main():
     assert ragged_samples[1].act == [
         0.0,
         3.0,
-        float(Config.MIN_GREEN_DURATION + Config.DIM_OF_ACTION_DURATION - 1),
+        float(Config.MAX_GREEN_DURATION),
     ]
     assert ragged_samples[1].rew == [0.25, 0.0]
     assert ragged_samples[1].done == 0
@@ -656,7 +661,7 @@ def main():
     assert _safe_action([9, -1, 999], True, None) == [
         0,
         0,
-        Config.MIN_GREEN_DURATION + Config.DIM_OF_ACTION_DURATION - 1,
+        Config.MAX_GREEN_DURATION,
     ]
     assert _safe_action([None, None, None], False, None) == [None, None, None]
     assert _safe_action([0, "bad", 8], True, None) == [0, 0, Config.MIN_GREEN_DURATION]

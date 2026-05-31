@@ -487,7 +487,7 @@ def _safe_action(act, need_to_predict, logger):
         _log_error(logger, f"invalid action, use default action: {err}")
         return [0, 0, Config.MIN_GREEN_DURATION]
 
-    max_duration = Config.MIN_GREEN_DURATION + Config.DIM_OF_ACTION_DURATION - 1
+    max_duration = Config.max_action_duration()
     phase_index = max(0, min(phase_index, Config.DIM_OF_ACTION_PHASE - 1))
     duration = max(Config.MIN_GREEN_DURATION, min(duration, max_duration))
     return [0, phase_index, duration]

@@ -8,6 +8,9 @@ Author: Tencent AI Arena Authors
 """
 
 
+import math
+
+
 class Config:
 
     # Size of observation
@@ -55,3 +58,32 @@ class Config:
     MIN_GREEN_DURATION = 8
     MAX_GREEN_DURATION = 40
     MAX_RED_DURATION = 60
+    DURATION_STEP = (MAX_GREEN_DURATION - MIN_GREEN_DURATION) / max(DIM_OF_ACTION_DURATION - 1, 1)
+
+    @classmethod
+    def max_action_duration(cls):
+        return cls.MAX_GREEN_DURATION
+
+    @classmethod
+    def duration_index_to_seconds(cls, duration_index):
+        try:
+            duration_index = float(duration_index)
+        except (TypeError, ValueError, OverflowError):
+            duration_index = 0.0
+        if not math.isfinite(duration_index):
+            duration_index = 0.0
+        duration_index = round(max(0.0, min(duration_index, cls.DIM_OF_ACTION_DURATION - 1)))
+        duration = cls.MIN_GREEN_DURATION + duration_index * cls.DURATION_STEP
+        return int(round(max(cls.MIN_GREEN_DURATION, min(duration, cls.MAX_GREEN_DURATION))))
+
+    @classmethod
+    def duration_seconds_to_index(cls, duration_seconds):
+        try:
+            duration_seconds = float(duration_seconds)
+        except (TypeError, ValueError, OverflowError):
+            duration_seconds = cls.MIN_GREEN_DURATION
+        if not math.isfinite(duration_seconds):
+            duration_seconds = cls.MIN_GREEN_DURATION
+        duration_seconds = max(cls.MIN_GREEN_DURATION, min(duration_seconds, cls.MAX_GREEN_DURATION))
+        duration_index = round((duration_seconds - cls.MIN_GREEN_DURATION) / cls.DURATION_STEP)
+        return int(max(0, min(duration_index, cls.DIM_OF_ACTION_DURATION - 1)))

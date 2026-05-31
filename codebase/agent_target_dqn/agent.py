@@ -432,13 +432,7 @@ class Agent(BaseAgent):
             getattr(act_data, "duration", 0),
             Config.DIM_OF_ACTION_DURATION,
         )
-        duration = int(
-            np.clip(
-                Config.MIN_GREEN_DURATION + duration_index,
-                Config.MIN_GREEN_DURATION,
-                Config.MAX_GREEN_DURATION,
-            )
-        )
+        duration = Config.duration_index_to_seconds(duration_index)
         return [junction_id, phase_index, duration]
 
     def _safe_action_index(self, value, action_dim):
@@ -471,16 +465,11 @@ class Agent(BaseAgent):
         masked_pressure = np.where(legal_mask, fair_pressure, -1.0)
         phase_index = int(np.argmax(masked_pressure))
         duration_index = int(np.clip(round(float(phase_pressure[phase_index])), 0, Config.DIM_OF_ACTION_DURATION - 1))
+        duration = Config.duration_index_to_seconds(duration_index)
         return [
             0,
             phase_index,
-            int(
-                np.clip(
-                    Config.MIN_GREEN_DURATION + duration_index,
-                    Config.MIN_GREEN_DURATION,
-                    Config.MAX_GREEN_DURATION,
-                )
-            ),
+            duration,
         ]
 
     def _phase_feature(self, frame_state):

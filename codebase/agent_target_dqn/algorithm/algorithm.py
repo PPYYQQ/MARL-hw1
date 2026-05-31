@@ -227,7 +227,7 @@ class Algorithm:
 
     def _action_to_joint_index(self, action):
         phase_index = action[:, 1].long().clamp(0, Config.DIM_OF_ACTION_PHASE - 1)
-        duration_index = (action[:, 2] - Config.MIN_GREEN_DURATION).long()
+        duration_index = torch.round((action[:, 2] - Config.MIN_GREEN_DURATION) / Config.DURATION_STEP).long()
         duration_index = duration_index.clamp(0, Config.DIM_OF_ACTION_DURATION - 1)
         joint_index = phase_index * Config.DIM_OF_ACTION_DURATION + duration_index
         return joint_index.unsqueeze(1)

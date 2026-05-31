@@ -75,7 +75,7 @@ def _fixed_action_list(value):
 
 
 def _max_action_duration():
-    return Config.MIN_GREEN_DURATION + Config.DIM_OF_ACTION_DURATION - 1
+    return Config.max_action_duration()
 
 
 def _not_done_flag(value):

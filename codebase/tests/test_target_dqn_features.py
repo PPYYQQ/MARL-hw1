@@ -503,6 +503,12 @@ def main():
     assert _safe_frame_no({"frame_no": 3.5}) == 3
     assert _safe_frame_no({"frame_no": 7}) == 7
     assert _safe_done_flag({"terminated": 1}, "terminated") is True
+    assert _safe_done_flag({"terminated": 0}, "terminated") is False
+    assert _safe_done_flag({"terminated": "true"}, "terminated") is True
+    assert _safe_done_flag({"terminated": "False"}, "terminated") is False
+    assert _safe_done_flag({"terminated": "bad"}, "terminated") is False
+    assert _safe_done_flag({"terminated": float("inf")}, "terminated") is False
+    assert _safe_done_flag({"terminated": object()}, "terminated") is False
     assert _safe_done_flag({}, "terminated") is False
     assert _safe_legal_action({"legal_action": [1, 0, 0, 0]}) == [1, 0, 0, 0]
     assert _safe_legal_action(None) is None

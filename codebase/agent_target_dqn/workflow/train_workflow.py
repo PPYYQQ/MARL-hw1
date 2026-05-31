@@ -411,7 +411,23 @@ def _safe_frame_no(env_obs):
 
 
 def _safe_done_flag(env_obs, key):
-    return bool(_safe_env_value(env_obs, key, False))
+    value = _safe_env_value(env_obs, key, False)
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        if normalized in ("true", "1", "yes", "y"):
+            return True
+        if normalized in ("false", "0", "no", "n", ""):
+            return False
+        return False
+    try:
+        value = float(value)
+    except (TypeError, ValueError, OverflowError):
+        return False
+    if not math.isfinite(value):
+        return False
+    return value != 0.0
 
 
 def _safe_legal_action(obs):

@@ -902,3 +902,18 @@
   - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
 - 下一步：
   - 平台环境可用后确认 metrics 服务短暂异常时训练 episode 仍继续，并在后续轮次恢复指标日志。
+
+### Step 61 - 样本发送失败隔离
+
+- 状态：完成
+- Commit：`fef197e`
+- 内容：
+  - workflow 增加 `_send_sample_data()`，封装 `agent.send_sample_data()` 调用。
+  - 发送样本前继续传递 `list(g_data)` 浅拷贝，避免后续 `g_data.clear()` 清空 learner 可能异步消费的对象。
+  - 样本池或 learner 通道抛错时记录 `send sample data failed` 并返回失败，不再让非环境交互路径直接终止 workflow。
+  - 无平台依赖测试覆盖样本发送成功、发送失败且 logger 后端也失败、空样本跳过；静态测试增加 safe sample send helper 锚点。
+- 验证：
+  - 已运行 `python -m compileall agent_target_dqn tests`、`python tests/test_target_dqn_features.py` 和 `python tests/test_target_dqn_static.py`，均通过。
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 平台环境可用后确认样本池或 learner 通道短暂异常时 actor 继续产生后续 episode，服务恢复后样本发送恢复。

@@ -208,6 +208,8 @@ workflow 会先归一化 `env.reset()` 和 `env.step()` 返回值：既兼容当
 
 样本处理会保留终局 transition，并对空轨迹、全无效轨迹、缺失 reward、缺失合法动作和无效动作帧做防护；创建 `SampleData` 前会将 `obs`、`act`、`rew` 和 `done` 归一化为固定宽度，清洗 NaN/Inf，并把动作裁剪到单路口、合法相位和模型可表达的 duration 秒数。终局样本的 `done` 在训练张量中表示 `not_done=0`，Double DQN target 不再引入下一状态 Q 值。
 
+workflow 发送样本时会先复制当前批次，再清空本地 collector，避免异步消费引用被清空；如果样本池或 learner 通道临时抛错，当前批次会记录失败并丢弃，后续 episode 继续运行，便于平台服务恢复后重新产生样本。
+
 workflow 当前监控：
 
 - 总 reward。

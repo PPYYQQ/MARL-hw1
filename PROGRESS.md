@@ -993,3 +993,17 @@
   - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
 - 下一步：
   - 平台环境可用后确认单帧 observation/preprocess 异常只影响该帧特征质量，不会导致 actor episode 崩溃。
+
+### Step 67 - sample_process 失败隔离
+
+- 状态：完成
+- Commit：`24eaa57`
+- 内容：
+  - workflow 增加 `_process_samples()`，封装终局路径和容灾路径的 `sample_process(collector)` 调用。
+  - 样本转换抛错时记录 `sample process failed` 并返回空列表，避免单个异常 collector 直接触发 `run_episodes` 外层异常。
+  - `sample_process()` 返回非 list 或空结果时 workflow 不再 yield，避免把无效样本批次继续送到样本池。
+  - 无平台依赖测试覆盖样本转换成功、空 collector、返回非 list 和抛错且 logger 后端也失败的路径；静态测试增加 safe sample process helper 锚点。
+- 验证：
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 平台环境可用后确认容灾或终局样本转换异常只丢弃当前 collector，不会导致 actor 训练循环崩溃。

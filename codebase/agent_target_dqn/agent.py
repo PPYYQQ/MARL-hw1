@@ -89,15 +89,16 @@ class Agent(BaseAgent):
         self.preprocess.reset()
 
     def __predict_detail(self, list_obs_data, exploit_flag=False):
+        list_obs_data = self._obs_batch(list_obs_data)
         list_obs_data = [
-            obs_data for obs_data in (list_obs_data or []) if getattr(obs_data, "feature", None) is not None
+            obs_data for obs_data in list_obs_data if self._obs_data_field(obs_data, "feature") is not None
         ]
         if not list_obs_data:
             return []
 
-        feature = [obs_data.feature for obs_data in list_obs_data]
+        feature = [self._obs_data_field(obs_data, "feature") for obs_data in list_obs_data]
         phase_masks = np.asarray(
-            [self._phase_action_mask(getattr(obs_data, "legal_action", None)) for obs_data in list_obs_data],
+            [self._phase_action_mask(self._obs_data_field(obs_data, "legal_action")) for obs_data in list_obs_data],
             dtype=bool,
         )
         joint_masks = self._joint_action_mask(phase_masks)
@@ -168,6 +169,21 @@ class Agent(BaseAgent):
         except Exception as err:
             self._log_error(f"rule_based_action failed, use default action: {err}")
             return [0, 0, Config.MIN_GREEN_DURATION]
+
+    def _obs_batch(self, list_obs_data):
+        if list_obs_data is None:
+            return []
+        try:
+            return list(list_obs_data)
+        except Exception as err:
+            self._log_error(f"predict observation batch failed: {err}")
+            return []
+
+    def _obs_data_field(self, obs_data, name, default=None):
+        try:
+            return getattr(obs_data, name, default)
+        except Exception:
+            return default
 
     def learn(self, list_sample_data):
         try:

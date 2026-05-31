@@ -131,8 +131,11 @@ def main():
     require("def _fairness_reward" in definition, "reward should include phase fairness term")
     require("def _mark_phase_served" in definition, "reward should update phase service bookkeeping")
 
-    require("if not list_obs_data" in agent, "predict should handle empty observation batches")
-    require('getattr(obs_data, "legal_action", None)' in agent, "predict should default missing legal_action")
+    require("def _obs_batch" in agent, "predict should normalize observation batches")
+    require("list_obs_data = self._obs_batch(list_obs_data)" in agent, "predict should materialize observation batches safely")
+    require("predict observation batch failed" in agent, "predict should log malformed observation batch containers")
+    require("def _obs_data_field" in agent, "predict should isolate malformed ObsData attributes")
+    require('self._obs_data_field(obs_data, "legal_action")' in agent, "predict should default missing legal_action")
     require("MIN_GREEN_DURATION + duration_index" in agent, "action_process must map duration index to seconds")
     require("def _safe_action_index" in agent, "action_process should sanitize action indices")
     require("junction_id = 0" in agent, "action_process should force single-junction actions")

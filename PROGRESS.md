@@ -1680,3 +1680,19 @@
   - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
 - 下一步：
   - 平台运行后确认相位特征 one-hot、remaining duration 和相位年龄是否与真实 `frame_state.phases` 一致；如仍异常，保存原始 phases 样例继续补 alias。
+
+### Step 111 - 兼容车道观测字段别名
+
+- 状态：完成
+- Commit：`536e61d`
+- 内容：
+  - `traffic_utils` 新增 lane 字段别名读取，`frame_state.lanes` 现在兼容 `laneId` / `laneIdx`、`vCount` / `vehicle_count` / `vehicleCount`、`queueLength` / `queue_count` / `queueCount` 和 `congestionLevel`。
+  - `Agent` 与 reward 的 `_RECORD_FIELD_KEYS` 同步加入 lane 驼峰/别名字段，避免单条 dict lane 记录只使用驼峰字段时被 dict 容器解析丢弃。
+  - 无平台依赖测试增加 lane alias 的统计、相位压力和 lane-only reward 覆盖；静态测试增加 lane alias 锚点。
+  - 更新 `AGENTS.md`、`RUNBOOK.md` 和 `REPORT_DRAFT.md`，记录 lanes fallback 已覆盖常见驼峰字段。
+- 验证：
+  - 已运行 `python -m compileall agent_target_dqn/feature/traffic_utils.py agent_target_dqn/feature/definition.py agent_target_dqn/agent.py tests/test_target_dqn_features.py tests/test_target_dqn_static.py`，通过。
+  - 已运行 `python tests/test_target_dqn_features.py` 和 `python tests/test_target_dqn_static.py`，均通过。
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 平台运行后确认真实 `frame_state.lanes` 是否还有其它字段名或单位差异；若 lanes fallback 仍为空，保存原始 lanes 样例继续扩展字段映射。

@@ -38,7 +38,7 @@ def workflow(envs, agents, logger=None, monitor=None, *args, **kwargs):
 
     # Read and validate configuration file
     # 配置文件读取和校验
-    usr_conf = read_usr_conf("agent_target_dqn/conf/train_env_conf.toml", logger)
+    usr_conf = _read_usr_conf("agent_target_dqn/conf/train_env_conf.toml", logger)
     if usr_conf is None:
         _log_error(logger, "usr_conf is None, please check agent_target_dqn/conf/train_env_conf.toml")
         return
@@ -222,6 +222,15 @@ def _reward_components(reward):
     except (TypeError, ValueError, IndexError):
         return 0.0, 0.0
     return phase_reward, duration_reward
+
+
+def _read_usr_conf(path, logger):
+    try:
+        usr_conf = read_usr_conf(path, logger)
+    except Exception as err:
+        _log_error(logger, f"read usr conf failed: {err}")
+        return None
+    return usr_conf if isinstance(usr_conf, dict) else None
 
 
 def _finite_float(value):

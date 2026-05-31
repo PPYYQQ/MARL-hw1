@@ -80,6 +80,7 @@ def main():
         _normalize_step_result,
         _predict_action,
         _put_monitor_data,
+        _read_usr_conf,
         _reward_components,
         _safe_done_flag,
         _safe_extra_info,
@@ -447,6 +448,21 @@ def main():
     assert _put_monitor_data(None, {"reward": 1.0}, FailingLogger()) is False
 
     import agent_target_dqn.workflow.train_workflow as train_workflow
+
+    original_read_usr_conf = train_workflow.read_usr_conf
+    try:
+        train_workflow.read_usr_conf = lambda *args, **kwargs: {"weather": 0}
+        assert _read_usr_conf("agent_target_dqn/conf/train_env_conf.toml", FailingLogger()) == {"weather": 0}
+        train_workflow.read_usr_conf = lambda *args, **kwargs: "bad-conf"
+        assert _read_usr_conf("agent_target_dqn/conf/train_env_conf.toml", FailingLogger()) is None
+
+        def raise_usr_conf(*args, **kwargs):
+            raise RuntimeError("read conf failed")
+
+        train_workflow.read_usr_conf = raise_usr_conf
+        assert _read_usr_conf("agent_target_dqn/conf/train_env_conf.toml", FailingLogger()) is None
+    finally:
+        train_workflow.read_usr_conf = original_read_usr_conf
 
     original_get_training_metrics = train_workflow.get_training_metrics
     try:

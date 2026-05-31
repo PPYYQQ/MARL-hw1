@@ -212,6 +212,9 @@ def main():
     require("np.flatnonzero" in agent, "random exploration should sample only legal phase actions")
 
     require("phase_reward" in workflow and "duration_reward" in workflow, "workflow should monitor reward components")
+    require("def _read_usr_conf" in workflow, "workflow user config reading should be isolated")
+    require("_read_usr_conf(\"agent_target_dqn/conf/train_env_conf.toml\", logger)" in workflow, "workflow should read user config through the safe helper")
+    require("read usr conf failed" in workflow, "workflow should log user config read failures")
     require("def _need_to_predict" in workflow, "workflow should normalize legal_action before prediction gating")
     require("def _finite_float" in workflow, "workflow reward monitor should sanitize non-finite rewards")
     require("except (TypeError, ValueError, OverflowError)" in workflow, "workflow finite float helper should catch malformed scalars")

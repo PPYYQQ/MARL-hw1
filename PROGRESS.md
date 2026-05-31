@@ -1237,3 +1237,19 @@
   - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
 - 下一步：
   - 平台环境可用后确认 env_obs/obs 是否始终是普通 dict；如出现异常映射对象，需要保存原始类型和 repr。
+
+### Step 84 - learner 样本批次归一化
+
+- 状态：完成
+- Commit：`88495da`
+- 内容：
+  - `Algorithm.learn()` 入口新增 `_sample_batch()`，先把样本批次安全归一化为 list。
+  - 支持 generator 式 batch 输入，避免 `len()` 假设导致 learner 外层直接跳过可消费样本。
+  - 无法迭代的异常 batch 容器会记录 `sample batch iteration failed` 并跳过当前更新，不再抛到 `Agent.learn()` 外层。
+  - 静态测试增加 batch 归一化和异常 batch 日志锚点。
+- 验证：
+  - 已运行 `python -m compileall agent_target_dqn/algorithm tests/test_target_dqn_static.py`，通过。
+  - 已运行 `python tests/test_target_dqn_static.py`，通过。
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 有 `torch` 和平台样本池环境后确认 learner 实际收到的 batch 类型，必要时把原始类型写入日志。

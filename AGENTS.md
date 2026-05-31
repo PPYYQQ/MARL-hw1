@@ -135,6 +135,7 @@ Target-DQN 关键文件：
 - `normalize_phase_legal_action()` 会隔离异常 array-like 合法动作输入；转换失败时按保守全相位可选处理，避免 workflow 决策门控、Agent 推理和样本转换被坏 mask 中断。
 - workflow 聚合样本批次 reward 监控时会隔离异常样本、异常 `rew` 字段和异常 batch 长度；坏样本只按零 reward 统计。
 - `Algorithm.learn()` 会清洗 observation、reward、action、not_done、legal_action 和 TD target 中的 NaN/Inf，workflow reward 监控也会把非有限值归零。
+- `Algorithm.learn()` 会先把样本批次安全归一化为 list，兼容 generator 式批次，并隔离异常 batch 容器。
 - `Algorithm.learn()` 读取样本字段时会隔离属性访问异常，坏字段使用默认 observation/action/reward/not_done/legal_action，避免单个异常样本属性导致整批学习跳过。
 - `Algorithm.learn()` 会在 `torch.stack()` 前对 obs、_obs、action、reward、done 和 legal_action 做定宽补齐/截断，避免畸形样本长度不一致时训练崩溃。
 - `Algorithm.learn()` 遇到非有限 loss 或梯度范数时会跳过本次 optimizer step，避免 NaN/Inf 参数污染模型。

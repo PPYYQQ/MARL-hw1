@@ -99,6 +99,7 @@ python tests/test_target_dqn_smoke.py
 - `legal_action` 转换失败：当前归一化 helper 会把异常 array-like mask 回退为四个相位都可选；如果平台语义明确表示不可决策，需要用真实 observation 日志确认是否应在 workflow 层继续按 `0` 门控。
 - `sample reward read failed` / `sample batch length failed`：当前 workflow 会把异常样本批次按可读部分或零 reward 统计，训练发送路径仍单独处理；如果反复出现，检查 `sample_process()` 返回对象是否为 `SampleData` 列表。
 - `learn failed`：当前 `Agent.learn()` 会跳过当前 batch 并保留 learner 进程；如果连续出现，优先保存样本池中的原始 batch，检查字段 shape、dtype 和 `Algorithm.learn()` traceback。
+- `sample batch iteration failed`：当前 learner 会丢弃无法迭代的异常 batch 容器，generator 式 batch 会先安全转成 list；如果反复出现，优先检查样本池传给 learner 的 batch 类型。
 - `latest` 模型结构不兼容：当前联合动作模型会跳过不兼容的旧 `latest` checkpoint，并从当前参数继续训练；若要强制加载指定模型 ID，结构不兼容仍会抛错。
 - `legal_action` 是标量而不是列表：当前 workflow 会先归一化为 4 维相位 mask，再判断是否需要决策；若平台提供相位级 mask，也会沿用相位约束。
 - 空合法动作 mask 或 `ValueError: 'a' cannot be empty`：当前 Agent 推理侧会把全零相位 mask 和空 joint mask 行回退为可选全集；如果仍出现，优先检查是否有新代码绕过了 `_phase_action_mask()` / `_joint_action_mask()`。

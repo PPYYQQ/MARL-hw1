@@ -59,7 +59,7 @@ class NullLogger:
 
 def make_fake_obs():
     return {
-        "legal_action": [1, 0, 1, 0],
+        "legalAction": [1, 0, 1, 0],
         "frame_state": {
             "frame_no": 1,
             "frame_time": 0,

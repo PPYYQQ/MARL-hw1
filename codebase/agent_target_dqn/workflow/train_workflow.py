@@ -81,6 +81,19 @@ DONE_FIELD_ALIASES = {
     ),
 }
 
+LEGAL_ACTION_KEYS = (
+    "legal_action",
+    "legalAction",
+    "legal_actions",
+    "legalActions",
+    "phase_legal_action",
+    "phaseLegalAction",
+    "action_mask",
+    "actionMask",
+    "phase_mask",
+    "phaseMask",
+)
+
 
 def workflow(envs, agents, logger=None, monitor=None, *args, **kwargs):
     env, agent = envs[0], agents[0]
@@ -608,7 +621,7 @@ def _is_record(value):
 def _looks_like_observation(value):
     return _is_record(value) and (
         _safe_env_value(value, "frame_state", None) is not None
-        or _safe_env_value(value, "legal_action", None) is not None
+        or _safe_legal_action(value) is not None
     )
 
 
@@ -693,11 +706,11 @@ def _safe_done_flag(env_obs, key):
 
 
 def _safe_legal_action(obs):
-    return _safe_env_value(obs, "legal_action", None)
+    return _first_env_value(obs, LEGAL_ACTION_KEYS, None)
 
 
 def _need_to_predict(obs):
-    legal_action = _safe_env_value(obs, "legal_action", None)
+    legal_action = _safe_legal_action(obs)
     phase_mask = normalize_phase_legal_action(legal_action, Config.DIM_OF_ACTION_PHASE)
     return any(phase_mask)
 

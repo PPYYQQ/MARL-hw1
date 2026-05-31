@@ -100,12 +100,12 @@ python tests/test_target_dqn_smoke.py
 - `sample process failed`：当前 workflow 会丢弃当前 episode 或容灾 collector 并继续后续 episode；如果长期出现，保存原始 collector、最后两帧 observation/action/reward 来定位样本转换输入。
 - Frame 属性读取失败：当前 `sample_process()` 会隔离 `obs`、`act`、`rew`、`done`、`legal_action` 的属性访问异常；`obs` / `act` 失败会跳过当前帧，其他字段失败会使用默认 reward、done 或 legal action。
 - Frame 字段转换失败：异常 array-like 的 `obs` / `rew` 会按零向量处理；`act` 对象长度或索引异常会跳过当前帧，避免整段 collector 转换失败。
-- `legal_action` 转换失败：当前归一化 helper 会把异常 array-like mask 回退为四个相位都可选；如果平台语义明确表示不可决策，需要用真实 observation 日志确认是否应在 workflow 层继续按 `0` 门控。
+- `legal_action` 转换失败：当前归一化 helper 会读取 `legal_action` / `legalAction` / `phaseLegalAction` / `actionMask` / `phaseMask` 等别名，并把异常 array-like mask 回退为四个相位都可选；如果平台语义明确表示不可决策，需要用真实 observation 日志确认是否应在 workflow 层继续按 `0` 门控。
 - `sample reward read failed` / `sample batch length failed`：当前 workflow 会把异常样本批次按可读部分或零 reward 统计，训练发送路径仍单独处理；如果反复出现，检查 `sample_process()` 返回对象是否为 `SampleData` 列表。
 - `learn failed`：当前 `Agent.learn()` 会跳过当前 batch 并保留 learner 进程；如果连续出现，优先保存样本池中的原始 batch，检查字段 shape、dtype 和 `Algorithm.learn()` traceback。
 - `sample batch iteration failed`：当前 learner 会丢弃无法迭代的异常 batch 容器，generator 式 batch 会先安全转成 list；如果反复出现，优先检查样本池传给 learner 的 batch 类型。
 - `latest` 模型结构不兼容：当前联合动作模型会跳过不兼容的旧 `latest` checkpoint，并从当前参数继续训练；若要强制加载指定模型 ID，结构不兼容仍会抛错。
-- `legal_action` 是标量而不是列表：当前 workflow 会先归一化为 4 维相位 mask，再判断是否需要决策；若平台提供相位级 mask，也会沿用相位约束。
+- `legal_action` 是标量而不是列表：当前 workflow 会先归一化为 4 维相位 mask，再判断是否需要决策；若平台用 `legalAction`、`phaseLegalAction`、`actionMask` 或 `phaseMask` 提供同类字段，也会沿用同一逻辑。
 - 空合法动作 mask 或 `ValueError: 'a' cannot be empty`：当前 Agent 推理侧会把全零相位 mask 和空 joint mask 行回退为可选全集；如果仍出现，优先检查是否有新代码绕过了 `_phase_action_mask()` / `_joint_action_mask()`。
 - `predict observation batch failed`：当前 `predict()` 会丢弃无法迭代的异常 ObsData batch，generator 式 batch 会先转成 list；如果反复出现，检查平台传入 `Agent.predict()` 的数据类型。
 - `invalid action, use default action`：当前 workflow 会在进入 `env.step()` 前把异常动作回退为 `[0, 0, MIN_GREEN_DURATION]`；如果频繁出现，检查 `predict()`、`action_process()` 或规则兜底返回值。
@@ -115,7 +115,7 @@ python tests/test_target_dqn_smoke.py
 - `env reset failed`：当前 workflow 会跳过当前 episode 并在下一 epoch 重试；如果持续出现，检查环境配置、平台任务状态和 reset 返回协议。
 - `env step failed`：当前 workflow 会中止当前 episode 并丢弃未完成 collector；如果持续出现，优先确认动作合法性、平台环境状态和前一帧 observation。
 - `env.step()` 返回形态不一致：当前 workflow 支持对象式返回、dict/object step envelope、二元封装返回、Gym 四元返回、Gymnasium 五元返回和作业文档六元返回，并会保留对象式 `extra_info` / `_state` / `state` / `info`；如果平台返回其他结构，需要保存原始返回值再扩展 `_normalize_step_result()`。
-- env_obs/obs 字段读取失败：当前 workflow 会兼容 dict 与属性对象字段读取，嵌套 `observation` / `obs` / `_obs` 和直接包含 `frame_state` / `legal_action` 的裸 observation 都会保留，`extra_info` / `_state` / `state` / `info` 都会作为额外信息读取；标量 observation / extra_info 会回退为空对象。如果频繁出现，需要保存原始环境返回类型，确认平台封装是否已经损坏。
+- env_obs/obs 字段读取失败：当前 workflow 会兼容 dict 与属性对象字段读取，嵌套 `observation` / `obs` / `_obs` 和直接包含 `frame_state` 或合法动作别名的裸 observation 都会保留，`extra_info` / `_state` / `state` / `info` 都会作为额外信息读取；标量 observation / extra_info 会回退为空对象。如果频繁出现，需要保存原始环境返回类型，确认平台封装是否已经损坏。
 - 评估入口 observation 包装不同：当前 `Agent.exploit()` 会兼容 `obs`、`observation`、`_obs` 以及 `extra_info`、`_state`、`state`、`info`，如果评估仍固定输出默认动作，优先保存评估入口传入对象的类型和 repr。
 - `terminated` / `truncated` 字段异常：当前 workflow 会兼容 `terminated` / `done` / `is_done` / `terminal` 与 `truncated` / `timeout` / `is_truncated` 等别名，只把 bool true、非零有限数值或明确 true 字符串视为结束或截断；未知字符串、NaN/Inf 和异常对象按 False 处理。
 - 样本 `done` 字段异常：当前 `sample_process()` 会把 bool、有限数值和 true/false 字符串统一转成 not_done 标记；未知字符串、NaN/Inf 和异常对象按非终局处理。

@@ -95,6 +95,28 @@ def _safe_mapping_get(mapping, key, default=None):
         return default
 
 
+LEGAL_ACTION_KEYS = (
+    "legal_action",
+    "legalAction",
+    "legal_actions",
+    "legalActions",
+    "phase_legal_action",
+    "phaseLegalAction",
+    "action_mask",
+    "actionMask",
+    "phase_mask",
+    "phaseMask",
+)
+
+
+def _first_mapping_value(mapping, keys, default=None):
+    for key in keys:
+        value = _safe_mapping_get(mapping, key, None)
+        if value is not None:
+            return value
+    return default
+
+
 def _is_record(value):
     return value is not None and not isinstance(value, (str, bytes, bool, int, float, complex))
 
@@ -549,7 +571,7 @@ class Agent(BaseAgent):
         return ObsData(
             feature=observation,
             legal_action=normalize_phase_legal_action(
-                _safe_mapping_get(raw_obs, "legal_action"),
+                _first_mapping_value(raw_obs, LEGAL_ACTION_KEYS),
                 Config.DIM_OF_ACTION_PHASE,
             ),
         )
@@ -608,7 +630,7 @@ class Agent(BaseAgent):
             )
         phase_age_feature = np.asarray(self._phase_age_feature(frame_state), dtype=np.float32)
         fair_pressure = phase_pressure * (1.0 + Config.FAIRNESS_BONUS_SCALE * phase_age_feature)
-        legal_mask = self._phase_action_mask(_safe_mapping_get(raw_obs, "legal_action"))
+        legal_mask = self._phase_action_mask(_first_mapping_value(raw_obs, LEGAL_ACTION_KEYS))
         masked_pressure = np.where(legal_mask, fair_pressure, -1.0)
         phase_index = int(np.argmax(masked_pressure))
         duration_index = int(np.clip(round(float(phase_pressure[phase_index])), 0, Config.DIM_OF_ACTION_DURATION - 1))

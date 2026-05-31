@@ -137,12 +137,12 @@ Target-DQN 关键文件：
 - workflow 读取平台训练指标时会隔离异常，`get_training_metrics()` 临时失败只记录错误并返回空指标。
 - workflow 发送训练样本时会隔离 `send_sample_data()` 异常，样本通道临时失败只记录错误并继续后续训练循环。
 - workflow 进行终局或容灾样本转换时会隔离 `sample_process()` 异常，转换失败只丢弃当前 collector，不再中断后续 episode。
-- Target-DQN 已将 `legal_action` 归一化为 4 维相位 mask，用于贪心预测、随机探索和规则兜底选相位。
+- Target-DQN 已将 `legal_action` / `legalAction` / `phaseLegalAction` / `actionMask` / `phaseMask` 等字段归一化为 4 维相位 mask，用于贪心预测、随机探索和规则兜底选相位。
 - Agent 推理侧对全零相位 mask 会回退为四个相位都可选，joint action mask 的空行也会回退为全动作可选，避免直接调用 `predict()` / `exploit()` 时无可采样动作导致崩溃。
 - 训练 workflow 已用同一归一化逻辑判断是否需要决策，兼容平台文档中的 `int32` 标量门控和 4 维相位 mask。
 - 训练 workflow 会归一化 `env.reset()` 的对象式返回、二元 tuple 返回和 `env.step()` 的对象式返回、dict/object step envelope、二元、Gym 四元、Gymnasium 五元、作业文档六元 tuple 返回，兼容当前封装、常见环境封装与作业文档形式。
 - 训练 workflow 会隔离 `env.reset()` 和 `env.step()` 抛出的平台异常；reset 失败跳过当前 episode，step 失败中止当前 episode。
-- 训练 workflow 对 reset/step 返回的 `observation` / `obs` / `_obs`、`extra_info` / `_state` / `state` / `info`、顶层或嵌套的 `frame_no` / `frameNo`、结束标记和采样帧 `legal_action` 会安全读取；如果平台直接返回带 `frame_state` / `legal_action` 的裸 observation dict 或对象，也会按原始 observation 处理，避免被误归一化为空观测。
+- 训练 workflow 对 reset/step 返回的 `observation` / `obs` / `_obs`、`extra_info` / `_state` / `state` / `info`、顶层或嵌套的 `frame_no` / `frameNo`、结束标记和采样帧 `legal_action` / `legalAction` / `phaseLegalAction` / `actionMask` / `phaseMask` 会安全读取；如果平台直接返回带 `frame_state` 和合法动作别名的裸 observation dict 或对象，也会按原始 observation 处理，避免被误归一化为空观测。
 - step/reset 归一化阶段会保留对象式 env_obs 和对象式 extra_info，避免先前字段读取兼容逻辑在进入安全 helper 前丢失平台 score 或 observation payload。
 - 训练 workflow 对 env_obs/obs 映射读取异常会统一回退默认值，避免异常 dict-like 返回对象中断预测门控和状态解析。
 - 训练 workflow 会显式解析 `terminated` / `done` / `is_done` / `terminal` 与 `truncated` / `timeout` / `is_truncated` 等结束或截断别名，并兼容 bool、数值和字符串形式，避免 `"False"` 这类非空字符串被误判为结束。
@@ -181,7 +181,7 @@ Target-DQN 关键文件：
 
 仍需关注的问题：
 
-- 平台文档中 `legal_action` 更像是否需要决策的标量门控；当前 Target-DQN 已保守兼容标量门控和 4 维相位 mask，但仍需在真实平台 observation 上确认是否存在相位级 mask 语义。
+- 平台文档中 `legal_action` 更像是否需要决策的标量门控；当前 Target-DQN 已保守兼容标量门控、4 维相位 mask 和常见合法动作字段别名，但仍需在真实平台 observation 上确认是否存在相位级 mask 语义。
 - `agent_dqn`、`agent_ppo`、`agent_diy` 仍基本保留模板状态，不是当前主线。
 - 当前状态特征包含占用/速度网格、当前相位、相位服务年龄、持续时间、剩余时间、相位压力、全局等待/延误统计、一帧交通趋势、4 帧滚动交通历史和逐车道车辆/排队/等待统计。
 - 作业文档定义了 `frame_state.lanes` 的 `lane_id`、`v_count`、`congestion`、`queue_length` 字段；当前已接入 lanes fallback，并兼容常见驼峰/别名字段，但仍需在真实 observation 上确认字段单位和是否存在 protobuf repeated wrapper 等特殊容器形态。
@@ -265,7 +265,7 @@ coding agent 无法单独保证：
 - 当前使用 80 维联合动作 Q 头：`action_id = phase_idx * 20 + duration_idx`。
 - `phase_idx` 必须落在 `0-3`。
 - `duration_idx` 必须通过 `Config.duration_index_to_seconds()` 映射为环境接受的秒数；当前 20 个 duration 桶覆盖 `MIN_GREEN_DURATION=8` 到 `MAX_GREEN_DURATION=40`。
-- `legal_action` 需要先通过 `normalize_phase_legal_action()` 转为 4 维相位 mask；如果真实平台只给标量门控，则非零表示四个相位都可选。
+- `legal_action` / `legalAction` / `phaseLegalAction` / `actionMask` / `phaseMask` 需要先通过 `normalize_phase_legal_action()` 转为 4 维相位 mask；如果真实平台只给标量门控，则非零表示四个相位都可选。
 - 训练 workflow 判断是否调用 `predict()` 时也必须走 `normalize_phase_legal_action()`，不要直接写 `legal_action[0]`。
 - 训练样本里的 `legal_action` 代表 `_obs` 对应的下一状态相位 mask，不是当前已执行动作的 mask。
 - 相位级 mask 会展开成 80 维 joint mask，训练和预测都只在合法相位对应的动作组合中选动作。

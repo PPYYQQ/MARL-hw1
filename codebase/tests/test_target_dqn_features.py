@@ -1120,6 +1120,11 @@ def main():
     assert _looks_like_observation(raw_observation) is True
     assert _safe_observation(raw_observation) is raw_observation
     assert _safe_legal_action(_safe_observation(raw_observation)) == 1
+    raw_alias_observation = {"frame_state": {}, "legalAction": [0, 1, 0, 0]}
+    assert _looks_like_observation(raw_alias_observation) is True
+    assert _safe_observation(raw_alias_observation) is raw_alias_observation
+    assert _safe_legal_action(raw_alias_observation) == [0, 1, 0, 0]
+    assert _need_to_predict(raw_alias_observation) is True
     assert _safe_observation({"observation": None}) == {}
     assert _safe_observation({"observation": 1}) == {}
     assert _safe_extra_info({"extra_info": {"init_state": {}}}) == {"init_state": {}}
@@ -1153,6 +1158,11 @@ def main():
     assert _looks_like_observation(raw_object_observation) is True
     assert _safe_observation(raw_object_observation) is raw_object_observation
     assert _safe_legal_action(_safe_observation(raw_object_observation)) == 1
+    raw_alias_object_observation = AttrObject(frame_state=AttrObject(), legalAction=0)
+    assert _looks_like_observation(raw_alias_object_observation) is True
+    assert _safe_observation(raw_alias_object_observation) is raw_alias_object_observation
+    assert _safe_legal_action(raw_alias_object_observation) == 0
+    assert _need_to_predict(raw_alias_object_observation) is False
     assert _safe_frame_no({"frame_no": "bad"}) == 0
     assert _safe_frame_no({"frame_no": float("inf")}) == 0
     assert _safe_frame_no({"frame_no": 3.5}) == 3
@@ -1174,6 +1184,9 @@ def main():
     assert _safe_done_flag({"info": {"is_truncated": 0}}, "truncated") is False
     assert _safe_done_flag({}, "terminated") is False
     assert _safe_legal_action({"legal_action": [1, 0, 0, 0]}) == [1, 0, 0, 0]
+    assert _safe_legal_action({"legalAction": [0, 1, 0, 0]}) == [0, 1, 0, 0]
+    assert _safe_legal_action({"phaseLegalAction": [0, 0, 1, 0]}) == [0, 0, 1, 0]
+    assert _safe_legal_action({"actionMask": [0, 0, 0, 1]}) == [0, 0, 0, 1]
     assert _safe_legal_action(None) is None
 
     class FailingEnvObs(dict):
@@ -1188,7 +1201,9 @@ def main():
     assert _safe_legal_action(failing_env_obs) is None
     assert _need_to_predict(failing_env_obs) is True
     assert _need_to_predict({"legal_action": 0}) is False
+    assert _need_to_predict({"legalAction": 0}) is False
     assert _need_to_predict({"legal_action": [0, 1, 0, 0]}) is True
+    assert _need_to_predict({"phaseMask": [0, 0, 1, 0]}) is True
     assert _need_to_predict({"legal_action": FailingLegalAction()}) is True
     assert _should_log_progress(0, False, False) is False
     assert _should_log_progress(20, False, True) is True

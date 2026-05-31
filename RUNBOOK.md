@@ -91,6 +91,7 @@ python tests/test_target_dqn_smoke.py
 - `legal_action` 是标量而不是列表：当前 workflow 会先归一化为 4 维相位 mask，再判断是否需要决策；若平台提供相位级 mask，也会沿用相位约束。
 - `run_episodes error: ...`：优先看冒号后的原始异常信息和 Python chained traceback，当前 workflow 不再只抛通用错误。
 - 日志过多：当前进度日志只在 episode 结束或每 20 次真实预测后打印；若平台日志仍过密，优先检查是否有异常反复重启。
+- 观测里有异常 frame 或车辆字段：当前预处理器会清洗 frame、车辆 ID、车速和位置；若仍异常，优先保存原始 observation 样例并检查是否不是 dict/list 结构。
 - reward 长期为 0：检查 `reward_shaping()` 是否收到真实车辆字段、`vehicles` 是否为空、相位压力是否一直为 0。
 - loss 爆炸或 NaN：当前特征、样本和 learner 都会清洗 NaN/Inf；若仍出现，优先降低 `Config.LR`，再缩小 reward 权重并保留异常 observation 样例。
 - 样本 shape 不一致或 `torch.stack` 报错：当前 `sample_process()` 和 `Algorithm.learn()` 都会定宽归一化样本字段；若仍出现，优先保留一局原始 collector 日志来定位平台返回的异常字段。

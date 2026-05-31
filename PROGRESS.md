@@ -810,3 +810,19 @@
   - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
 - 下一步：
   - 平台环境可用后确认 reward、规则兜底和 observation 不再因单条异常车辆字段产生 NaN/Inf。
+
+### Step 55 - 预处理动态字段容错
+
+- 状态：完成
+- Commit：`660143f`
+- 内容：
+  - `FeatureProcess` 增加 `_safe_float()`、`_safe_int()`、`_is_hashable()` 和 `_safe_position_pair()`，统一清洗 frame、车辆 ID 和车辆位置。
+  - `update_traffic_info()` 现在会跳过不可哈希车辆 ID、非 list 车辆集合和异常动态字段，避免单条坏车辆中断整帧预处理。
+  - `cal_waiting_time()` 对车速和 frame_time 做非有限值清洗，等待增量不允许为负。
+  - `cal_travel_distance()` 将位置转为有限浮点数后再累计距离，遇到 NaN/Inf 或畸形 position 会跳过该车。
+  - 交叉口等待时间聚合函数会跳过畸形车辆记录，等待时间按非负有限值累计。
+  - 无平台依赖测试覆盖正常等待/距离累计、非有限 frame、不可哈希车辆 ID、异常位置和等待时间聚合；静态测试增加预处理容错锚点。
+- 验证：
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 平台环境可用后确认异常 frame_time、frame_no、vehicle id 或 position 不再导致 episode 在特征预处理阶段失败。

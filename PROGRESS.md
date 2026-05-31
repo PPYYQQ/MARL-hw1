@@ -1365,3 +1365,19 @@
   - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
 - 下一步：
   - 平台运行后确认真实车辆记录是否提供 `target_junction`；如没有，观察相位压力、排队统计和 reward 是否不再长期为 0。
+
+### Step 92 - 等待时间统计兼容 target_junction 缺失
+
+- 状态：完成
+- Commit：`adfa19c`
+- 内容：
+  - 将车辆字段读取 helper 提升为 `vehicle_value()`，供 traffic utils 和 preprocessor 复用。
+  - 新增 `_default_target_junction()` 和 `_waiting_target_junction()`，等待时间统计在 `target_junction` 缺失且车辆可识别为进口车道时按单路口目标路口归类。
+  - `get_all_junction_waiting_time()` 和 `get_all_junction_waiting_time_by_origin()` 不再因文档式车辆记录缺少 `target_junction` 而漏计，同时跳过没有车辆 ID 或无法识别为进口车道的畸形 targetless 记录。
+  - 无平台依赖测试增加缺失 `target_junction` 的等待时间统计覆盖；静态测试增加共享字段读取和等待统计默认目标锚点。
+- 验证：
+  - 已运行 `python -m compileall agent_target_dqn/feature tests/test_target_dqn_features.py tests/test_target_dqn_static.py`，通过。
+  - 已运行 `python tests/test_target_dqn_features.py` 和 `python tests/test_target_dqn_static.py`，均通过。
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 平台运行后确认真实车辆记录缺少 `target_junction` 时，交叉口等待时间统计、相位压力和 reward 是否仍有非零信号。

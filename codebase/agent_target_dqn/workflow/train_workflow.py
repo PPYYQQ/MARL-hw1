@@ -117,7 +117,8 @@ def run_episodes(n_episode, env, agent, usr_conf, logger):
             if _handle_disaster_recovery(env_obs, logger):
                 break
 
-            agent.reset(env_obs)
+            if not _reset_agent(agent, env_obs, logger):
+                continue
             obs = _safe_observation(env_obs)
             extra_info = _safe_extra_info(env_obs)
 
@@ -284,6 +285,15 @@ def _handle_disaster_recovery(env_obs, logger):
         return bool(handle_disaster_recovery(env_obs, logger))
     except Exception as err:
         _log_error(logger, f"handle disaster recovery failed: {err}")
+        return False
+
+
+def _reset_agent(agent, env_obs, logger):
+    try:
+        agent.reset(env_obs)
+        return True
+    except Exception as err:
+        _log_error(logger, f"agent reset failed: {err}")
         return False
 
 

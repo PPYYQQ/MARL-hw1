@@ -85,6 +85,7 @@ def main():
         _process_observation,
         _put_monitor_data,
         _read_usr_conf,
+        _reset_agent,
         _reward_components,
         _safe_done_flag,
         _safe_extra_info,
@@ -520,6 +521,23 @@ def main():
         assert _process_samples([object()], FailingLogger()) == []
     finally:
         train_workflow.sample_process = original_workflow_sample_process
+
+    class ResettingAgent:
+        def __init__(self):
+            self.reset_obs = None
+
+        def reset(self, env_obs):
+            self.reset_obs = env_obs
+
+    class FailingResetAgent:
+        def reset(self, env_obs):
+            raise RuntimeError("reset failed")
+
+    resetting_agent = ResettingAgent()
+    reset_obs = {"observation": {"legal_action": 1}}
+    assert _reset_agent(resetting_agent, reset_obs, FailingLogger()) is True
+    assert resetting_agent.reset_obs == reset_obs
+    assert _reset_agent(FailingResetAgent(), reset_obs, FailingLogger()) is False
 
     traffic_info_agent = TrafficInfoAgent()
     assert _update_traffic_info(traffic_info_agent, {"legal_action": 0}, {"init_state": {}}, FailingLogger()) is True

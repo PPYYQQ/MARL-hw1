@@ -1696,3 +1696,19 @@
   - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
 - 下一步：
   - 平台运行后确认真实 `frame_state.lanes` 是否还有其它字段名或单位差异；若 lanes fallback 仍为空，保存原始 lanes 样例继续扩展字段映射。
+
+### Step 112 - 兼容合法动作字段别名
+
+- 状态：完成
+- Commit：`8b64227`
+- 内容：
+  - `Agent` 新增集中合法动作字段别名读取，`observation_process()` 和 `rule_based_action()` 现在兼容 `legalAction`、`phaseLegalAction`、`actionMask`、`phaseMask` 等字段。
+  - workflow 新增 `LEGAL_ACTION_KEYS`，`_safe_legal_action()`、`_need_to_predict()` 和裸 observation 识别都通过同一别名表读取合法动作。
+  - 无平台依赖测试增加 dict/object 裸 observation 的 `legalAction`、`phaseLegalAction`、`actionMask` 和 `phaseMask` 覆盖；smoke 观测改用 `legalAction` 验证 Agent 路径。
+  - 更新 `AGENTS.md`、`RUNBOOK.md` 和 `REPORT_DRAFT.md`，记录合法动作字段别名兼容情况。
+- 验证：
+  - 已运行 `python -m compileall agent_target_dqn/agent.py agent_target_dqn/workflow/train_workflow.py tests/test_target_dqn_features.py tests/test_target_dqn_static.py tests/test_target_dqn_smoke.py`，通过。
+  - 已运行 `python tests/test_target_dqn_features.py` 和 `python tests/test_target_dqn_static.py`，均通过。
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 平台运行后确认真实 observation 的合法动作字段是否命中当前别名；如果仍出现长期不决策或过度决策，保存原始 observation 样例继续校准门控语义。

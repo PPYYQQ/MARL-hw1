@@ -154,7 +154,11 @@ class Agent(BaseAgent):
             return self.rule_based_action(raw_obs)
 
     def learn(self, list_sample_data):
-        return self.algorithm.learn(list_sample_data)
+        try:
+            return self.algorithm.learn(list_sample_data)
+        except Exception as err:
+            self._log_error(f"learn failed: {err}")
+            return None
 
     def save_model(self, path=None, id="1"):
         # To save the model, it can consist of multiple files,

@@ -158,6 +158,8 @@ def main():
     require("def _log_info" in agent, "agent info logger calls should be isolated")
     require("def _log_error" in agent, "agent error logger calls should be isolated")
     require("self._log_error(f\"exploit fallback" in agent, "exploit fallback logging should not raise")
+    require("self._log_error(f\"learn failed" in agent, "agent learn failures should be logged without raising")
+    require("return self.algorithm.learn(list_sample_data)" in agent, "agent learn should still delegate to algorithm")
     require("self._log_info(f\"save model" in agent, "save_model success logging should not raise")
     require("self._log_info(f\"skip load model" in agent, "load_model skip logging should not raise")
     require(agent.count("self.logger.info(") == 1, "agent should route logger.info through one helper")

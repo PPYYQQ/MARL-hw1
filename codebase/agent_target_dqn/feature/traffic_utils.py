@@ -95,6 +95,16 @@ def _safe_lane_id(value):
     return int(lane_id)
 
 
+def _safe_junction_id(value, default=-1):
+    try:
+        junction_id = float(value)
+    except (TypeError, ValueError, OverflowError):
+        return default
+    if not np.isfinite(junction_id):
+        return default
+    return int(junction_id)
+
+
 def _lane_id_from_record(lane):
     for key in ("lane_id", "lane", "l_id", "id"):
         lane_id = _safe_lane_id(lane_value(lane, key))
@@ -143,7 +153,8 @@ def on_enter_lane(vehicle):
         - vehicle
     """
     lane_id = vehicle_value(vehicle, "lane")
-    target_junction = vehicle_value(vehicle, "target_junction", 0)
+    target_junction = vehicle_value(vehicle, "target_junction", None)
+    target_junction = 0 if target_junction is None else _safe_junction_id(target_junction, -1)
     if get_lane_code_by_id(lane_id) is not None and target_junction != -1:
         return True
     else:
@@ -163,7 +174,7 @@ def in_junction(vehicle):
     参数:
         - vehicle
     """
-    junction = vehicle_value(vehicle, "junction", -1)
+    junction = _safe_junction_id(vehicle_value(vehicle, "junction", -1), -1)
     if junction != -1:
         return True
     else:
@@ -183,8 +194,8 @@ def on_depart_lane(vehicle):
     参数:
         - vehicle
     """
-    junction = vehicle_value(vehicle, "junction", -1)
-    target_junction = vehicle_value(vehicle, "target_junction", -1)
+    junction = _safe_junction_id(vehicle_value(vehicle, "junction", -1), -1)
+    target_junction = _safe_junction_id(vehicle_value(vehicle, "target_junction", -1), -1)
     # Prevent vehicles in the right turn lane from being judged as being in the exit lane
     # 避免车辆在右转车道被判定为在出口车道上
     if (on_enter_lane(vehicle) or in_junction(vehicle)) or (junction == -1 and target_junction != -1):

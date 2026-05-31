@@ -30,6 +30,29 @@ def _safe_int(value, default=0):
     return int(_safe_float(value, default))
 
 
+def _safe_junction_id(value, default=None):
+    try:
+        junction_id = float(value)
+    except (TypeError, ValueError, OverflowError):
+        return default
+    if not math.isfinite(junction_id):
+        return default
+    return int(junction_id)
+
+
+def _junction_key(value, junction_ids, default=None):
+    missing = object()
+    junction_id = _safe_junction_id(value, missing)
+    if junction_id is missing:
+        return default
+    if junction_id in junction_ids:
+        return junction_id
+    for existing_junction_id in junction_ids:
+        if _safe_junction_id(existing_junction_id, None) == junction_id:
+            return existing_junction_id
+    return junction_id
+
+
 def _is_hashable(value):
     try:
         hash(value)
@@ -123,8 +146,9 @@ def _safe_position_pair(vehicle):
 
 
 def _default_target_junction(junction_ids):
-    if 0 in junction_ids:
-        return 0
+    junction_zero = _junction_key(0, junction_ids, None)
+    if junction_zero is not None:
+        return junction_zero
     for junction_id in junction_ids:
         return junction_id
     return None
@@ -133,7 +157,7 @@ def _default_target_junction(junction_ids):
 def _waiting_target_junction(vehicle, junction_ids):
     target_junction = vehicle_value(vehicle, "target_junction", None)
     if target_junction is not None:
-        return target_junction
+        return _junction_key(target_junction, junction_ids, None)
     if on_enter_lane(vehicle):
         return _default_target_junction(junction_ids)
     return None
@@ -265,7 +289,7 @@ class FeatureProcess:
             vehicle_id = vehicle_value(vehicle, "v_id")
             if vehicle_id is None or not _is_hashable(vehicle_id):
                 continue
-            vehicle_junction = vehicle_value(vehicle, "junction", -1)
+            vehicle_junction = _safe_junction_id(vehicle_value(vehicle, "junction", -1), -1)
             try:
                 is_enter_lane = on_enter_lane(vehicle)
             except (KeyError, TypeError, ValueError, AttributeError):
@@ -413,7 +437,9 @@ class FeatureProcess:
 
         # Update the vehicle's historical intersection information
         # 更新车辆的历史所在交叉口信息
-        self.vehicle_prev_junction[vehicle_value(vehicle, "v_id")] = vehicle_value(vehicle, "junction", -1)
+        self.vehicle_prev_junction[vehicle_value(vehicle, "v_id")] = _safe_junction_id(
+            vehicle_value(vehicle, "junction", -1), -1
+        )
 
     def get_all_junction_waiting_time(self, vehicles: list):
         """
@@ -446,7 +472,8 @@ class FeatureProcess:
             if not _is_record(vehicle):
                 continue
             target_junction = _waiting_target_junction(vehicle, res)
-            if vehicle_value(vehicle, "junction", -1) != -1 or target_junction == -1 or target_junction not in res:
+            junction = _safe_junction_id(vehicle_value(vehicle, "junction", -1), -1)
+            if junction != -1 or target_junction == -1 or target_junction not in res:
                 continue
             vehicle_id = vehicle_value(vehicle, "v_id")
             if vehicle_id is None or not _is_hashable(vehicle_id):
@@ -495,7 +522,8 @@ class FeatureProcess:
             if not _is_record(vehicle):
                 continue
             target_junction = _waiting_target_junction(vehicle, res)
-            if vehicle_value(vehicle, "junction", -1) != -1 or target_junction == -1 or target_junction not in res:
+            junction = _safe_junction_id(vehicle_value(vehicle, "junction", -1), -1)
+            if junction != -1 or target_junction == -1 or target_junction not in res:
                 continue
             res[target_junction] += _safe_nonnegative_float(vehicle_value(vehicle, "waiting_time", 0.0))
             v_num[target_junction] += 1

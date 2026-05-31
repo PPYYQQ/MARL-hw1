@@ -85,8 +85,10 @@ def main():
         get_traffic_history_feature,
         get_traffic_summary,
         get_traffic_trend,
+        in_junction,
         merge_lane_observation_statistics,
         normalize_phase_legal_action,
+        on_depart_lane,
         on_enter_lane,
     )
     from agent_target_dqn.workflow.train_workflow import (
@@ -169,6 +171,12 @@ def main():
         "delay": 4.0,
     }
     assert on_enter_lane(doc_style_vehicle) is True
+    assert on_enter_lane({"lane": 11, "junction": "-1", "target_junction": "0"}) is True
+    assert on_enter_lane({"lane": 11, "junction": "-1", "target_junction": "-1"}) is False
+    assert on_enter_lane({"lane": 11, "junction": "-1", "target_junction": "bad"}) is False
+    assert in_junction({"junction": "0"}) is True
+    assert in_junction({"junction": "-1"}) is False
+    assert on_depart_lane({"lane": 11, "junction": "-1", "target_junction": "0"}) is False
     assert get_lane_statistics([doc_style_vehicle])["counts"][0] == 1.0
     doc_phase_pressure, doc_totals = get_phase_pressure([doc_style_vehicle])
     assert doc_phase_pressure[0] > 0.0
@@ -490,24 +498,37 @@ def main():
     preprocess.update_traffic_info(bad_preprocess_frame, "bad-extra-info")
     assert all(math.isfinite(float(value)) for value in preprocess.waiting_time_store.values())
     preprocess.waiting_time_store[3] = 8.0
+    preprocess.waiting_time_store[4] = 7.0
     waiting_by_store = preprocess.get_all_junction_waiting_time(
         [
             {"v_id": 1, "junction": -1, "target_junction": 0},
             {"v_id": 3, "junction": -1, "lane": 11},
+            {"v_id": 4, "junction": "-1", "target_junction": "0"},
+            {"v_id": 5, "junction": "-1", "target_junction": "-1"},
+            {"v_id": 6, "junction": "-1", "target_junction": "bad"},
             {"v_id": [], "junction": -1, "target_junction": 0},
             {"bad": "vehicle"},
         ]
     )
-    assert waiting_by_store == {0: 5.0}
+    assert waiting_by_store == {0: 17.0 / 3.0}
     waiting_by_origin = preprocess.get_all_junction_waiting_time_by_origin(
         [
             {"junction": -1, "target_junction": 0, "waiting_time": 6.0},
             {"junction": -1, "lane": 11, "waiting_time": 10.0},
+            {"junction": "-1", "target_junction": "0", "waiting_time": 3.0},
+            {"junction": "-1", "target_junction": "-1", "waiting_time": 99.0},
+            {"junction": "-1", "target_junction": "bad", "waiting_time": 99.0},
             {"junction": -1, "target_junction": 0, "waiting_time": float("inf")},
             {"bad": "vehicle"},
         ]
     )
-    assert abs(waiting_by_origin[0] - (16.0 / 3.0)) < 1e-6
+    assert abs(waiting_by_origin[0] - (19.0 / 4.0)) < 1e-6
+    string_key_preprocess = FeatureProcess(None)
+    string_key_preprocess.junction_dict = {"0": {}}
+    string_key_preprocess.waiting_time_store[7] = 2.0
+    assert string_key_preprocess.get_all_junction_waiting_time(
+        [{"v_id": 7, "junction": "-1", "target_junction": "0"}]
+    ) == {"0": 2.0}
 
     frame_type = type("Frame", (), {})
     assert sample_process([]) == []

@@ -55,6 +55,12 @@ def install_workflow_stubs():
     sys.modules["common_python.utils.workflow_disaster_recovery"] = workflow_disaster_recovery
 
 
+class AttrObject:
+    def __init__(self, **kwargs):
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+
+
 def main():
     install_common_python_stub()
     install_workflow_stubs()
@@ -72,6 +78,7 @@ def main():
     from agent_target_dqn.feature.traffic_utils import (
         get_phase_pressure,
         get_lane_statistics,
+        get_lane_position_meters,
         get_traffic_history_feature,
         get_traffic_summary,
         get_traffic_trend,
@@ -152,6 +159,21 @@ def main():
     doc_phase_pressure, doc_totals = get_phase_pressure([doc_style_vehicle])
     assert doc_phase_pressure[0] > 0.0
     assert doc_totals["vehicle_count"] == 1
+    object_vehicle = AttrObject(
+        lane=11,
+        junction=-1,
+        position_in_lane=AttrObject(x=0.0, y=30000.0),
+        speed=0.0,
+        waiting_time=7.0,
+        delay=2.0,
+    )
+    assert on_enter_lane(object_vehicle) is True
+    assert get_lane_position_meters(object_vehicle) == 30.0
+    object_lane_stats = get_lane_statistics([object_vehicle])
+    assert object_lane_stats["counts"][0] == 1.0
+    object_phase_pressure, object_totals = get_phase_pressure([object_vehicle])
+    assert object_phase_pressure[0] > 0.0
+    assert object_totals["vehicle_count"] == 1
 
     vehicles = [
         {
@@ -291,6 +313,62 @@ def main():
     assert preprocess.waiting_time_store[1] == 2.0
     assert preprocess.vehicle_distance_store[1] == 5.0
     assert preprocess.lane_volume[11] == [1]
+    object_preprocess = FeatureProcess(None)
+    object_start_info = AttrObject(
+        junctions=[
+            AttrObject(
+                j_id=0,
+                enter_lanes_on_directions=[
+                    AttrObject(lanes=[11]),
+                ],
+            )
+        ],
+        signals=[],
+        edges=[],
+        lane_configs=[AttrObject(l_id=11)],
+        vehicle_configs=[AttrObject(v_config_id=1, max_speed=17.0)],
+    )
+    object_first_frame = AttrObject(
+        frame_state=AttrObject(
+            frame_no=1,
+            frame_time=1.0,
+            vehicles=[
+                AttrObject(
+                    v_id=10,
+                    v_config_id=1,
+                    lane=11,
+                    junction=-1,
+                    speed=0.0,
+                    position_in_lane=AttrObject(x=0.0, y=0.0),
+                )
+            ],
+        )
+    )
+    object_second_frame = AttrObject(
+        frame_state=AttrObject(
+            frame_no=2,
+            frame_time=3.0,
+            vehicles=[
+                AttrObject(
+                    v_id=10,
+                    v_config_id=1,
+                    lane=11,
+                    junction=-1,
+                    speed=0.0,
+                    position_in_lane=AttrObject(x=3.0, y=4.0),
+                )
+            ],
+        )
+    )
+    object_preprocess.update_traffic_info(object_first_frame, AttrObject(init_state=object_start_info))
+    object_preprocess.update_traffic_info(object_second_frame, None)
+    assert object_preprocess.waiting_time_store[10] == 2.0
+    assert object_preprocess.vehicle_distance_store[10] == 5.0
+    assert object_preprocess.lane_volume[11] == [10]
+    object_preprocess.waiting_time_store[11] = 4.0
+    assert object_preprocess.get_all_junction_waiting_time(
+        [AttrObject(v_id=11, junction=-1, lane=11)]
+    ) == {0: 4.0}
     bad_preprocess_frame = {
         "frame_state": {
             "frame_no": float("inf"),
@@ -492,6 +570,28 @@ def main():
         dummy_agent,
     )
     assert all(math.isfinite(value) for value in finite_reward)
+    dummy_agent.preprocess.old_waiting_time = 0.0
+    dummy_agent.preprocess.phase_last_served_frame = [None] * Config.DIM_OF_ACTION_PHASE
+    object_reward = reward_shaping(
+        AttrObject(
+            frame_state=AttrObject(
+                frame_no=3,
+                vehicles=[
+                    AttrObject(
+                        lane=11,
+                        junction=-1,
+                        speed=0.0,
+                        waiting_time=12.0,
+                        delay=3.0,
+                    )
+                ],
+            )
+        ),
+        [0, 0, Config.MIN_GREEN_DURATION],
+        dummy_agent,
+    )
+    assert all(math.isfinite(value) for value in object_reward)
+    assert object_reward != (0.0, 0.0)
     dummy_agent.preprocess.old_waiting_time = 0.0
     clipped_reward = reward_shaping(
         {
@@ -700,6 +800,18 @@ def main():
     assert _safe_observation({"observation": None}) == {}
     assert _safe_extra_info({"extra_info": {"init_state": {}}}) == {"init_state": {}}
     assert _safe_extra_info({"extra_info": None}) == {}
+    object_env_obs = AttrObject(
+        observation=AttrObject(legal_action=1),
+        extra_info=AttrObject(init_state={}),
+        frame_no=6,
+        terminated="false",
+    )
+    assert _safe_observation(object_env_obs).legal_action == 1
+    assert _safe_extra_info(object_env_obs).init_state == {}
+    assert _safe_frame_no(object_env_obs) == 6
+    assert _safe_done_flag(object_env_obs, "terminated") is False
+    assert _safe_legal_action(_safe_observation(object_env_obs)) == 1
+    assert _need_to_predict(_safe_observation(object_env_obs)) is True
     assert _safe_frame_no({"frame_no": "bad"}) == 0
     assert _safe_frame_no({"frame_no": float("inf")}) == 0
     assert _safe_frame_no({"frame_no": 3.5}) == 3

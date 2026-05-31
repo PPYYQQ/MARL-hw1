@@ -38,10 +38,29 @@ def _is_hashable(value):
     return True
 
 
+def _is_record(value):
+    return value is not None and not isinstance(value, (str, bytes))
+
+
+def _safe_list(value):
+    if value is None:
+        return []
+    if isinstance(value, list):
+        return value
+    if isinstance(value, tuple):
+        return list(value)
+    if isinstance(value, (str, bytes, dict)):
+        return []
+    try:
+        return list(value)
+    except Exception:
+        return []
+
+
 def _safe_position_pair(vehicle):
-    position = vehicle["position_in_lane"]
-    x_pos = float(position["x"])
-    y_pos = float(position["y"])
+    position = vehicle_value(vehicle, "position_in_lane", {})
+    x_pos = float(record_value(position, "x"))
+    y_pos = float(record_value(position, "y"))
     if not math.isfinite(x_pos) or not math.isfinite(y_pos):
         raise ValueError("non-finite vehicle position")
     return x_pos, y_pos
@@ -115,46 +134,46 @@ class FeatureProcess:
         """
         获取道路结构等信息固定的变量
         """
-        if not isinstance(start_info, dict):
+        if not _is_record(start_info):
             return
         junctions, signals, edges = (
-            start_info.get("junctions", []),
-            start_info.get("signals", []),
-            start_info.get("edges", []),
+            _safe_list(record_value(start_info, "junctions", [])),
+            _safe_list(record_value(start_info, "signals", [])),
+            _safe_list(record_value(start_info, "edges", [])),
         )
         lane_configs, vehicle_configs = (
-            start_info.get("lane_configs", []),
-            start_info.get("vehicle_configs", []),
+            _safe_list(record_value(start_info, "lane_configs", [])),
+            _safe_list(record_value(start_info, "vehicle_configs", [])),
         )
         # Store road structure information in various variables
         # 将道路结构信息存储到各个变量
         for junction in junctions:
-            junction_id = junction.get("j_id")
+            junction_id = record_value(junction, "j_id")
             if junction_id is None:
                 continue
             self.junction_dict[junction_id] = junction
             self.l_id_to_index[junction_id] = {}
 
             index = 0
-            for approaching_edges in junction.get("enter_lanes_on_directions", []):
-                for lane in approaching_edges.get("lanes", []):
+            for approaching_edges in _safe_list(record_value(junction, "enter_lanes_on_directions", [])):
+                for lane in _safe_list(record_value(approaching_edges, "lanes", [])):
                     self.l_id_to_index[junction_id][lane] = index
                     index += 1
 
             for edge in edges:
-                edge_id = edge.get("e_id")
+                edge_id = record_value(edge, "e_id")
                 if edge_id is not None:
                     self.edge_dict[edge_id] = edge
             for lane in lane_configs:
-                lane_id = lane.get("l_id")
+                lane_id = record_value(lane, "l_id")
                 if lane_id is not None:
                     self.lane_dict[lane_id] = lane
             for vehicle_config in vehicle_configs:
-                vehicle_config_id = vehicle_config.get("v_config_id")
+                vehicle_config_id = record_value(vehicle_config, "v_config_id")
                 if vehicle_config_id is not None:
                     self.vehicle_configs_dict[vehicle_config_id] = vehicle_config
             for lane in lane_configs:
-                lane_id = lane.get("l_id")
+                lane_id = record_value(lane, "l_id")
                 if lane_id is not None:
                     self.lane_volume[lane_id] = []
 
@@ -165,27 +184,25 @@ class FeatureProcess:
         """
         更新车辆历史信息, 计算各项动态交通变量
         """
-        extra_info = extra_info if isinstance(extra_info, dict) else {}
-        frame_state = raw_obs.get("frame_state") if isinstance(raw_obs, dict) else None
-        if not isinstance(frame_state, dict):
+        extra_info = extra_info if _is_record(extra_info) else {}
+        frame_state = record_value(raw_obs, "frame_state")
+        if not _is_record(frame_state):
             return
-        frame_no = _safe_int(frame_state.get("frame_no", 0))
-        frame_time = _safe_float(frame_state.get("frame_time", 0))
-        vehicles = frame_state.get("vehicles", []) or []
-        if not isinstance(vehicles, list):
-            vehicles = []
+        frame_no = _safe_int(record_value(frame_state, "frame_no", 0))
+        frame_time = _safe_float(record_value(frame_state, "frame_time", 0))
+        vehicles = _safe_list(record_value(frame_state, "vehicles", []))
 
         if frame_no <= 1:
             # Initial frame loads road structure information
             # 初始帧载入道路结构信息
-            game_info = extra_info.get("init_state", {})
+            game_info = record_value(extra_info, "init_state", {})
             if game_info:
                 self.init_road_info(game_info)
 
         for vehicle in vehicles:
-            if not isinstance(vehicle, dict):
+            if not _is_record(vehicle):
                 continue
-            vehicle_id = vehicle.get("v_id")
+            vehicle_id = vehicle_value(vehicle, "v_id")
             if vehicle_id is None or not _is_hashable(vehicle_id):
                 continue
             vehicle_junction = vehicle_value(vehicle, "junction", -1)
@@ -231,8 +248,8 @@ class FeatureProcess:
         # and calculate the waiting time
         # 对处于车道驶向交叉口的车辆判断是否处于等待状态, 计算等待时间
         if on_enter_lane(vehicle):
-            vehicle_id = vehicle["v_id"]
-            speed = _safe_nonnegative_float(vehicle.get("speed", 0.0))
+            vehicle_id = vehicle_value(vehicle, "v_id")
+            speed = _safe_nonnegative_float(vehicle_value(vehicle, "speed", 0.0))
             # Determine whether the vehicle is in a waiting state.
             # The determination condition is that the vehicle speed is <= 0.1m/s
             # 判断车辆是否处于等待状态, 判定条件为车辆速度<=0.1m/s
@@ -257,7 +274,7 @@ class FeatureProcess:
                 if vehicle_id in self.last_waiting_moment:
                     del self.last_waiting_moment[vehicle_id]
         else:
-            vehicle_id = vehicle["v_id"]
+            vehicle_id = vehicle_value(vehicle, "v_id")
             # Prevent repeated del when the vehicle is generated for the first time or at an intersection,
             # v_id is not stored in self.waiting_time_store
             # 防止车辆首次生成或位于交叉口时反复del, v_id未储存在self.waiting_time_store内
@@ -277,7 +294,7 @@ class FeatureProcess:
         # When the vehicle is on the lane, calculate the cumulative distance
         # 当车辆处于车道上时, 计算累计路程
         if on_enter_lane(vehicle):
-            vehicle_id = vehicle["v_id"]
+            vehicle_id = vehicle_value(vehicle, "v_id")
             x_pos, y_pos = _safe_position_pair(vehicle)
             # When the vehicle enters the lane from inside the intersection for the second or subsequent time,
             # clear the cumulative distance and prepare to calculate the distance of this entry into the inlane
@@ -307,7 +324,7 @@ class FeatureProcess:
             # delete the historical location information to avoid calculating the driving distance
             # based on the last departure position when entering the lane next time
             # 当车辆驶入交叉口, 删除历史位置信息, 避免下次进入车道时按上一次离开路口位置计算行驶距离
-            vehicle_id = vehicle["v_id"]
+            vehicle_id = vehicle_value(vehicle, "v_id")
             if vehicle_id in self.vehicle_prev_position:
                 del self.vehicle_prev_position[vehicle_id]
 
@@ -322,7 +339,7 @@ class FeatureProcess:
         # Update the number of vehicles on each lane
         # 更新每条车道上的车辆数量
         if on_enter_lane(vehicle):
-            lane_id = vehicle["lane"]
+            lane_id = vehicle_value(vehicle, "lane")
             if not _is_hashable(lane_id):
                 return
             if lane_id not in self.lane_volume:
@@ -330,13 +347,13 @@ class FeatureProcess:
                 # 防御性处理：初始化该车道
                 self.lane_volume[lane_id] = []
 
-            vehicle_id = vehicle["v_id"]
+            vehicle_id = vehicle_value(vehicle, "v_id")
             if vehicle_id not in self.lane_volume[lane_id]:
                 self.lane_volume[lane_id].append(vehicle_id)
 
         # Update the vehicle's historical intersection information
         # 更新车辆的历史所在交叉口信息
-        self.vehicle_prev_junction[vehicle["v_id"]] = vehicle.get("junction", -1)
+        self.vehicle_prev_junction[vehicle_value(vehicle, "v_id")] = vehicle_value(vehicle, "junction", -1)
 
     def get_all_junction_waiting_time(self, vehicles: list):
         """
@@ -364,9 +381,9 @@ class FeatureProcess:
         for junction_id in self.junction_dict:
             res[junction_id] = 0
             v_num[junction_id] = 0
-        vehicles = vehicles if isinstance(vehicles, list) else []
+        vehicles = _safe_list(vehicles)
         for vehicle in vehicles:
-            if not isinstance(vehicle, dict):
+            if not _is_record(vehicle):
                 continue
             target_junction = _waiting_target_junction(vehicle, res)
             if vehicle_value(vehicle, "junction", -1) != -1 or target_junction == -1 or target_junction not in res:
@@ -413,9 +430,9 @@ class FeatureProcess:
         for junction_id in self.junction_dict:
             res[junction_id] = 0
             v_num[junction_id] = 0
-        vehicles = vehicles if isinstance(vehicles, list) else []
+        vehicles = _safe_list(vehicles)
         for vehicle in vehicles:
-            if not isinstance(vehicle, dict):
+            if not _is_record(vehicle):
                 continue
             target_junction = _waiting_target_junction(vehicle, res)
             if vehicle_value(vehicle, "junction", -1) != -1 or target_junction == -1 or target_junction not in res:

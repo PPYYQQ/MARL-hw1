@@ -61,7 +61,33 @@ def _safe_mapping_get(mapping, key, default=None):
             return mapping.get(key, default)
         except Exception:
             return default
-    return default
+    if mapping is None:
+        return default
+    try:
+        return getattr(mapping, key, default)
+    except Exception:
+        return default
+
+
+def _is_record(value):
+    return value is not None and not isinstance(value, (str, bytes))
+
+
+def _as_record_list(value):
+    if value is None:
+        return []
+    if isinstance(value, list):
+        values = value
+    elif isinstance(value, tuple):
+        values = list(value)
+    elif isinstance(value, (str, bytes, dict)):
+        values = []
+    else:
+        try:
+            values = list(value)
+        except Exception:
+            values = []
+    return [item for item in values if _is_record(item)]
 
 
 class Agent(BaseAgent):
@@ -143,13 +169,9 @@ class Agent(BaseAgent):
         return self.__predict_detail(list_obs_data, exploit_flag=False)
 
     def exploit(self, observation):
-        if isinstance(observation, dict):
-            raw_obs = _safe_mapping_get(observation, "obs", observation)
-            extra_info = _safe_mapping_get(observation, "extra_info")
-        else:
-            raw_obs = observation
-            extra_info = None
-        if not isinstance(raw_obs, dict):
+        raw_obs = _safe_mapping_get(observation, "obs", observation)
+        extra_info = _safe_mapping_get(observation, "extra_info")
+        if raw_obs is None:
             raw_obs = {}
         try:
             obs_data = self.observation_process(raw_obs, extra_info)
@@ -310,18 +332,15 @@ class Agent(BaseAgent):
         # Note: The unpacking of the following raw data is for example purposes only,
         # please modify according to the actual situation
         # 注意: 以下原始数据的解包为示例, 请根据实际情况修改
-        if not isinstance(raw_obs, dict):
+        if raw_obs is None:
             raw_obs = {}
         frame_state = _safe_mapping_get(raw_obs, "frame_state", {})
-        if not isinstance(frame_state, dict):
+        if not _is_record(frame_state):
             frame_state = {}
 
         # Parse frame_state
         # 解析 frame_state
-        vehicles = _safe_mapping_get(frame_state, "vehicles", []) or []
-        if not isinstance(vehicles, list):
-            vehicles = []
-        vehicles = [vehicle for vehicle in vehicles if isinstance(vehicle, dict)]
+        vehicles = _as_record_list(_safe_mapping_get(frame_state, "vehicles", []))
 
         # Divide the lane into several grids along the lane direction and the vehicle driving direction
         # 沿车道方向和车辆行驶方向将车道划分为数个栅格
@@ -358,7 +377,10 @@ class Agent(BaseAgent):
                         _safe_mapping_get(vehicle, "v_config_id"),
                         {},
                     )
-                    max_speed = max(_safe_float(vehicle_config.get("max_speed"), Config.DEFAULT_MAX_SPEED), 1.0)
+                    max_speed = max(
+                        _safe_float(_safe_mapping_get(vehicle_config, "max_speed"), Config.DEFAULT_MAX_SPEED),
+                        1.0,
+                    )
                     speed = _safe_nonnegative_float(_safe_mapping_get(vehicle, "speed", 0.0))
                 except (KeyError, TypeError, ValueError, AttributeError):
                     continue
@@ -445,15 +467,12 @@ class Agent(BaseAgent):
         return int(np.clip(value, 0, action_dim - 1))
 
     def rule_based_action(self, raw_obs):
-        if not isinstance(raw_obs, dict):
+        if raw_obs is None:
             raw_obs = {}
         frame_state = _safe_mapping_get(raw_obs, "frame_state", {})
-        if not isinstance(frame_state, dict):
+        if not _is_record(frame_state):
             frame_state = {}
-        vehicles = _safe_mapping_get(frame_state, "vehicles", []) or []
-        if not isinstance(vehicles, list):
-            vehicles = []
-        vehicles = [vehicle for vehicle in vehicles if isinstance(vehicle, dict)]
+        vehicles = _as_record_list(_safe_mapping_get(frame_state, "vehicles", []))
         phase_pressure, _ = get_phase_pressure(
             vehicles,
             waiting_speed_threshold=Config.WAITING_SPEED_THRESHOLD,
@@ -473,18 +492,14 @@ class Agent(BaseAgent):
         ]
 
     def _phase_feature(self, frame_state):
-        phases = _safe_mapping_get(frame_state, "phases", []) if isinstance(frame_state, dict) else []
-        if not isinstance(phases, list):
-            phases = []
+        phases = _as_record_list(_safe_mapping_get(frame_state, "phases", []))
         phase_info = {}
         for candidate in phases:
-            if not isinstance(candidate, dict):
-                continue
             if _safe_mapping_get(candidate, "s_id", 0) == 0:
                 phase_info = candidate
                 break
         if not phase_info and phases:
-            phase_info = next((candidate for candidate in phases if isinstance(candidate, dict)), {})
+            phase_info = phases[0]
 
         phase_feature = [0.0] * Config.DIM_OF_ACTION_PHASE
         if not phase_info:
@@ -507,7 +522,7 @@ class Agent(BaseAgent):
         ]
 
     def _phase_age_feature(self, frame_state):
-        frame_no = _safe_int(_safe_mapping_get(frame_state, "frame_no", 0)) if isinstance(frame_state, dict) else 0
+        frame_no = _safe_int(_safe_mapping_get(frame_state, "frame_no", 0))
         phase_info = self._current_phase_info(frame_state)
         last_served = self.preprocess.phase_last_served_frame
         if not isinstance(last_served, list) or len(last_served) != Config.DIM_OF_ACTION_PHASE:
@@ -529,17 +544,12 @@ class Agent(BaseAgent):
         ]
 
     def _current_phase_info(self, frame_state):
-        phases = _safe_mapping_get(frame_state, "phases", []) if isinstance(frame_state, dict) else []
-        if not isinstance(phases, list):
-            return {}
+        phases = _as_record_list(_safe_mapping_get(frame_state, "phases", []))
         for candidate in phases:
-            if not isinstance(candidate, dict):
-                continue
             if _safe_mapping_get(candidate, "s_id", 0) == 0:
                 return candidate
         for candidate in phases:
-            if isinstance(candidate, dict):
-                return candidate
+            return candidate
         return {}
 
     def _traffic_feature(self, traffic_summary):

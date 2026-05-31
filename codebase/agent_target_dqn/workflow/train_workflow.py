@@ -519,19 +519,28 @@ def _safe_env_value(env_obs, key, default):
             return env_obs.get(key, default)
         except Exception:
             return default
-    return default
+    if env_obs is None:
+        return default
+    try:
+        return getattr(env_obs, key, default)
+    except Exception:
+        return default
+
+
+def _is_record(value):
+    return value is not None and not isinstance(value, (str, bytes))
 
 
 def _safe_observation(env_obs):
     observation = _safe_env_value(env_obs, "observation", {})
-    if isinstance(observation, dict):
+    if _is_record(observation):
         return observation
     return {}
 
 
 def _safe_extra_info(env_obs):
     extra_info = _safe_env_value(env_obs, "extra_info", {})
-    if isinstance(extra_info, dict):
+    if _is_record(extra_info):
         return extra_info
     return {}
 

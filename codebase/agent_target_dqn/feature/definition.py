@@ -51,6 +51,29 @@ def _safe_getattr(obj, name, default=None):
         return default
 
 
+def _safe_record_value(record, name, default=None):
+    return record_value(record, name, default)
+
+
+def _is_record(value):
+    return value is not None and not isinstance(value, (str, bytes))
+
+
+def _safe_list(value):
+    if value is None:
+        return []
+    if isinstance(value, list):
+        return value
+    if isinstance(value, tuple):
+        return list(value)
+    if isinstance(value, (str, bytes, dict)):
+        return []
+    try:
+        return list(value)
+    except Exception:
+        return []
+
+
 def _fixed_float_list(value, width, default=0.0):
     try:
         values = np.asarray(value, dtype=np.float32).flatten()
@@ -191,14 +214,13 @@ def reward_shaping(_obs, act, agent):
 
     phase_reward, duration_reward = 0.0, 0.0
 
-    frame_state = _obs.get("frame_state") if isinstance(_obs, dict) else None
-    if not isinstance(frame_state, dict):
+    frame_state = _safe_record_value(_obs, "frame_state")
+    if not _is_record(frame_state):
         return 0.0, 0.0
-    frame_no = _safe_int(frame_state.get("frame_no", 0))
-    vehicles = frame_state.get("vehicles", []) or []
-    if not isinstance(vehicles, list):
-        vehicles = []
-    vehicles = [vehicle for vehicle in vehicles if isinstance(vehicle, dict)]
+    frame_no = _safe_int(_safe_record_value(frame_state, "frame_no", 0))
+    vehicles = [
+        vehicle for vehicle in _safe_list(_safe_record_value(frame_state, "vehicles", [])) if _is_record(vehicle)
+    ]
 
     phase_pressure, pressure_totals = get_phase_pressure(
         vehicles,

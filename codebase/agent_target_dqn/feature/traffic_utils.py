@@ -62,16 +62,20 @@ def normalize_phase_legal_action(legal_action, phase_count=4):
     return mask
 
 
-def vehicle_value(vehicle, key, default=None):
-    if isinstance(vehicle, dict):
+def record_value(record, key, default=None):
+    if isinstance(record, dict):
         try:
-            return vehicle.get(key, default)
+            return record.get(key, default)
         except Exception:
             return default
     try:
-        return getattr(vehicle, key, default)
+        return getattr(record, key, default)
     except Exception:
         return default
+
+
+def vehicle_value(vehicle, key, default=None):
+    return record_value(vehicle, key, default)
 
 
 _vehicle_value = vehicle_value
@@ -198,7 +202,8 @@ def get_lane_code(vehicle):
 
 
 def get_lane_position_meters(vehicle):
-    y_pos = float(vehicle["position_in_lane"]["y"])
+    position = vehicle_value(vehicle, "position_in_lane", {})
+    y_pos = float(record_value(position, "y"))
     if not np.isfinite(y_pos):
         raise ValueError("non-finite lane position")
     if abs(y_pos) > 200:
@@ -220,8 +225,8 @@ def get_lane_statistics(vehicles, waiting_speed_threshold=0.1, lane_count=14):
             if lane_code is None or lane_code < 0 or lane_code >= lane_count:
                 continue
 
-            speed = _nonnegative_float(vehicle.get("speed", 0.0))
-            waiting_time = _nonnegative_float(vehicle.get("waiting_time", 0.0))
+            speed = _nonnegative_float(vehicle_value(vehicle, "speed", 0.0))
+            waiting_time = _nonnegative_float(vehicle_value(vehicle, "waiting_time", 0.0))
         except (KeyError, TypeError, ValueError, AttributeError):
             continue
 
@@ -404,13 +409,13 @@ def get_phase_pressure(vehicles, waiting_speed_threshold=0.1, phase_count=4):
             if not on_enter_lane(vehicle):
                 continue
 
-            lane_phase = lane_to_phase.get(vehicle.get("lane"))
+            lane_phase = lane_to_phase.get(vehicle_value(vehicle, "lane"))
             if lane_phase is None:
                 continue
 
-            speed = _nonnegative_float(vehicle.get("speed", 0.0))
-            waiting_time = _nonnegative_float(vehicle.get("waiting_time", 0.0))
-            delay = _nonnegative_float(vehicle.get("delay", 0.0))
+            speed = _nonnegative_float(vehicle_value(vehicle, "speed", 0.0))
+            waiting_time = _nonnegative_float(vehicle_value(vehicle, "waiting_time", 0.0))
+            delay = _nonnegative_float(vehicle_value(vehicle, "delay", 0.0))
         except (KeyError, TypeError, ValueError, AttributeError):
             continue
         is_waiting = 1.0 if speed <= waiting_speed_threshold else 0.0

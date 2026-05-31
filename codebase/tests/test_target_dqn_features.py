@@ -353,6 +353,34 @@ def main():
     assert _not_done_flag("bad") == 1
     assert _not_done_flag(float("inf")) == 1
 
+    class OptionalFailingFrame:
+        obs = [0.5] * Config.DIM_OF_OBSERVATION
+        act = [0, 2, Config.MIN_GREEN_DURATION + 2]
+
+        @property
+        def rew(self):
+            raise RuntimeError("reward read failed")
+
+        @property
+        def legal_action(self):
+            raise RuntimeError("legal action read failed")
+
+        @property
+        def done(self):
+            raise RuntimeError("done read failed")
+
+    attr_second = frame_type()
+    attr_second.obs = [0.25] * Config.DIM_OF_OBSERVATION
+    attr_second.act = [0, 1, Config.MIN_GREEN_DURATION + 1]
+    attr_second.rew = (0.1, 0.2)
+    attr_second.done = 1
+    attr_second.legal_action = [1, 0, 0, 0]
+    attr_samples = sample_process([OptionalFailingFrame(), attr_second])
+    assert len(attr_samples) == 2
+    assert attr_samples[0].rew == [0.0, 0.0]
+    assert attr_samples[0].done == 1
+    assert attr_samples[0].legal_action == [1, 0, 0, 0]
+
     preprocess_type = type("Preprocess", (), {})
     agent_type = type("Agent", (), {})
     dummy_agent = agent_type()

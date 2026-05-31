@@ -44,6 +44,13 @@ def _safe_int(value, default=0):
         return int(default)
 
 
+def _safe_getattr(obj, name, default=None):
+    try:
+        return getattr(obj, name, default)
+    except Exception:
+        return default
+
+
 def _fixed_float_list(value, width, default=0.0):
     try:
         values = np.asarray(value, dtype=np.float32).flatten()
@@ -92,8 +99,8 @@ def sample_process(list_game_data):
 
     sample_datas = []
     for data in list_game_data:
-        obs = getattr(data, "obs", None)
-        act = getattr(data, "act", None)
+        obs = _safe_getattr(data, "obs", None)
+        act = _safe_getattr(data, "act", None)
         if obs is None or act is None:
             continue
         try:
@@ -105,10 +112,10 @@ def sample_process(list_game_data):
         obs = _fixed_float_list(obs, Config.DIM_OF_OBSERVATION)
         act = _fixed_action_list(act)
         legal_action = normalize_phase_legal_action(
-            getattr(data, "legal_action", None),
+            _safe_getattr(data, "legal_action", None),
             Config.DIM_OF_ACTION_PHASE,
         )
-        reward = getattr(data, "rew", None)
+        reward = _safe_getattr(data, "rew", None)
         reward = reward if reward is not None else (0.0, 0.0)
         reward = _fixed_float_list(reward, 2)
         sample_data = SampleData(
@@ -116,7 +123,7 @@ def sample_process(list_game_data):
             _obs=None,
             act=act,
             rew=reward,
-            done=_not_done_flag(getattr(data, "done", 0)),
+            done=_not_done_flag(_safe_getattr(data, "done", 0)),
             legal_action=legal_action,
         )
 

@@ -857,3 +857,18 @@
   - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
 - 下一步：
   - 平台环境可用后确认日志或 monitor 服务短暂失败时训练 episode 仍能继续运行。
+
+### Step 58 - Agent 日志异常隔离
+
+- 状态：完成
+- Commit：`cf0cf1c`
+- 内容：
+  - `Agent` 增加 `_log_info()` 和 `_log_error()`，统一捕获 logger 后端异常。
+  - `exploit()` 的规则兜底日志改走安全 error logger，日志失败不再阻止评估返回规则动作。
+  - `save_model()` 成功日志和 `load_model()` 的 latest 缺失、不可读、非法 payload、结构不兼容及加载成功日志都改走安全 info logger。
+  - 静态测试增加 Agent 日志 helper 和禁止 checkpoint/评估路径直接调用 logger 的约束。
+- 验证：
+  - 已运行 `python -m compileall agent_target_dqn tests` 和 `python tests/test_target_dqn_static.py`，均通过。
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 平台环境可用后确认日志后端短暂异常不会影响模型加载、保存和评估兜底动作返回。

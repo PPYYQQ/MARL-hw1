@@ -213,7 +213,7 @@ workflow 当前监控：
 - duration reward。
 - data length。
 
-workflow 和算法训练中的 logger/monitor 调用都通过容错 helper 执行；如果平台日志后端或 `monitor.put_data()` 临时失败，训练路径会继续运行，避免非核心观测上报故障中断 episode。
+workflow、算法训练以及 `Agent` 的模型保存/加载和评估兜底日志都通过容错 helper 执行；如果平台日志后端或 `monitor.put_data()` 临时失败，训练路径会继续运行，避免非核心观测上报故障中断 episode。
 
 所有 agent 入口的 Torch 线程配置都通过容错 helper 执行；如果平台进程已经启动过 Torch 并行运行，`set_num_threads()` 或 `set_num_interop_threads()` 抛出 `RuntimeError` 时会跳过该设置，避免训练或评估在导入阶段失败。
 

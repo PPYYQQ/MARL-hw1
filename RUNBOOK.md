@@ -90,7 +90,7 @@ python tests/test_target_dqn_smoke.py
 - `latest` 模型结构不兼容：当前联合动作模型会跳过不兼容的旧 `latest` checkpoint，并从当前参数继续训练；若要强制加载指定模型 ID，结构不兼容仍会抛错。
 - `legal_action` 是标量而不是列表：当前 workflow 会先归一化为 4 维相位 mask，再判断是否需要决策；若平台提供相位级 mask，也会沿用相位约束。
 - `run_episodes error: ...`：优先看冒号后的原始异常信息和 Python chained traceback，当前 workflow 不再只抛通用错误。
-- 日志或监控异常：当前 logger 和 monitor 上报失败不会中断训练；如果平台看不到指标，先查 monitor 后端或日志权限。
+- 日志或监控异常：当前 workflow、learner 和 `Agent` checkpoint/评估兜底日志失败不会中断训练；如果平台看不到指标，先查 monitor 后端或日志权限。
 - 日志过多：当前进度日志只在 episode 结束或每 20 次真实预测后打印；若平台日志仍过密，优先检查是否有异常反复重启。
 - 观测里有异常 frame 或车辆字段：当前预处理器会清洗 frame、车辆 ID、车速和位置；若仍异常，优先保存原始 observation 样例并检查是否不是 dict/list 结构。
 - 观测里有异常相位字段：当前相位 ID、duration、remaining duration、相位年龄和 workflow frame_no 都会清洗为有限值；若仍异常，优先保留原始 `frame_state.phases`。

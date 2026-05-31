@@ -1222,3 +1222,18 @@
   - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
 - 下一步：
   - 平台环境可用后确认真实 `env.step()` 是否还存在其他返回结构，并将原始返回样例补入测试。
+
+### Step 83 - workflow 映射读取异常隔离
+
+- 状态：完成
+- Commit：`6123127`
+- 内容：
+  - `_safe_env_value()` 捕获 env_obs/obs 映射 `.get()` 抛出的异常，并回退默认值。
+  - `_safe_legal_action()` 和 `_need_to_predict()` 改为复用 `_safe_env_value()`，避免异常 dict-like observation 中断合法动作读取和预测门控。
+  - 无平台依赖测试增加 `.get()` 抛错的 env_obs 覆盖；静态测试增加集中读取和 legal_action 安全读取锚点。
+- 验证：
+  - 已运行 `python -m compileall agent_target_dqn/workflow tests/test_target_dqn_features.py tests/test_target_dqn_static.py`，通过。
+  - 已运行 `python tests/test_target_dqn_features.py` 和 `python tests/test_target_dqn_static.py`，均通过。
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 平台环境可用后确认 env_obs/obs 是否始终是普通 dict；如出现异常映射对象，需要保存原始类型和 repr。

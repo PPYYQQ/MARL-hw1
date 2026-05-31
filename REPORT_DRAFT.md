@@ -204,7 +204,7 @@ workflow 调用奖励函数时还有一层兜底：如果奖励计算因异常 o
 
 checkpoint 保存采用临时文件加 `os.replace()` 的方式发布，避免训练进程中断时把半写文件暴露为 `latest`；workflow 的周期性 `latest` 保存失败会记录错误并在下一保存周期重试，不会中断当前训练循环。加载侧会继续跳过缺失、不可读或结构不兼容的 `latest`；如果平台文件系统或模型目录出现未预期加载异常，workflow 会记录错误并继续使用当前模型参数，保证后续 episode 可以继续启动。
 
-workflow 会先通过安全 helper 调用 `env.reset()` 和 `env.step()`，再归一化返回值：既兼容当前封装中的二元返回，也兼容 Gym 四元、Gymnasium 五元和作业文档给出的六元 `env.step()` 返回。如果 reset 抛出平台异常，则跳过当前 episode 并等待下一轮重试；如果 step 抛出异常，则中止当前 episode，避免缺失下一状态时继续构造错误 transition。随后对 `observation`、`extra_info`、`frame_no`、结束标记和采样帧 `legal_action` 使用安全读取；字段缺失或类型异常时按空 observation、空 extra info 或默认结束状态处理，避免不完整平台响应直接中断 episode。`terminated` 和 `truncated` 会显式兼容 bool、有限数值和 true/false 字符串，未知字符串或 NaN/Inf 不会被误判为结束。每局开始时的 `agent.reset()` 也通过安全 helper 执行，失败时跳过当前 episode，防止半初始化的交通统计状态继续进入采样路径。
+workflow 会先通过安全 helper 调用 `env.reset()` 和 `env.step()`，再归一化返回值：既兼容当前封装中的二元返回，也兼容 Gym 四元、Gymnasium 五元和作业文档给出的六元 `env.step()` 返回。如果 reset 抛出平台异常，则跳过当前 episode 并等待下一轮重试；如果 step 抛出异常，则中止当前 episode，避免缺失下一状态时继续构造错误 transition。随后对 `observation`、`extra_info`、`frame_no`、结束标记和采样帧 `legal_action` 使用安全读取；字段缺失、类型异常或 dict-like 对象字段读取抛错时按空 observation、空 extra info 或默认结束状态处理，避免不完整平台响应直接中断 episode。`terminated` 和 `truncated` 会显式兼容 bool、有限数值和 true/false 字符串，未知字符串或 NaN/Inf 不会被误判为结束。每局开始时的 `agent.reset()` 也通过安全 helper 执行，失败时跳过当前 episode，防止半初始化的交通统计状态继续进入采样路径。
 
 平台容灾检测通过安全 helper 执行；如果 `handle_disaster_recovery()` 本身抛错，workflow 会记录错误并按无容灾信号继续，避免容灾 SDK 临时异常反向中断训练循环。
 

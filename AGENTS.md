@@ -121,7 +121,7 @@ Target-DQN 关键文件：
 - 训练时已将 `[phase_idx, duration_seconds]` 转换为 80 维联合动作索引，避免 Q head gather 越界。
 - 观测处理已兼容 `position_in_lane["y"]` 的米/毫米单位。
 - 交通统计工具会清洗车辆 `speed`、`waiting_time`、`delay`、历史趋势和相位压力中的 NaN/Inf，避免异常车辆字段污染 reward、规则兜底和观测统计。
-- 相位时间特征、相位年龄、reward 公平性项和 workflow `frame_no` 会清洗 NaN/Inf/Overflow，避免异常相位字段或帧号中断推理和奖励计算。
+- 相位时间特征、相位年龄、reward 公平性项和 workflow `frame_no` 会清洗 NaN/Inf/Overflow；workflow 帧号会从顶层 `frame_no` / `frameNo` 或嵌套 `extra_info` / `_state` / `state` 中回退读取，避免异常相位字段或帧号中断推理和奖励计算。
 - `observation_process()` 会在返回前统一清洗最终特征向量，保证长度为 `Config.DIM_OF_OBSERVATION` 且非有限值归零。
 - `Model.forward()` 会把单条一维 observation 转成 batch，并对异常长度或 ragged Python batch observation 做补零或截断，避免输入形状差异直接触发线性层错误。
 - `Model.forward()` 的 `_prepare_input()` 会统一清洗 NaN/Inf，异常 array-like observation 转换失败会补零，避免直接模型调用产生非有限 Q 值。
@@ -142,7 +142,7 @@ Target-DQN 关键文件：
 - 训练 workflow 已用同一归一化逻辑判断是否需要决策，兼容平台文档中的 `int32` 标量门控和 4 维相位 mask。
 - 训练 workflow 会归一化 `env.reset()` 的对象式返回、二元 tuple 返回和 `env.step()` 的对象式返回、dict/object step envelope、二元、Gym 四元、Gymnasium 五元、作业文档六元 tuple 返回，兼容当前封装、常见环境封装与作业文档形式。
 - 训练 workflow 会隔离 `env.reset()` 和 `env.step()` 抛出的平台异常；reset 失败跳过当前 episode，step 失败中止当前 episode。
-- 训练 workflow 对 reset/step 返回的 `observation` / `obs` / `_obs`、`extra_info` / `_state` / `state`、`frame_no`、结束标记和采样帧 `legal_action` 会安全读取；如果平台直接返回带 `frame_state` / `legal_action` 的裸 observation dict 或对象，也会按原始 observation 处理，避免被误归一化为空观测。
+- 训练 workflow 对 reset/step 返回的 `observation` / `obs` / `_obs`、`extra_info` / `_state` / `state`、顶层或嵌套的 `frame_no` / `frameNo`、结束标记和采样帧 `legal_action` 会安全读取；如果平台直接返回带 `frame_state` / `legal_action` 的裸 observation dict 或对象，也会按原始 observation 处理，避免被误归一化为空观测。
 - step/reset 归一化阶段会保留对象式 env_obs 和对象式 extra_info，避免先前字段读取兼容逻辑在进入安全 helper 前丢失平台 score 或 observation payload。
 - 训练 workflow 对 env_obs/obs 映射读取异常会统一回退默认值，避免异常 dict-like 返回对象中断预测门控和状态解析。
 - 训练 workflow 会显式解析 `terminated` / `truncated` 的 bool、数值和字符串形式，避免 `"False"` 这类非空字符串被误判为结束。

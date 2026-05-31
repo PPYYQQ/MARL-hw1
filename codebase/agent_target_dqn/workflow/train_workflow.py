@@ -492,7 +492,7 @@ def _normalize_step_result(step_result):
         if len(step_result) == 5:
             observation, reward, terminated, truncated, extra_info = step_result
             return reward, {
-                "frame_no": _safe_env_value(extra_info, "frame_no", 0),
+                "frame_no": _safe_frame_no({"extra_info": extra_info}),
                 "observation": observation,
                 "terminated": terminated,
                 "truncated": truncated,
@@ -501,7 +501,7 @@ def _normalize_step_result(step_result):
         if len(step_result) == 4:
             observation, reward, done, extra_info = step_result
             return reward, {
-                "frame_no": _safe_env_value(extra_info, "frame_no", 0),
+                "frame_no": _safe_frame_no({"extra_info": extra_info}),
                 "observation": observation,
                 "terminated": done,
                 "truncated": False,
@@ -526,7 +526,7 @@ def _normalize_step_record_result(step_result):
     reward = _first_env_value(step_result, ("reward", "score", "env_reward"), 0.0)
     terminated = _first_env_value(step_result, ("terminated", "done"), False)
     truncated = _safe_env_value(step_result, "truncated", False)
-    frame_no = _safe_env_value(step_result, "frame_no", _safe_env_value(extra_info, "frame_no", 0))
+    frame_no = _safe_frame_no(step_result)
 
     return reward, {
         "frame_no": frame_no,
@@ -609,7 +609,10 @@ def _safe_extra_info(env_obs):
 
 
 def _safe_frame_no(env_obs):
-    return int(_finite_float(_safe_env_value(env_obs, "frame_no", 0)))
+    frame_no = _first_env_value(env_obs, ("frame_no", "frameNo"), None)
+    if frame_no is None:
+        frame_no = _first_env_value(_safe_extra_info(env_obs), ("frame_no", "frameNo"), 0)
+    return int(_finite_float(frame_no))
 
 
 def _safe_done_flag(env_obs, key):

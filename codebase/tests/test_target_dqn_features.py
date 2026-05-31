@@ -1004,7 +1004,7 @@ def main():
     assert five_item_obs["terminated"] is False
     assert five_item_obs["truncated"] is True
     assert five_item_obs["extra_info"] == {"frame_no": 11}
-    five_object_extra = AttrObject(frame_no=14, score_info=AttrObject(total_score=9.0))
+    five_object_extra = AttrObject(frameNo=14, score_info=AttrObject(total_score=9.0))
     five_object_reward, five_object_obs = _normalize_step_result(
         (AttrObject(legal_action=1), 0.6, False, False, five_object_extra)
     )
@@ -1017,7 +1017,7 @@ def main():
     assert four_item_obs["observation"] == {"legal_action": 1}
     assert four_item_obs["terminated"] is True
     assert four_item_obs["truncated"] is False
-    four_object_extra = AttrObject(frame_no=15, score_info=AttrObject(total_score=8.0))
+    four_object_extra = AttrObject(frameNo=15, score_info=AttrObject(total_score=8.0))
     four_object_reward, four_object_obs = _normalize_step_result(
         (AttrObject(legal_action=1), 0.4, False, four_object_extra)
     )
@@ -1042,14 +1042,14 @@ def main():
     assert bare_object_reward == 0.0
     assert bare_object_obs["frame_no"] == 16
     assert bare_object_obs["observation"].legal_action == 1
-    object_envelope_step = AttrObject(_obs=AttrObject(legal_action=1), score=2.5, truncated=True, state=AttrObject(frame_no=18))
+    object_envelope_step = AttrObject(_obs=AttrObject(legal_action=1), score=2.5, truncated=True, state=AttrObject(frameNo=18))
     assert _looks_like_step_envelope(object_envelope_step) is True
     object_envelope_reward, object_envelope_obs = _normalize_step_result(object_envelope_step)
     assert object_envelope_reward == 2.5
     assert object_envelope_obs["frame_no"] == 18
     assert object_envelope_obs["observation"].legal_action == 1
     assert object_envelope_obs["truncated"] is True
-    assert object_envelope_obs["extra_info"].frame_no == 18
+    assert object_envelope_obs["extra_info"].frameNo == 18
     bare_observation_object_step = AttrObject(frame_state=AttrObject(), legal_action=1)
     assert _normalize_step_result(bare_observation_object_step) == (0.0, bare_observation_object_step)
     assert _normalize_step_result(None) == (0.0, {})
@@ -1112,6 +1112,9 @@ def main():
     assert _safe_frame_no({"frame_no": float("inf")}) == 0
     assert _safe_frame_no({"frame_no": 3.5}) == 3
     assert _safe_frame_no({"frame_no": 7}) == 7
+    assert _safe_frame_no({"extra_info": {"frame_no": 19}}) == 19
+    assert _safe_frame_no({"_state": {"frame_no": "20"}}) == 20
+    assert _safe_frame_no({"state": AttrObject(frameNo=21)}) == 21
     assert _safe_done_flag({"terminated": 1}, "terminated") is True
     assert _safe_done_flag({"terminated": 0}, "terminated") is False
     assert _safe_done_flag({"terminated": "true"}, "terminated") is True

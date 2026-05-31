@@ -132,7 +132,7 @@ duration_seconds = MIN_GREEN_DURATION + duration_index
 - 训练 workflow 也使用同一归一化逻辑判断当前帧是否需要调用 `predict()`，避免平台给标量 `int32` 时因下标访问崩溃。
 - 训练样本中的 `legal_action` 保存 `_obs` 对应的下一状态 mask，用于 TD target 的下一联合动作选择。
 - mask 中的 NaN/Inf 会先归零，避免非有限值被误判为合法相位。
-- 如果 mask 全零，推理侧会回退为四个相位都可选，避免无可选动作导致崩溃。
+- 如果 mask 全零，workflow 仍按不需要决策处理；推理侧被直接调用时会回退为四个相位都可选，避免无可选动作导致随机采样或 argmax 路径崩溃。
 
 ## 奖励设计
 

@@ -1106,3 +1106,16 @@
   - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
 - 下一步：
   - 平台环境可用后确认评估任务中异常 observation 或规则兜底异常不会导致 `exploit()` 抛错。
+
+### Step 75 - 空合法动作 mask 审查
+
+- 状态：完成
+- Commit：`e266a74`
+- 内容：
+  - 复查 `Agent._phase_action_mask()` 和 `_joint_action_mask()`，确认全零相位 mask 与空 joint mask 行都会回退为可选全集。
+  - 静态测试增加空 phase mask 和空 joint mask 行兜底锚点，避免后续重构重新引入随机探索空集合采样风险。
+  - `AGENTS.md`、`RUNBOOK.md` 和 `REPORT_DRAFT.md` 补充 workflow 不决策语义与 Agent 直接推理兜底语义的区别。
+- 验证：
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 平台环境可用后确认真实 `legal_action=0` 的帧不会进入 `predict()`，若平台评估入口直接调用 `exploit()`，空 mask 也不会触发空采样异常。

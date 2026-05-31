@@ -106,6 +106,7 @@ Target-DQN 关键文件：
 - workflow 发送训练样本时会隔离 `send_sample_data()` 异常，样本通道临时失败只记录错误并继续后续训练循环。
 - workflow 进行终局或容灾样本转换时会隔离 `sample_process()` 异常，转换失败只丢弃当前 collector，不再中断后续 episode。
 - Target-DQN 已将 `legal_action` 归一化为 4 维相位 mask，用于贪心预测、随机探索和规则兜底选相位。
+- Agent 推理侧对全零相位 mask 会回退为四个相位都可选，joint action mask 的空行也会回退为全动作可选，避免直接调用 `predict()` / `exploit()` 时无可采样动作导致崩溃。
 - 训练 workflow 已用同一归一化逻辑判断是否需要决策，兼容平台文档中的 `int32` 标量门控和 4 维相位 mask。
 - 训练 workflow 会归一化 `env.reset()` 的二元 tuple 返回和 `env.step()` 的二元/六元 tuple 返回，兼容当前封装与作业文档形式。
 - 训练 workflow 会隔离 `env.reset()` 和 `env.step()` 抛出的平台异常；reset 失败跳过当前 episode，step 失败中止当前 episode。
@@ -223,6 +224,7 @@ coding agent 无法单独保证：
 - 训练 workflow 判断是否调用 `predict()` 时也必须走 `normalize_phase_legal_action()`，不要直接写 `legal_action[0]`。
 - 训练样本里的 `legal_action` 代表 `_obs` 对应的下一状态相位 mask，不是当前已执行动作的 mask。
 - 相位级 mask 会展开成 80 维 joint mask，训练和预测都只在合法相位对应的动作组合中选动作。
+- 全零 `legal_action` 在 workflow 中仍表示当前帧不需要决策；如果外部直接调用 `Agent.predict()` / `Agent.exploit()` 绕过 workflow，Agent 内部会把空 mask 兜底为可选全集，避免随机探索的空集合采样或贪心推理的无效 mask。
 - `exploit()` 必须使用贪心或规则兜底，不应使用随机探索，也不应修改训练 epsilon 状态。
 
 特征设计：

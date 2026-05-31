@@ -101,7 +101,7 @@ def run_episodes(n_episode, env, agent, usr_conf, logger):
 
             # Retrieving training metrics
             # 获取训练中的指标
-            training_metrics = get_training_metrics()
+            training_metrics = _get_training_metrics(logger)
             if training_metrics:
                 _log_info(logger, f"training_metrics is {training_metrics}")
 
@@ -331,6 +331,15 @@ def _save_latest_model(agent, logger):
     except Exception as err:
         _log_error(logger, f"save latest model failed: {err}")
         return False
+
+
+def _get_training_metrics(logger):
+    try:
+        metrics = get_training_metrics()
+    except Exception as err:
+        _log_error(logger, f"get training metrics failed: {err}")
+        return {}
+    return metrics if isinstance(metrics, dict) else {}
 
 
 def _log_info(logger, message):

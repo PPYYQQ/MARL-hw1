@@ -73,6 +73,7 @@ def main():
     from agent_target_dqn.workflow.train_workflow import (
         _log_error,
         _log_info,
+        _get_training_metrics,
         _need_to_predict,
         _normalize_reset_result,
         _normalize_step_result,
@@ -442,6 +443,23 @@ def main():
     assert recording_monitor.records
     assert _put_monitor_data(FailingMonitor(), {"reward": 1.0}, FailingLogger()) is False
     assert _put_monitor_data(None, {"reward": 1.0}, FailingLogger()) is False
+
+    import agent_target_dqn.workflow.train_workflow as train_workflow
+
+    original_get_training_metrics = train_workflow.get_training_metrics
+    try:
+        train_workflow.get_training_metrics = lambda: {"reward": 1.0}
+        assert _get_training_metrics(FailingLogger()) == {"reward": 1.0}
+        train_workflow.get_training_metrics = lambda: None
+        assert _get_training_metrics(FailingLogger()) == {}
+
+        def raise_metrics():
+            raise RuntimeError("metrics failed")
+
+        train_workflow.get_training_metrics = raise_metrics
+        assert _get_training_metrics(FailingLogger()) == {}
+    finally:
+        train_workflow.get_training_metrics = original_get_training_metrics
 
     class PredictingAgent:
         def predict(self, list_obs_data):

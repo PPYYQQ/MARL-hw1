@@ -872,3 +872,18 @@
   - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
 - 下一步：
   - 平台环境可用后确认日志后端短暂异常不会影响模型加载、保存和评估兜底动作返回。
+
+### Step 59 - latest checkpoint 保存失败隔离
+
+- 状态：完成
+- Commit：`093f83a`
+- 内容：
+  - workflow 增加 `_save_latest_model()`，封装周期性 `agent.save_model(id="latest")`。
+  - `latest` checkpoint 保存异常时记录 `save latest model failed` 并返回失败，不再让文件系统或平台模型目录异常直接终止训练循环。
+  - 保存尝试后仍更新时间戳，避免持续失败时每个 epoch 高频刷日志或反复打断训练节奏。
+  - 无平台依赖测试覆盖保存成功、保存失败且 logger 后端也失败的路径；静态测试增加 safe save helper 锚点。
+- 验证：
+  - 已运行 `python -m compileall agent_target_dqn tests`、`python tests/test_target_dqn_features.py` 和 `python tests/test_target_dqn_static.py`，均通过。
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 平台环境可用后确认 checkpoint 目录权限或磁盘短暂异常时训练仍继续，并在下一保存周期重试 `latest`。

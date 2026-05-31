@@ -87,6 +87,7 @@ python tests/test_target_dqn_smoke.py
 - `ModuleNotFoundError: torch`：安装 PyTorch 或使用平台镜像。
 - `load latest model` 找不到文件：当前代码会跳过首次 `latest` 加载，属于从零训练的正常情况。
 - 训练中恢复 `latest`：当前 workflow 周期保存 `model.ckpt-latest.pkl`，后续 episode 会加载同名 checkpoint。
+- `save latest model failed`：当前 workflow 会记录错误并继续训练，同时节流到下一保存周期再重试；需要检查 checkpoint 路径权限、磁盘空间或平台模型目录挂载。
 - `latest` 模型结构不兼容：当前联合动作模型会跳过不兼容的旧 `latest` checkpoint，并从当前参数继续训练；若要强制加载指定模型 ID，结构不兼容仍会抛错。
 - `legal_action` 是标量而不是列表：当前 workflow 会先归一化为 4 维相位 mask，再判断是否需要决策；若平台提供相位级 mask，也会沿用相位约束。
 - `run_episodes error: ...`：优先看冒号后的原始异常信息和 Python chained traceback，当前 workflow 不再只抛通用错误。

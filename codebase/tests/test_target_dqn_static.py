@@ -336,6 +336,8 @@ def main():
     require("def _reset_agent" in workflow, "workflow agent reset should be isolated")
     require("_reset_agent(agent, env_obs, logger)" in workflow, "workflow should reset agents through the safe helper")
     require("agent reset failed" in workflow, "workflow should log agent reset failures")
+    require("def _looks_like_observation" in workflow, "workflow should recognize raw observation returns")
+    require("return env_obs" in workflow, "workflow should pass through raw observation env results")
     require("def _need_to_predict" in workflow, "workflow should normalize legal_action before prediction gating")
     require("def _finite_float" in workflow, "workflow reward monitor should sanitize non-finite rewards")
     require("except (TypeError, ValueError, OverflowError)" in workflow, "workflow finite float helper should catch malformed scalars")

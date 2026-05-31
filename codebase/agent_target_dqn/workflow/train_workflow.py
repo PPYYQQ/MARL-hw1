@@ -535,10 +535,19 @@ def _is_record(value):
     return value is not None and not isinstance(value, (str, bytes, bool, int, float, complex))
 
 
+def _looks_like_observation(value):
+    return _is_record(value) and (
+        _safe_env_value(value, "frame_state", None) is not None
+        or _safe_env_value(value, "legal_action", None) is not None
+    )
+
+
 def _safe_observation(env_obs):
-    observation = _safe_env_value(env_obs, "observation", {})
+    observation = _safe_env_value(env_obs, "observation", None)
     if _is_record(observation):
         return observation
+    if _looks_like_observation(env_obs):
+        return env_obs
     return {}
 
 

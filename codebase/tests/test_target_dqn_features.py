@@ -99,6 +99,7 @@ def main():
         _get_training_metrics,
         _handle_disaster_recovery,
         _load_latest_model,
+        _looks_like_observation,
         _need_to_predict,
         _normalize_reset_result,
         _normalize_step_result,
@@ -954,8 +955,12 @@ def main():
         "extra_info": {"init_state": {}},
     }
     assert _normalize_reset_result({"observation": {}}) == {"observation": {}}
+    raw_reset_observation = {"frame_state": {}, "legal_action": 1}
+    assert _normalize_reset_result(raw_reset_observation) is raw_reset_observation
     object_reset_result = AttrObject(observation=AttrObject(legal_action=1), extra_info=AttrObject(init_state={}))
     assert _normalize_reset_result(object_reset_result) is object_reset_result
+    raw_object_reset = AttrObject(frame_state=AttrObject(), legal_action=1)
+    assert _normalize_reset_result(raw_object_reset) is raw_object_reset
     assert _normalize_reset_result(None) == {}
 
     class ResetEnv:
@@ -1019,8 +1024,13 @@ def main():
     assert four_object_obs["frame_no"] == 15
     assert four_object_obs["extra_info"] is four_object_extra
     assert _normalize_step_result({"frame_no": 4}) == (0.0, {"frame_no": 4})
+    raw_dict_step_reward, raw_dict_step_obs = _normalize_step_result({"frame_state": {}, "legal_action": 1})
+    assert raw_dict_step_reward == 0.0
+    assert raw_dict_step_obs == {"frame_state": {}, "legal_action": 1}
     bare_object_step = AttrObject(frame_no=16, observation=AttrObject(legal_action=1))
     assert _normalize_step_result(bare_object_step) == (0.0, bare_object_step)
+    bare_observation_object_step = AttrObject(frame_state=AttrObject(), legal_action=1)
+    assert _normalize_step_result(bare_observation_object_step) == (0.0, bare_observation_object_step)
     assert _normalize_step_result(None) == (0.0, {})
 
     class StepEnv:
@@ -1041,6 +1051,10 @@ def main():
     assert _step_env(FailingStepEnv(), [0, 1, Config.MIN_GREEN_DURATION], EarlyFailingLogger()) is None
 
     assert _safe_observation({"observation": {"legal_action": 1}}) == {"legal_action": 1}
+    raw_observation = {"frame_state": {}, "legal_action": 1}
+    assert _looks_like_observation(raw_observation) is True
+    assert _safe_observation(raw_observation) is raw_observation
+    assert _safe_legal_action(_safe_observation(raw_observation)) == 1
     assert _safe_observation({"observation": None}) == {}
     assert _safe_observation({"observation": 1}) == {}
     assert _safe_extra_info({"extra_info": {"init_state": {}}}) == {"init_state": {}}
@@ -1058,6 +1072,10 @@ def main():
     assert _safe_done_flag(object_env_obs, "terminated") is False
     assert _safe_legal_action(_safe_observation(object_env_obs)) == 1
     assert _need_to_predict(_safe_observation(object_env_obs)) is True
+    raw_object_observation = AttrObject(frame_state=AttrObject(), legal_action=1)
+    assert _looks_like_observation(raw_object_observation) is True
+    assert _safe_observation(raw_object_observation) is raw_object_observation
+    assert _safe_legal_action(_safe_observation(raw_object_observation)) == 1
     assert _safe_frame_no({"frame_no": "bad"}) == 0
     assert _safe_frame_no({"frame_no": float("inf")}) == 0
     assert _safe_frame_no({"frame_no": 3.5}) == 3

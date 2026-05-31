@@ -1745,3 +1745,21 @@
   - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
 - 下一步：
   - 平台短训后对照评估页面确认监控中的 `env_score`、`avg_delay`、`avg_queue_length`、`avg_waiting_time` 和 `switch_penalty` 是否被实时填充；若为空，保存原始 score/env_obs/info 样例继续补 alias。
+
+### Step 115 - 兼容 frameState 与 initState 驼峰协议字段
+
+- 状态：完成
+- Commit：`9685e3a`
+- 内容：
+  - `Agent.observation_process()`、`rule_based_action()`、reward 和 workflow 裸 observation 识别现在兼容 `frame_state` / `frameState`，避免平台 JSON 或对象式 Observation 使用驼峰字段时特征、规则兜底和奖励退化为空输入。
+  - `FeatureProcess.update_traffic_info()` 兼容 `frameNo`、`frameTime` 和 `initState`，路网初始化兼容 `junctionId`、`edgeId`、`laneId`、`vehicleConfigId`、`laneConfigs`、`vehicleConfigs`、`enterLanesOnDirections` 和 `maxSpeed`。
+  - workflow 和评估入口补充 `extraInfo`、`envReward` 和驼峰裸 observation 覆盖；Agent 读取车辆配置 max speed 时兼容 `max_speed` / `maxSpeed`。
+  - 无平台依赖测试增加驼峰 `frameState` / `initState` 的跨帧预处理、lane-only reward、step envelope、裸 observation 和 `extraInfo` 覆盖；静态测试增加字段 alias 锚点。
+  - 更新 `AGENTS.md`、`RUNBOOK.md` 和 `REPORT_DRAFT.md`，记录顶层 Observation / ExtraInfo / InitState 驼峰字段兼容情况。
+- 验证：
+  - 已运行 `python -m compileall agent_target_dqn/agent.py agent_target_dqn/feature/preprocessor.py agent_target_dqn/feature/definition.py agent_target_dqn/workflow/train_workflow.py tests/test_target_dqn_features.py tests/test_target_dqn_static.py`，通过。
+  - 已运行 `python tests/test_target_dqn_features.py` 和 `python tests/test_target_dqn_static.py`，均通过。
+  - 已运行 `git diff --check`，通过。
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 平台短训后确认真实 Observation 是否还存在其它顶层字段名，例如 `frame`、`stateInfo` 或 protobuf wrapper；如果特征仍长期为零，保存原始 reset/step 返回样例继续扩展。

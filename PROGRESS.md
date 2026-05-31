@@ -1464,3 +1464,20 @@
   - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
 - 下一步：
   - 平台运行后确认 `frame_state.lanes` 的真实容器类型、字段名、数值尺度，以及 lanes fallback 是否能避免 reward/压力长期为 0。
+
+### Step 98 - 兼容 dict 形态 repeated 字段
+
+- 状态：完成
+- Commit：待提交
+- 内容：
+  - Agent 的 `_as_record_list()` 支持单条 dict 协议记录和 dict-of-records，同时用已知 Vehicle / Phase / Lane 字段限制展开范围，避免把任意 dict 当作有效车辆。
+  - reward 和 preprocessor 的 `_safe_list()` 支持单条 dict 记录、dict-of-records、dict-of-scalar lane ID 容器和嵌套 list/tuple 容器。
+  - `FeatureProcess.update_traffic_info()`、`reward_shaping()`、`observation_process()`、`rule_based_action()` 和 road init 路径都能复用新的 dict 容器解析。
+  - 无平台依赖测试覆盖单条 dict 车辆、dict-of-records 车辆、dict 车道、dict-of-scalar lane ID、dict 容器预处理和 dict 容器 reward。
+  - 静态测试增加 dict repeated 容器解析锚点；`AGENTS.md`、`RUNBOOK.md` 和 `REPORT_DRAFT.md` 更新当前兼容范围。
+- 验证：
+  - 已运行 `python -m compileall agent_target_dqn/agent.py agent_target_dqn/feature/definition.py agent_target_dqn/feature/preprocessor.py tests/test_target_dqn_features.py tests/test_target_dqn_static.py`，通过。
+  - 已运行 `python tests/test_target_dqn_features.py` 和 `python tests/test_target_dqn_static.py`，均通过。
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 平台运行后如果仍遇到 protobuf repeated wrapper 或特殊容器，保存原始类型、repr 和迭代行为，再继续扩展解析。

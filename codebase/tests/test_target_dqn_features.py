@@ -71,10 +71,11 @@ def main():
         _clip_reward,
         _max_action_duration,
         _not_done_flag,
+        _safe_list as definition_safe_list,
         reward_shaping,
         sample_process,
     )
-    from agent_target_dqn.feature.preprocessor import FeatureProcess
+    from agent_target_dqn.feature.preprocessor import FeatureProcess, _safe_list as preprocessor_safe_list
     from agent_target_dqn.feature.traffic_utils import (
         get_lane_observation_phase_pressure,
         get_lane_observation_statistics,
@@ -149,6 +150,16 @@ def main():
             raise RuntimeError("legal action conversion failed")
 
     assert normalize_phase_legal_action(FailingLegalAction()) == [1, 1, 1, 1]
+
+    singleton_vehicle_dict = {"v_id": 99, "lane": 11, "junction": -1}
+    vehicle_dict_container = {
+        "first": singleton_vehicle_dict,
+        "second": {"v_id": 100, "lane": 129, "junction": -1},
+    }
+    assert definition_safe_list(singleton_vehicle_dict) == [singleton_vehicle_dict]
+    assert len(definition_safe_list(vehicle_dict_container)) == 2
+    assert preprocessor_safe_list({"0": 11, "1": 10}) == [11, 10]
+    assert preprocessor_safe_list({"lanes": [11, 10]}) == [{"lanes": [11, 10]}]
 
     doc_style_vehicle = {
         "lane": 11,
@@ -402,6 +413,42 @@ def main():
     assert object_preprocess.get_all_junction_waiting_time(
         [AttrObject(v_id=11, junction=-1, lane=11)]
     ) == {0: 4.0}
+    dict_container_preprocess = FeatureProcess(None)
+    dict_container_preprocess.junction_dict = {0: {}}
+    dict_first_frame = {
+        "frame_state": {
+            "frame_no": 1,
+            "frame_time": 1.0,
+            "vehicles": {
+                "car_a": {
+                    "v_id": 20,
+                    "lane": 11,
+                    "junction": -1,
+                    "speed": 0.0,
+                    "position_in_lane": {"x": 0.0, "y": 0.0},
+                }
+            },
+        }
+    }
+    dict_second_frame = {
+        "frame_state": {
+            "frame_no": 2,
+            "frame_time": 4.0,
+            "vehicles": {
+                "car_a": {
+                    "v_id": 20,
+                    "lane": 11,
+                    "junction": -1,
+                    "speed": 0.0,
+                    "position_in_lane": {"x": 0.0, "y": 5.0},
+                }
+            },
+        }
+    }
+    dict_container_preprocess.update_traffic_info(dict_first_frame, None)
+    dict_container_preprocess.update_traffic_info(dict_second_frame, None)
+    assert dict_container_preprocess.waiting_time_store[20] == 3.0
+    assert dict_container_preprocess.vehicle_distance_store[20] == 5.0
     bad_preprocess_frame = {
         "frame_state": {
             "frame_no": float("inf"),
@@ -618,6 +665,43 @@ def main():
         dummy_agent,
     )
     assert lane_only_reward[0] > 0.0
+    dummy_agent.preprocess.old_waiting_time = 0.0
+    dummy_agent.preprocess.phase_last_served_frame = [None] * Config.DIM_OF_ACTION_PHASE
+    dummy_agent.preprocess.last_phase_index = None
+    dict_vehicle_reward = reward_shaping(
+        {
+            "frame_state": {
+                "frame_no": 3,
+                "vehicles": {
+                    "car_a": {
+                        "lane": 11,
+                        "junction": -1,
+                        "speed": 0.0,
+                        "waiting_time": 8.0,
+                        "delay": 2.0,
+                    }
+                },
+            }
+        },
+        [0, 0, Config.MIN_GREEN_DURATION],
+        dummy_agent,
+    )
+    assert dict_vehicle_reward != (0.0, 0.0)
+    dummy_agent.preprocess.old_waiting_time = 0.0
+    dummy_agent.preprocess.phase_last_served_frame = [None] * Config.DIM_OF_ACTION_PHASE
+    dummy_agent.preprocess.last_phase_index = None
+    single_dict_lane_reward = reward_shaping(
+        {
+            "frame_state": {
+                "frame_no": 4,
+                "vehicles": [],
+                "lanes": {"lane_id": 11, "v_count": 3, "queue_length": 2, "congestion": 0.2},
+            }
+        },
+        [0, 0, Config.MIN_GREEN_DURATION + 8],
+        dummy_agent,
+    )
+    assert single_dict_lane_reward[0] > 0.0
     dummy_agent.preprocess.old_waiting_time = 0.0
     dummy_agent.preprocess.phase_last_served_frame = [None] * Config.DIM_OF_ACTION_PHASE
     object_reward = reward_shaping(

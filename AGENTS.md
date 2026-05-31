@@ -109,7 +109,7 @@ Target-DQN 关键文件：
 - `FeatureProcess` 会清洗 `frame_no`、`frame_time`、车辆 ID、车速和车道位置，等待时间/行驶距离/车道计数统计遇到异常动态字段会跳过单车而不是中断整帧。
 - 训练 workflow 调用 `observation_process()` 和非决策帧 `update_traffic_info()` 时会隔离异常，特征处理失败会回退到规则动作和零特征样本。
 - `observation_process()`、`rule_based_action()` 和共享交通统计工具会保守处理缺失 `frame_state`、缺失 `vehicles`、缺失 `obs` 包装和畸形车辆/相位记录。
-- workflow、Agent、reward、preprocessor 和交通统计 helper 的关键协议字段读取已兼容普通 dict 与属性对象，贴合作业文档中的 Observation / FrameState / Vehicle / Phase 消息形态；标量字段不会被误当成协议对象，单个非 dict 对象式 vehicles/phases 容器也会按一条记录处理。
+- workflow、Agent、reward、preprocessor 和交通统计 helper 的关键协议字段读取已兼容普通 dict 与属性对象，贴合作业文档中的 Observation / FrameState / Vehicle / Phase / Lane 消息形态；标量字段不会被误当成协议对象，单个 dict 记录、dict-of-records 和单个非 dict 对象式 vehicles/phases/lanes 容器都会按有效记录处理。
 - 共享交通统计工具不再要求车辆记录必须包含 `target_junction`；缺失时会按单路口进口车道车辆处理，等待时间统计也会复用同一默认目标路口，贴合作业文档字段列表。
 - `frame_state.lanes` 已作为车辆列表缺失或稀疏时的 fallback 信号；观测交通统计、逐车道统计、规则兜底和 reward 都能复用 `lane_id`、`v_count`、`queue_length`、`congestion` 聚合出的相位压力。
 - `action_process()` 已将 duration index 映射为实际秒数。
@@ -180,8 +180,8 @@ Target-DQN 关键文件：
 - 平台文档中 `legal_action` 更像是否需要决策的标量门控；当前 Target-DQN 已保守兼容标量门控和 4 维相位 mask，但仍需在真实平台 observation 上确认是否存在相位级 mask 语义。
 - `agent_dqn`、`agent_ppo`、`agent_diy` 仍基本保留模板状态，不是当前主线。
 - 当前状态特征包含占用/速度网格、当前相位、相位服务年龄、持续时间、剩余时间、相位压力、全局等待/延误统计、一帧交通趋势、4 帧滚动交通历史和逐车道车辆/排队/等待统计。
-- 作业文档定义了 `frame_state.lanes` 的 `lane_id`、`v_count`、`congestion`、`queue_length` 字段；当前已接入 lanes fallback，但仍需在真实 observation 上确认字段单位、是否为 list/tuple/对象 repeated container，以及是否存在 dict-of-records 形态。
-- 当前列表字段解析支持 list、tuple、iterable 和单个非 dict 协议对象；如果平台把 `vehicles`、`phases` 或 `lanes` 编码成单条 dict 记录或 dict-of-records，现有逻辑会保守忽略，需要拿真实样例后再扩展，不能盲目把任意 dict 当作列表展开。
+- 作业文档定义了 `frame_state.lanes` 的 `lane_id`、`v_count`、`congestion`、`queue_length` 字段；当前已接入 lanes fallback，但仍需在真实 observation 上确认字段单位和是否存在 protobuf repeated wrapper 等特殊容器形态。
+- 当前列表字段解析支持 list、tuple、iterable、单条 dict 记录、dict-of-records 和单个非 dict 协议对象；dict 解析只在出现已知协议字段或值明显是记录/列表时展开，避免盲目把任意 dict 当作有效车辆。
 - reward 权重尚未经过平台训练调优。
 - 本地普通 Python 缺少 `torch`、`kaiwudrl`、`common_python`，真实 `train_test.py` 仍需在平台环境验证。
 

@@ -59,6 +59,46 @@ def _is_record(value):
     return value is not None and not isinstance(value, (str, bytes, bool, int, float, complex))
 
 
+_RECORD_FIELD_KEYS = {
+    "v_id",
+    "v_config_id",
+    "lane",
+    "junction",
+    "position_in_lane",
+    "speed",
+    "delay",
+    "waiting_time",
+    "s_id",
+    "phase_id",
+    "phase_idx",
+    "duration",
+    "remaining_duration",
+    "lane_id",
+    "v_count",
+    "congestion",
+    "queue_length",
+}
+
+
+def _dict_list_items(value):
+    try:
+        if any(key in value for key in _RECORD_FIELD_KEYS):
+            return [value]
+        items = list(value.values())
+    except Exception:
+        return []
+
+    values = []
+    for item in items:
+        if isinstance(item, (list, tuple)):
+            values.extend(item)
+        elif isinstance(item, dict):
+            values.extend(_dict_list_items(item))
+        else:
+            values.append(item)
+    return values
+
+
 def _safe_list(value):
     if value is None:
         return []
@@ -66,7 +106,9 @@ def _safe_list(value):
         return value
     if isinstance(value, tuple):
         return list(value)
-    if isinstance(value, (str, bytes, dict)):
+    if isinstance(value, dict):
+        return _dict_list_items(value)
+    if isinstance(value, (str, bytes)):
         return []
     try:
         return list(value)

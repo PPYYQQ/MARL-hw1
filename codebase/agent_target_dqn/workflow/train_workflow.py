@@ -134,6 +134,10 @@ LEGAL_ACTION_KEYS = (
     "phaseMask",
 )
 
+FRAME_STATE_KEYS = ("frame_state", "frameState")
+OBSERVATION_KEYS = ("observation", "obs", "_obs")
+EXTRA_INFO_KEYS = ("extra_info", "extraInfo", "_state", "state", "info")
+
 
 def workflow(envs, agents, logger=None, monitor=None, *args, **kwargs):
     env, agent = envs[0], agents[0]
@@ -616,9 +620,9 @@ def _normalize_step_record_result(step_result):
     if _looks_like_observation(step_result) or not _looks_like_step_envelope(step_result):
         return 0.0, step_result
 
-    observation = _first_env_value(step_result, ("observation", "obs", "_obs"), {})
-    extra_info = _first_env_value(step_result, ("extra_info", "_state", "state", "info"), {})
-    reward = _first_env_value(step_result, ("reward", "score", "env_reward"), 0.0)
+    observation = _first_env_value(step_result, OBSERVATION_KEYS, {})
+    extra_info = _first_env_value(step_result, EXTRA_INFO_KEYS, {})
+    reward = _first_env_value(step_result, ("reward", "score", "env_reward", "envReward"), 0.0)
     terminated = _first_env_value(step_result, DONE_FIELD_ALIASES["terminated"], False)
     truncated = _first_env_value(step_result, DONE_FIELD_ALIASES["truncated"], False)
     frame_no = _safe_frame_no(step_result)
@@ -660,7 +664,7 @@ def _is_record(value):
 
 def _looks_like_observation(value):
     return _is_record(value) and (
-        _safe_env_value(value, "frame_state", None) is not None
+        _first_env_value(value, FRAME_STATE_KEYS, None) is not None
         or _safe_legal_action(value) is not None
     )
 
@@ -675,6 +679,7 @@ def _looks_like_step_envelope(value):
             "reward",
             "score",
             "env_reward",
+            "envReward",
             "terminated",
             "truncated",
             "done",
@@ -690,6 +695,7 @@ def _looks_like_step_envelope(value):
             "is_truncated",
             "isTruncated",
             "extra_info",
+            "extraInfo",
             "_state",
             "state",
             "info",
@@ -698,7 +704,7 @@ def _looks_like_step_envelope(value):
 
 
 def _safe_observation(env_obs):
-    for key in ("observation", "obs", "_obs"):
+    for key in OBSERVATION_KEYS:
         observation = _first_env_value(env_obs, (key,), None)
         if _is_record(observation):
             return observation
@@ -708,7 +714,7 @@ def _safe_observation(env_obs):
 
 
 def _safe_extra_info(env_obs):
-    for key in ("extra_info", "_state", "state", "info"):
+    for key in EXTRA_INFO_KEYS:
         extra_info = _first_env_value(env_obs, (key,), None)
         if _is_record(extra_info):
             return extra_info

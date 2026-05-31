@@ -71,11 +71,17 @@ def _is_record(value):
 
 _RECORD_FIELD_KEYS = {
     "j_id",
+    "jId",
     "junction_id",
+    "junctionId",
     "e_id",
+    "eId",
     "edge_id",
+    "edgeId",
     "l_id",
+    "lId",
     "lane_id",
+    "laneId",
     "v_id",
     "vehicle_id",
     "vehicleId",
@@ -100,14 +106,34 @@ _RECORD_FIELD_KEYS = {
     "waiting_time",
     "waitingTime",
     "v_count",
+    "vCount",
     "congestion",
+    "congestionLevel",
     "queue_length",
+    "queueLength",
+    "frame_state",
+    "frameState",
+    "frame_no",
+    "frameNo",
+    "frame_time",
+    "frameTime",
+    "init_state",
+    "initState",
     "lanes",
     "enter_lanes_on_directions",
+    "enterLanesOnDirections",
     "lane_configs",
+    "laneConfigs",
     "vehicle_configs",
+    "vehicleConfigs",
     "max_speed",
+    "maxSpeed",
 }
+
+FRAME_STATE_KEYS = ("frame_state", "frameState")
+FRAME_NO_KEYS = ("frame_no", "frameNo")
+FRAME_TIME_KEYS = ("frame_time", "frameTime")
+INIT_STATE_KEYS = ("init_state", "initState")
 
 
 def _first_record_value(record, *keys, default=None):
@@ -240,20 +266,30 @@ class FeatureProcess:
             _safe_list(record_value(start_info, "edges", [])),
         )
         lane_configs, vehicle_configs = (
-            _safe_list(record_value(start_info, "lane_configs", [])),
-            _safe_list(record_value(start_info, "vehicle_configs", [])),
+            _safe_list(_first_record_value(start_info, "lane_configs", "laneConfigs", default=[])),
+            _safe_list(_first_record_value(start_info, "vehicle_configs", "vehicleConfigs", default=[])),
         )
         # Store road structure information in various variables
         # 将道路结构信息存储到各个变量
         for junction in junctions:
-            junction_id = _safe_id(_first_record_value(junction, "j_id", "junction_id"), None)
+            junction_id = _safe_id(
+                _first_record_value(junction, "j_id", "jId", "junction_id", "junctionId"),
+                None,
+            )
             if junction_id is None:
                 continue
             self.junction_dict[junction_id] = junction
             self.l_id_to_index[junction_id] = {}
 
             index = 0
-            for approaching_edges in _safe_list(record_value(junction, "enter_lanes_on_directions", [])):
+            for approaching_edges in _safe_list(
+                _first_record_value(
+                    junction,
+                    "enter_lanes_on_directions",
+                    "enterLanesOnDirections",
+                    default=[],
+                )
+            ):
                 for lane in _safe_list(record_value(approaching_edges, "lanes", [])):
                     lane_id = _safe_id(lane, None)
                     if lane_id is None:
@@ -262,11 +298,11 @@ class FeatureProcess:
                     index += 1
 
             for edge in edges:
-                edge_id = _safe_id(_first_record_value(edge, "e_id", "edge_id"), None)
+                edge_id = _safe_id(_first_record_value(edge, "e_id", "eId", "edge_id", "edgeId"), None)
                 if edge_id is not None:
                     self.edge_dict[edge_id] = edge
             for lane in lane_configs:
-                lane_id = _safe_id(_first_record_value(lane, "l_id", "lane_id"), None)
+                lane_id = _safe_id(_first_record_value(lane, "l_id", "lId", "lane_id", "laneId"), None)
                 if lane_id is not None:
                     self.lane_dict[lane_id] = lane
             for vehicle_config in vehicle_configs:
@@ -274,14 +310,16 @@ class FeatureProcess:
                     _first_record_value(
                         vehicle_config,
                         "v_config_id",
+                        "vConfigId",
                         "vehicle_config_id",
+                        "vehicleConfigId",
                     ),
                     None,
                 )
                 if vehicle_config_id is not None:
                     self.vehicle_configs_dict[vehicle_config_id] = vehicle_config
             for lane in lane_configs:
-                lane_id = _safe_id(_first_record_value(lane, "l_id", "lane_id"), None)
+                lane_id = _safe_id(_first_record_value(lane, "l_id", "lId", "lane_id", "laneId"), None)
                 if lane_id is not None:
                     self.lane_volume[lane_id] = []
 
@@ -293,17 +331,17 @@ class FeatureProcess:
         更新车辆历史信息, 计算各项动态交通变量
         """
         extra_info = extra_info if _is_record(extra_info) else {}
-        frame_state = record_value(raw_obs, "frame_state")
+        frame_state = _first_record_value(raw_obs, *FRAME_STATE_KEYS)
         if not _is_record(frame_state):
             return
-        frame_no = _safe_int(record_value(frame_state, "frame_no", 0))
-        frame_time = _safe_float(record_value(frame_state, "frame_time", 0))
+        frame_no = _safe_int(_first_record_value(frame_state, *FRAME_NO_KEYS, default=0))
+        frame_time = _safe_float(_first_record_value(frame_state, *FRAME_TIME_KEYS, default=0))
         vehicles = _safe_list(record_value(frame_state, "vehicles", []))
 
         if frame_no <= 1:
             # Initial frame loads road structure information
             # 初始帧载入道路结构信息
-            game_info = record_value(extra_info, "init_state", {})
+            game_info = _first_record_value(extra_info, *INIT_STATE_KEYS, default={})
             if game_info:
                 self.init_road_info(game_info)
 

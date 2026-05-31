@@ -108,6 +108,11 @@ LEGAL_ACTION_KEYS = (
     "phaseMask",
 )
 
+FRAME_STATE_KEYS = ("frame_state", "frameState")
+FRAME_NO_KEYS = ("frame_no", "frameNo")
+MAX_SPEED_KEYS = ("max_speed", "maxSpeed")
+EXTRA_INFO_KEYS = ("extra_info", "extraInfo", "_state", "state", "info")
+
 
 def _first_mapping_value(mapping, keys, default=None):
     for key in keys:
@@ -186,6 +191,16 @@ _RECORD_FIELD_KEYS = {
     "queueLength",
     "queue_count",
     "queueCount",
+    "frame_state",
+    "frameState",
+    "frame_no",
+    "frameNo",
+    "frame_time",
+    "frameTime",
+    "init_state",
+    "initState",
+    "max_speed",
+    "maxSpeed",
 }
 
 
@@ -315,7 +330,7 @@ class Agent(BaseAgent):
 
     def exploit(self, observation):
         raw_obs = _first_record_field(observation, ("obs", "observation", "_obs"), observation)
-        extra_info = _first_record_field(observation, ("extra_info", "_state", "state", "info"), None)
+        extra_info = _first_record_field(observation, EXTRA_INFO_KEYS, None)
         if raw_obs is None:
             raw_obs = {}
         try:
@@ -479,7 +494,7 @@ class Agent(BaseAgent):
         # 注意: 以下原始数据的解包为示例, 请根据实际情况修改
         if raw_obs is None:
             raw_obs = {}
-        frame_state = _safe_mapping_get(raw_obs, "frame_state", {})
+        frame_state = _first_mapping_value(raw_obs, FRAME_STATE_KEYS, {})
         if not _is_record(frame_state):
             frame_state = {}
 
@@ -533,7 +548,10 @@ class Agent(BaseAgent):
                     )
                     vehicle_config = self.preprocess.vehicle_configs_dict.get(vehicle_config_key, {})
                     max_speed = max(
-                        _safe_float(_safe_mapping_get(vehicle_config, "max_speed"), Config.DEFAULT_MAX_SPEED),
+                        _safe_float(
+                            _first_mapping_value(vehicle_config, MAX_SPEED_KEYS, Config.DEFAULT_MAX_SPEED),
+                            Config.DEFAULT_MAX_SPEED,
+                        ),
                         1.0,
                     )
                     speed = _safe_nonnegative_float(_safe_mapping_get(vehicle, "speed", 0.0))
@@ -627,7 +645,7 @@ class Agent(BaseAgent):
     def rule_based_action(self, raw_obs):
         if raw_obs is None:
             raw_obs = {}
-        frame_state = _safe_mapping_get(raw_obs, "frame_state", {})
+        frame_state = _first_mapping_value(raw_obs, FRAME_STATE_KEYS, {})
         if not _is_record(frame_state):
             frame_state = {}
         vehicles = _as_record_list(_safe_mapping_get(frame_state, "vehicles", []))
@@ -708,7 +726,7 @@ class Agent(BaseAgent):
         ]
 
     def _phase_age_feature(self, frame_state):
-        frame_no = _safe_int(_safe_mapping_get(frame_state, "frame_no", 0))
+        frame_no = _safe_int(_first_mapping_value(frame_state, FRAME_NO_KEYS, 0))
         phase_info = self._current_phase_info(frame_state)
         last_served = self.preprocess.phase_last_served_frame
         if not isinstance(last_served, list) or len(last_served) != Config.DIM_OF_ACTION_PHASE:

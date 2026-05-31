@@ -94,16 +94,16 @@
 - 当绝对值大于 `200` 时，按毫米处理并除以 `1000`。
 - 否则按米处理。
 
-特征预处理和观测编码对缺失 `frame_state`、缺失 `vehicles`、缺失 `obs` 包装、畸形车辆记录和异常相位字段采用保守跳过或默认值策略，避免异常帧中断训练循环。字段读取同时兼容普通 dict 和作业协议对象属性，覆盖 Observation、FrameState、Vehicle、Phase、Lane、ExtraInfo 等消息形态；若平台把单个 Vehicle/Phase/Lane 直接作为 dict 或对象返回，或把 repeated 字段编码成 dict-of-records，也会按有效记录处理，而标量坏字段会被视为无效输入。
+特征预处理和观测编码对缺失 `frame_state` / `frameState`、缺失 `vehicles`、缺失 `obs` 包装、畸形车辆记录和异常相位字段采用保守跳过或默认值策略，避免异常帧中断训练循环。字段读取同时兼容普通 dict 和作业协议对象属性，覆盖 Observation、FrameState、Vehicle、Phase、Lane、ExtraInfo 等消息形态；若平台把单个 Vehicle/Phase/Lane 直接作为 dict 或对象返回，或把 repeated 字段编码成 dict-of-records，也会按有效记录处理，而标量坏字段会被视为无效输入。
 作业文档列出的车辆字段不一定包含 `target_junction`，因此进口车道判断和交叉口等待时间统计会在该字段缺失、且车辆可识别为进口车道时按单路口目标路口处理，避免真实 observation 只包含 `lane` 和 `junction` 时把进口车辆全部忽略。车辆字段读取也兼容常见驼峰别名，例如 `vehicleId`、`vConfigId`、`laneId`、`junctionId`、`targetJunction`、`positionInLane` 和 `waitingTime`。
 
-预处理器会清洗 `frame_no`、`frame_time`、车辆 ID、车速、车道位置和路口 ID；`junction` / `junctionId` / `target_junction` / `targetJunction` 即使以字符串形式返回，也会先转换成有限整数，避免字符串 `"-1"` 被误判为有效目标路口或路口内车辆。路网初始化会把 `junction_id`、`edge_id`、`lane_id`、`vehicle_config_id` 等数字 ID 归一化为整数，车辆 `lane` / `laneId` 和 `v_config_id` / `vConfigId` / `vehicleConfigId` 也会在相位压力、车道统计和车辆配置查找前清洗，避免平台 JSON 或 protobuf 转换后出现字符串 key 导致统计信号丢失。等待时间、行驶距离、车道车辆数和交叉口等待时间统计遇到异常车辆字段时跳过单车或按 0 处理，避免一个异常车辆破坏跨帧状态。路网初始化、车辆统计、reward 和 workflow 环境返回解析都通过安全字段读取处理 dict / 属性对象差异，并明确排除 int、float、bool 等标量伪记录。
+预处理器会清洗 `frame_no` / `frameNo`、`frame_time` / `frameTime`、车辆 ID、车速、车道位置和路口 ID；`junction` / `junctionId` / `target_junction` / `targetJunction` 即使以字符串形式返回，也会先转换成有限整数，避免字符串 `"-1"` 被误判为有效目标路口或路口内车辆。路网初始化会把 `junction_id` / `junctionId`、`edge_id` / `edgeId`、`lane_id` / `laneId`、`vehicle_config_id` / `vehicleConfigId` 等数字 ID 归一化为整数，车辆 `lane` / `laneId` 和 `v_config_id` / `vConfigId` / `vehicleConfigId` 也会在相位压力、车道统计和车辆配置查找前清洗，车辆配置速度字段兼容 `max_speed` / `maxSpeed`，避免平台 JSON 或 protobuf 转换后出现字符串 key 导致统计信号丢失。等待时间、行驶距离、车道车辆数和交叉口等待时间统计遇到异常车辆字段时跳过单车或按 0 处理，避免一个异常车辆破坏跨帧状态。路网初始化、车辆统计、reward 和 workflow 环境返回解析都通过安全字段读取处理 dict / 属性对象差异，并明确排除 int、float、bool 等标量伪记录。
 
-路网初始化会同时兼容模板字段 `j_id/e_id/l_id/v_config_id` 和文档式字段 `junction_id/edge_id/lane_id/vehicle_config_id`，避免真实平台 init_state 命名差异导致路口、边、车道或车辆配置未写入预处理器。
+路网初始化会同时兼容 `init_state` / `initState`，模板字段 `j_id/e_id/l_id/v_config_id`，文档式字段 `junction_id/edge_id/lane_id/vehicle_config_id`，以及 `junctionId/edgeId/laneId/vehicleConfigId`、`laneConfigs`、`vehicleConfigs`、`enterLanesOnDirections` 等驼峰字段，避免真实平台 init_state 命名差异导致路口、边、车道或车辆配置未写入预处理器。
 
 交通统计工具会清洗车辆速度、等待时间、延误、相位压力、交通趋势和历史统计中的 NaN/Inf；最终 observation 返回前也会统一补齐或截断到 `DIM_OF_OBSERVATION`，并把非有限特征归零。这样即使平台返回少量异常车辆字段，也不会把 NaN/Inf 送入模型推理或 reward 计算。
 
-相位时间特征、相位服务年龄、reward 公平性项和 workflow 帧号读取也使用有限值清洗；异常 `phase_id`、`duration`、`remaining_duration`、`frame_no` / `frameNo` 或旧相位服务记录会回退为保守默认值。相位记录读取会兼容 `s_id` / `signal_id` / `signalId`、`phase_id` / `phase_idx` / `phase` / `current_phase` / `currentPhase`、`remaining_duration` / `remaining_time` / `remainingTime` 等字段别名，适配平台对象或封装层命名差异。workflow 帧号会优先读取顶层字段，也会从 `extra_info` / `_state` / `state` / `info` 中回退读取，适配平台把帧号放在额外信息对象里的返回形态。
+相位时间特征、相位服务年龄、reward 公平性项和 workflow 帧号读取也使用有限值清洗；异常 `phase_id`、`duration`、`remaining_duration`、`frame_no` / `frameNo` 或旧相位服务记录会回退为保守默认值。相位记录读取会兼容 `s_id` / `signal_id` / `signalId`、`phase_id` / `phase_idx` / `phase` / `current_phase` / `currentPhase`、`remaining_duration` / `remaining_time` / `remainingTime` 等字段别名，适配平台对象或封装层命名差异。workflow 帧号会优先读取顶层字段，也会从 `extra_info` / `extraInfo` / `_state` / `state` / `info` 中回退读取，适配平台把帧号放在额外信息对象里的返回形态。
 
 如果后续平台评估显示当前状态表达不足，可增加更长时间窗口或更细粒度的车道趋势。
 
@@ -174,7 +174,7 @@ duration reward 主要考虑：
 奖励设计目标是避免全零奖励，并让策略倾向于服务高压力方向，同时抑制不合理的持续时间。
 为降低 DQN 训练中的 TD target 爆炸风险，延误惩罚会先限制到 `REWARD_DELAY_CAP=300`，最终 `phase_reward` 和 `duration_reward` 都会裁剪到 `[-REWARD_CLIP, REWARD_CLIP]`。这能避免少量异常车辆延误或平台字段尖峰主导整批梯度。
 相位服务年龄会在每个 episode 重置，避免不同局之间的状态泄漏。
-终局或异常帧如果缺少 `frame_state` 或 `vehicles`，奖励函数会保守返回零奖励，避免训练循环因字段缺失中断。
+终局或异常帧如果缺少 `frame_state` / `frameState` 或 `vehicles`，奖励函数会保守返回零奖励，避免训练循环因字段缺失中断。
 workflow 调用奖励函数时还有一层兜底：如果奖励计算因异常 observation、动作或 agent 状态抛错，本步奖励会回退为 `(0.0, 0.0)` 并记录错误，episode 继续运行。
 
 ## 规则兜底策略
@@ -211,11 +211,11 @@ workflow 调用奖励函数时还有一层兜底：如果奖励计算因异常 o
 
 checkpoint 保存采用临时文件加 `os.replace()` 的方式发布，避免训练进程中断时把半写文件暴露为 `latest`；workflow 的周期性 `latest` 保存失败会记录错误并在下一保存周期重试，不会中断当前训练循环。加载侧会继续跳过缺失、不可读或结构不兼容的 `latest`；如果平台文件系统或模型目录出现未预期加载异常，workflow 会记录错误并继续使用当前模型参数，保证后续 episode 可以继续启动。
 
-workflow 会先通过安全 helper 调用 `env.reset()` 和 `env.step()`，再归一化返回值：既兼容对象式环境返回和当前封装中的二元返回，也兼容 dict/object step envelope、Gym 四元、Gymnasium 五元和作业文档给出的六元 `env.step()` 返回。归一化阶段会保留对象式 env_obs、对象式 `extra_info`，以及直接包含 `frame_state` 或合法动作别名的裸 observation，避免平台 score、全局状态或 observation payload 在进入安全读取 helper 前丢失。dict/object step envelope 会读取常见的 `reward` / `score` / `env_reward`、`terminated` / `done` / `is_done` / `terminal`、`truncated` / `timeout` / `is_truncated`、观测和额外信息字段。随后会兼容 `observation` / `obs` / `_obs` 三类观测字段，以及 `extra_info` / `_state` / `state` / `info` 四类额外信息字段，贴合作业文档和 Gym 风格封装的别名写法。如果 reset 抛出平台异常，则跳过当前 episode 并等待下一轮重试；如果 step 抛出异常，则中止当前 episode，避免缺失下一状态时继续构造错误 transition。随后对观测、额外信息、顶层或嵌套的 `frame_no` / `frameNo`、结束标记和采样帧 `legal_action` / `legalAction` / `phaseLegalAction` / `actionMask` / `phaseMask` 使用安全读取；字段缺失、类型异常或 dict-like 对象字段读取抛错时按空 observation、空 extra info 或默认结束状态处理，避免不完整平台响应直接中断 episode。结束和截断字段会显式兼容 bool、有限数值和 true/false 字符串，未知字符串或 NaN/Inf 不会被误判为结束。每局开始时的 `agent.reset()` 也通过安全 helper 执行，失败时跳过当前 episode，防止半初始化的交通统计状态继续进入采样路径。
+workflow 会先通过安全 helper 调用 `env.reset()` 和 `env.step()`，再归一化返回值：既兼容对象式环境返回和当前封装中的二元返回，也兼容 dict/object step envelope、Gym 四元、Gymnasium 五元和作业文档给出的六元 `env.step()` 返回。归一化阶段会保留对象式 env_obs、对象式 `extra_info` / `extraInfo`，以及直接包含 `frame_state` / `frameState` 或合法动作别名的裸 observation，避免平台 score、全局状态或 observation payload 在进入安全读取 helper 前丢失。dict/object step envelope 会读取常见的 `reward` / `score` / `env_reward` / `envReward`、`terminated` / `done` / `is_done` / `terminal`、`truncated` / `timeout` / `is_truncated`、观测和额外信息字段。随后会兼容 `observation` / `obs` / `_obs` 三类观测字段，以及 `extra_info` / `extraInfo` / `_state` / `state` / `info` 四类额外信息字段，贴合作业文档和 Gym 风格封装的别名写法。如果 reset 抛出平台异常，则跳过当前 episode 并等待下一轮重试；如果 step 抛出异常，则中止当前 episode，避免缺失下一状态时继续构造错误 transition。随后对观测、额外信息、顶层或嵌套的 `frame_no` / `frameNo`、结束标记和采样帧 `legal_action` / `legalAction` / `phaseLegalAction` / `actionMask` / `phaseMask` 使用安全读取；字段缺失、类型异常或 dict-like 对象字段读取抛错时按空 observation、空 extra info 或默认结束状态处理，避免不完整平台响应直接中断 episode。结束和截断字段会显式兼容 bool、有限数值和 true/false 字符串，未知字符串或 NaN/Inf 不会被误判为结束。每局开始时的 `agent.reset()` 也通过安全 helper 执行，失败时跳过当前 episode，防止半初始化的交通统计状态继续进入采样路径。
 
 平台容灾检测通过安全 helper 执行；如果 `handle_disaster_recovery()` 本身抛错，workflow 会记录错误并按无容灾信号继续，避免容灾 SDK 临时异常反向中断训练循环。
 
-训练 workflow 中的预测动作也有兜底链路：模型预测返回空或抛错时回退到 `rule_based_action()`；如果规则策略也异常，则输出 `[0, 0, MIN_GREEN_DURATION]`，避免单次推理异常直接结束整局训练。`predict()` 本身会先把 ObsData batch 安全归一化为 list，并隔离异常 ObsData 属性，避免直接预测调用被坏 batch 或坏属性中断。评估入口 `exploit()` 也复用同样思路，并对外层 observation、`obs` / `observation` / `_obs` 包装、`extra_info` / `_state` / `state` / `info` 包装、相位字段和合法动作字段使用安全映射读取；异常 dict-like observation 不会在兜底逻辑之前直接抛出。规则策略兜底失败时返回默认动作，防止评估 episode 因最终 fallback 抛错而失败。进入 `env.step()` 前，workflow 还会对最终动作做一次统一清洗：非决策帧保持 `[None, None, None]`，决策帧强制 `junction_id=0`，相位裁剪到 `0-3`，duration 裁剪到当前联合动作空间可表达的秒数范围。
+训练 workflow 中的预测动作也有兜底链路：模型预测返回空或抛错时回退到 `rule_based_action()`；如果规则策略也异常，则输出 `[0, 0, MIN_GREEN_DURATION]`，避免单次推理异常直接结束整局训练。`predict()` 本身会先把 ObsData batch 安全归一化为 list，并隔离异常 ObsData 属性，避免直接预测调用被坏 batch 或坏属性中断。评估入口 `exploit()` 也复用同样思路，并对外层 observation、`obs` / `observation` / `_obs` 包装、`extra_info` / `extraInfo` / `_state` / `state` / `info` 包装、相位字段和合法动作字段使用安全映射读取；异常 dict-like observation 不会在兜底逻辑之前直接抛出。规则策略兜底失败时返回默认动作，防止评估 episode 因最终 fallback 抛错而失败。进入 `env.step()` 前，workflow 还会对最终动作做一次统一清洗：非决策帧保持 `[None, None, None]`，决策帧强制 `junction_id=0`，相位裁剪到 `0-3`，duration 裁剪到当前联合动作空间可表达的秒数范围。
 观测特征处理也通过安全 helper 执行；如果 `observation_process()` 抛错，本次决策会回退到规则动作，采样帧使用零特征占位。非决策帧的交通状态更新失败时只记录错误并继续推进环境，避免单帧异常动态字段中断 episode。
 
 平台训练指标读取也通过容错 helper 执行；`get_training_metrics()` 临时失败或返回非字典结果时只记录错误并按空指标处理，不影响后续模型加载、环境交互和样本生成。

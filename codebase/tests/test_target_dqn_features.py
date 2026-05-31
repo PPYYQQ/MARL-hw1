@@ -564,6 +564,65 @@ def main():
     assert alias_vehicle_preprocess.waiting_time_store[30] == 3.0
     assert alias_vehicle_preprocess.vehicle_distance_store[30] == 5.0
     assert alias_vehicle_preprocess.lane_volume[11] == [30]
+    camel_observation_preprocess = FeatureProcess(None)
+    camel_start_info = {
+        "junctions": {
+            "main": {
+                "junctionId": "0",
+                "enterLanesOnDirections": {"north": {"lanes": ["11"]}},
+            }
+        },
+        "edges": {"edge_main": {"edgeId": "102"}},
+        "laneConfigs": {"lane_main": {"laneId": "11"}},
+        "vehicleConfigs": {"car_cfg": {"vehicleConfigId": "4", "maxSpeed": 16.0}},
+    }
+    camel_observation_preprocess.update_traffic_info(
+        {
+            "frameState": {
+                "frameNo": 1,
+                "frameTime": 1.0,
+                "vehicles": [
+                    {
+                        "vehicleId": 31,
+                        "vehicleConfigId": "4",
+                        "laneId": "11",
+                        "junctionId": "-1",
+                        "targetJunction": "0",
+                        "speed": 0.0,
+                        "positionInLane": {"x": 0.0, "y": 0.0},
+                    }
+                ],
+            }
+        },
+        {"initState": camel_start_info},
+    )
+    camel_observation_preprocess.update_traffic_info(
+        {
+            "frameState": {
+                "frameNo": 2,
+                "frameTime": 5.0,
+                "vehicles": [
+                    {
+                        "vehicleId": 31,
+                        "vehicleConfigId": "4",
+                        "laneId": "11",
+                        "junctionId": "-1",
+                        "targetJunction": "0",
+                        "speed": 0.0,
+                        "positionInLane": {"x": 0.0, "y": 6.0},
+                    }
+                ],
+            }
+        },
+        None,
+    )
+    assert 0 in camel_observation_preprocess.junction_dict
+    assert 102 in camel_observation_preprocess.edge_dict
+    assert 11 in camel_observation_preprocess.lane_dict
+    assert camel_observation_preprocess.vehicle_configs_dict[4]["maxSpeed"] == 16.0
+    assert camel_observation_preprocess.waiting_time_store[31] == 4.0
+    assert camel_observation_preprocess.vehicle_distance_store[31] == 6.0
+    assert camel_observation_preprocess.lane_volume[11] == [31]
     object_preprocess.waiting_time_store[11] = 4.0
     assert object_preprocess.get_all_junction_waiting_time(
         [AttrObject(v_id=11, junction=-1, lane=11)]
@@ -888,6 +947,21 @@ def main():
     assert alias_dict_lane_reward[0] > 0.0
     dummy_agent.preprocess.old_waiting_time = 0.0
     dummy_agent.preprocess.phase_last_served_frame = [None] * Config.DIM_OF_ACTION_PHASE
+    dummy_agent.preprocess.last_phase_index = None
+    camel_frame_reward = reward_shaping(
+        {
+            "frameState": {
+                "frameNo": 6,
+                "vehicles": [],
+                "lanes": {"laneId": 11, "vCount": 5, "queueLength": 4, "congestionLevel": 0.3},
+            }
+        },
+        [0, 0, Config.MIN_GREEN_DURATION + 10],
+        dummy_agent,
+    )
+    assert camel_frame_reward[0] > 0.0
+    dummy_agent.preprocess.old_waiting_time = 0.0
+    dummy_agent.preprocess.phase_last_served_frame = [None] * Config.DIM_OF_ACTION_PHASE
     object_reward = reward_shaping(
         AttrObject(
             frame_state=AttrObject(
@@ -1144,6 +1218,9 @@ def main():
     raw_dict_step_reward, raw_dict_step_obs = _normalize_step_result({"frame_state": {}, "legal_action": 1})
     assert raw_dict_step_reward == 0.0
     assert raw_dict_step_obs == {"frame_state": {}, "legal_action": 1}
+    raw_camel_step_reward, raw_camel_step_obs = _normalize_step_result({"frameState": {}, "legalAction": 1})
+    assert raw_camel_step_reward == 0.0
+    assert raw_camel_step_obs == {"frameState": {}, "legalAction": 1}
     dict_envelope_reward, dict_envelope_obs = _normalize_step_result(
         {"obs": {"legal_action": 1}, "reward": 0.9, "done": "true", "_state": {"frame_no": 17}}
     )
@@ -1178,8 +1255,24 @@ def main():
     assert info_envelope_reward == 0.3
     assert info_envelope_obs["frame_no"] == 22
     assert info_envelope_obs["extra_info"] == {"frameNo": 22}
+    camel_envelope_reward, camel_envelope_obs = _normalize_step_result(
+        {
+            "observation": {"legalAction": 1},
+            "envReward": 0.35,
+            "isDone": False,
+            "extraInfo": {"frameNo": 23},
+        }
+    )
+    assert camel_envelope_reward == 0.35
+    assert camel_envelope_obs["frame_no"] == 23
+    assert camel_envelope_obs["extra_info"] == {"frameNo": 23}
     bare_observation_object_step = AttrObject(frame_state=AttrObject(), legal_action=1)
     assert _normalize_step_result(bare_observation_object_step) == (0.0, bare_observation_object_step)
+    bare_camel_observation_object_step = AttrObject(frameState=AttrObject(), legalAction=1)
+    assert _normalize_step_result(bare_camel_observation_object_step) == (
+        0.0,
+        bare_camel_observation_object_step,
+    )
     assert _normalize_step_result(None) == (0.0, {})
 
     class StepEnv:
@@ -1211,9 +1304,14 @@ def main():
     assert _safe_observation(raw_alias_observation) is raw_alias_observation
     assert _safe_legal_action(raw_alias_observation) == [0, 1, 0, 0]
     assert _need_to_predict(raw_alias_observation) is True
+    raw_camel_observation = {"frameState": {}, "legalAction": [1, 0, 0, 0]}
+    assert _looks_like_observation(raw_camel_observation) is True
+    assert _safe_observation(raw_camel_observation) is raw_camel_observation
+    assert _safe_legal_action(raw_camel_observation) == [1, 0, 0, 0]
     assert _safe_observation({"observation": None}) == {}
     assert _safe_observation({"observation": 1}) == {}
     assert _safe_extra_info({"extra_info": {"init_state": {}}}) == {"init_state": {}}
+    assert _safe_extra_info({"extraInfo": {"initState": {}}}) == {"initState": {}}
     assert _safe_extra_info({"_state": {"init_state": {"source": "_state"}}}) == {
         "init_state": {"source": "_state"}
     }
@@ -1249,6 +1347,9 @@ def main():
     assert _safe_observation(raw_alias_object_observation) is raw_alias_object_observation
     assert _safe_legal_action(raw_alias_object_observation) == 0
     assert _need_to_predict(raw_alias_object_observation) is False
+    raw_camel_object_observation = AttrObject(frameState=AttrObject(), legalAction=1)
+    assert _looks_like_observation(raw_camel_object_observation) is True
+    assert _safe_observation(raw_camel_object_observation) is raw_camel_object_observation
     assert _safe_frame_no({"frame_no": "bad"}) == 0
     assert _safe_frame_no({"frame_no": float("inf")}) == 0
     assert _safe_frame_no({"frame_no": 3.5}) == 3

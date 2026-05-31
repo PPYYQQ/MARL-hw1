@@ -330,11 +330,24 @@ class Agent(BaseAgent):
             + traffic_history_feature
             + lane_stat_feature
         )
+        observation = self._sanitize_observation(observation)
 
         return ObsData(
             feature=observation,
             legal_action=normalize_phase_legal_action(raw_obs.get("legal_action"), Config.DIM_OF_ACTION_PHASE),
         )
+
+    def _sanitize_observation(self, observation):
+        try:
+            values = np.asarray(observation, dtype=np.float32).flatten()
+        except (TypeError, ValueError):
+            values = np.asarray([], dtype=np.float32)
+        values = np.nan_to_num(values, nan=0.0, posinf=0.0, neginf=0.0)
+        if values.size < Config.DIM_OF_OBSERVATION:
+            values = np.pad(values, (0, Config.DIM_OF_OBSERVATION - values.size))
+        elif values.size > Config.DIM_OF_OBSERVATION:
+            values = values[: Config.DIM_OF_OBSERVATION]
+        return values.astype(np.float32).tolist()
 
     def action_process(self, act_data):
         junction_id = 0

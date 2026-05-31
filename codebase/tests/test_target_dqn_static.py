@@ -120,6 +120,10 @@ def main():
     require("def _traffic_trend_feature" in agent, "observation should include traffic trend features")
     require("def _traffic_history_feature" in agent, "observation should include traffic history features")
     require("def _lane_stat_feature" in agent, "observation should include per-lane statistics")
+    require("def _sanitize_observation" in agent, "observation should sanitize final feature vectors")
+    require("observation = self._sanitize_observation(observation)" in agent, "observation should run final feature sanitation")
+    require("np.nan_to_num(values" in agent, "observation sanitation should remove non-finite values")
+    require("Config.DIM_OF_OBSERVATION" in agent, "observation sanitation should enforce configured width")
     require(
         "+ traffic_history_feature" in agent and "+ lane_stat_feature" in agent,
         "observation should append phase, phase-age, traffic, trend, history, and lane-stat features",
@@ -155,7 +159,12 @@ def main():
     require("def get_traffic_trend" in traffic_utils, "shared traffic trend helper is required")
     require("def get_traffic_history_feature" in traffic_utils, "shared traffic history helper is required")
     require("get_lane_position_meters" in traffic_utils, "lane coordinate normalization helper is required")
+    require("def _finite_float" in traffic_utils, "traffic helpers should sanitize scalar values")
+    require("def _nonnegative_float" in traffic_utils, "traffic helpers should clamp non-negative traffic metrics")
+    require("def _phase_array" in traffic_utils, "traffic helpers should normalize phase arrays")
+    require("if not np.isfinite(y_pos)" in traffic_utils, "lane position helper should reject non-finite positions")
     require("np.nan_to_num(values" in traffic_utils, "legal action normalizer should sanitize non-finite values")
+    require("np.nan_to_num(array" in traffic_utils, "traffic helper arrays should sanitize non-finite values")
     require(
         "except (KeyError, TypeError, ValueError, AttributeError)" in traffic_utils,
         "traffic helpers should skip malformed vehicle records",

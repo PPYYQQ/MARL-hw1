@@ -11,6 +11,34 @@ Author: Tencent AI Arena Authors
 import numpy as np
 
 
+def _finite_float(value, default=0.0):
+    try:
+        value = float(value)
+    except (TypeError, ValueError):
+        return default
+    if not np.isfinite(value):
+        return default
+    return value
+
+
+def _nonnegative_float(value, default=0.0):
+    return max(_finite_float(value, default), 0.0)
+
+
+def _phase_array(values, phase_count):
+    try:
+        array = np.asarray(values, dtype=np.float32).flatten()
+    except (TypeError, ValueError):
+        array = np.asarray([], dtype=np.float32)
+
+    array = np.nan_to_num(array, nan=0.0, posinf=0.0, neginf=0.0)
+    if array.size < phase_count:
+        array = np.pad(array, (0, phase_count - array.size))
+    elif array.size > phase_count:
+        array = array[:phase_count]
+    return array.astype(np.float32)
+
+
 def normalize_phase_legal_action(legal_action, phase_count=4):
     if legal_action is None:
         return [1] * phase_count
@@ -156,6 +184,8 @@ def get_lane_code(vehicle):
 
 def get_lane_position_meters(vehicle):
     y_pos = float(vehicle["position_in_lane"]["y"])
+    if not np.isfinite(y_pos):
+        raise ValueError("non-finite lane position")
     if abs(y_pos) > 200:
         y_pos /= 1000.0
     return y_pos
@@ -175,8 +205,8 @@ def get_lane_statistics(vehicles, waiting_speed_threshold=0.1, lane_count=14):
             if lane_code is None or lane_code < 0 or lane_code >= lane_count:
                 continue
 
-            speed = float(vehicle.get("speed", 0.0) or 0.0)
-            waiting_time = float(vehicle.get("waiting_time", 0.0) or 0.0)
+            speed = _nonnegative_float(vehicle.get("speed", 0.0))
+            waiting_time = _nonnegative_float(vehicle.get("waiting_time", 0.0))
         except (KeyError, TypeError, ValueError, AttributeError):
             continue
 
@@ -200,10 +230,12 @@ def get_traffic_summary(vehicles, waiting_speed_threshold=0.1, phase_count=4):
         waiting_speed_threshold=waiting_speed_threshold,
         phase_count=phase_count,
     )
-    vehicle_count = float(totals["vehicle_count"])
-    queue_count = float(totals["queue"])
-    avg_waiting_time = totals["waiting_time"] / vehicle_count if vehicle_count > 0 else 0.0
-    avg_delay = totals["delay"] / vehicle_count if vehicle_count > 0 else 0.0
+    vehicle_count = _nonnegative_float(totals["vehicle_count"])
+    queue_count = _nonnegative_float(totals["queue"])
+    waiting_time = _nonnegative_float(totals["waiting_time"])
+    delay = _nonnegative_float(totals["delay"])
+    avg_waiting_time = waiting_time / vehicle_count if vehicle_count > 0 else 0.0
+    avg_delay = delay / vehicle_count if vehicle_count > 0 else 0.0
     return {
         "phase_pressure": phase_pressure,
         "vehicle_count": vehicle_count,
@@ -221,17 +253,23 @@ def get_traffic_trend(
     count_scale=100.0,
     time_scale=120.0,
 ):
-    current_pressure = np.asarray(current_summary["phase_pressure"], dtype=np.float32)
+    current_pressure_values = current_summary["phase_pressure"]
+    current_pressure = _phase_array(current_pressure_values, len(current_pressure_values))
     if previous_summary is None:
         return [0.0] * (len(current_pressure) + 4)
 
-    previous_pressure = np.asarray(
+    previous_pressure = _phase_array(
         previous_summary.get("phase_pressure", np.zeros_like(current_pressure)),
-        dtype=np.float32,
+        len(current_pressure),
     )
-    if previous_pressure.size < current_pressure.size:
-        previous_pressure = np.pad(previous_pressure, (0, current_pressure.size - previous_pressure.size))
-    previous_pressure = previous_pressure[: current_pressure.size]
+    current_vehicle_count = _finite_float(current_summary.get("vehicle_count", 0.0))
+    previous_vehicle_count = _finite_float(previous_summary.get("vehicle_count", 0.0))
+    current_queue_ratio = _finite_float(current_summary.get("queue_ratio", 0.0))
+    previous_queue_ratio = _finite_float(previous_summary.get("queue_ratio", 0.0))
+    current_waiting_time = _finite_float(current_summary.get("avg_waiting_time", 0.0))
+    previous_waiting_time = _finite_float(previous_summary.get("avg_waiting_time", 0.0))
+    current_delay = _finite_float(current_summary.get("avg_delay", 0.0))
+    previous_delay = _finite_float(previous_summary.get("avg_delay", 0.0))
 
     trend = [
         float(np.clip((current - previous) / pressure_scale, -1.0, 1.0))
@@ -241,29 +279,28 @@ def get_traffic_trend(
         [
             float(
                 np.clip(
-                    (current_summary["vehicle_count"] - previous_summary.get("vehicle_count", 0.0)) / count_scale,
+                    (current_vehicle_count - previous_vehicle_count) / count_scale,
                     -1.0,
                     1.0,
                 )
             ),
             float(
                 np.clip(
-                    current_summary["queue_ratio"] - previous_summary.get("queue_ratio", 0.0),
+                    current_queue_ratio - previous_queue_ratio,
                     -1.0,
                     1.0,
                 )
             ),
             float(
                 np.clip(
-                    (current_summary["avg_waiting_time"] - previous_summary.get("avg_waiting_time", 0.0))
-                    / time_scale,
+                    (current_waiting_time - previous_waiting_time) / time_scale,
                     -1.0,
                     1.0,
                 )
             ),
             float(
                 np.clip(
-                    (current_summary["avg_delay"] - previous_summary.get("avg_delay", 0.0)) / time_scale,
+                    (current_delay - previous_delay) / time_scale,
                     -1.0,
                     1.0,
                 )
@@ -283,15 +320,24 @@ def get_traffic_history_feature(
     if not traffic_history:
         return [0.0] * (phase_count + 4)
 
+    traffic_history = [summary for summary in traffic_history if isinstance(summary, dict)]
+    if not traffic_history:
+        return [0.0] * (phase_count + 4)
+
     phase_pressures = [
-        np.asarray(summary.get("phase_pressure", np.zeros(phase_count)), dtype=np.float32)[:phase_count]
-        for summary in traffic_history
+        _phase_array(summary.get("phase_pressure", np.zeros(phase_count)), phase_count) for summary in traffic_history
     ]
     avg_phase_pressure = np.mean(phase_pressures, axis=0)
-    avg_vehicle_count = float(np.mean([summary.get("vehicle_count", 0.0) for summary in traffic_history]))
-    avg_queue_ratio = float(np.mean([summary.get("queue_ratio", 0.0) for summary in traffic_history]))
-    avg_waiting_time = float(np.mean([summary.get("avg_waiting_time", 0.0) for summary in traffic_history]))
-    avg_delay = float(np.mean([summary.get("avg_delay", 0.0) for summary in traffic_history]))
+    avg_vehicle_count = float(
+        np.mean([_finite_float(summary.get("vehicle_count", 0.0)) for summary in traffic_history])
+    )
+    avg_queue_ratio = float(
+        np.mean([_finite_float(summary.get("queue_ratio", 0.0)) for summary in traffic_history])
+    )
+    avg_waiting_time = float(
+        np.mean([_finite_float(summary.get("avg_waiting_time", 0.0)) for summary in traffic_history])
+    )
+    avg_delay = float(np.mean([_finite_float(summary.get("avg_delay", 0.0)) for summary in traffic_history]))
 
     history_feature = [
         float(np.clip(pressure / pressure_scale, 0.0, 1.0)) for pressure in avg_phase_pressure
@@ -347,9 +393,9 @@ def get_phase_pressure(vehicles, waiting_speed_threshold=0.1, phase_count=4):
             if lane_phase is None:
                 continue
 
-            speed = float(vehicle.get("speed", 0.0) or 0.0)
-            waiting_time = float(vehicle.get("waiting_time", 0.0) or 0.0)
-            delay = float(vehicle.get("delay", 0.0) or 0.0)
+            speed = _nonnegative_float(vehicle.get("speed", 0.0))
+            waiting_time = _nonnegative_float(vehicle.get("waiting_time", 0.0))
+            delay = _nonnegative_float(vehicle.get("delay", 0.0))
         except (KeyError, TypeError, ValueError, AttributeError):
             continue
         is_waiting = 1.0 if speed <= waiting_speed_threshold else 0.0

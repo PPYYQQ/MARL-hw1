@@ -62,6 +62,7 @@ def main():
     from agent_target_dqn.conf.conf import Config
     from agent_target_dqn.feature.definition import SampleData, reward_shaping, sample_process
     from agent_target_dqn.feature.traffic_utils import (
+        get_phase_pressure,
         get_lane_statistics,
         get_traffic_history_feature,
         get_traffic_summary,
@@ -153,6 +154,45 @@ def main():
     assert history_feature[2] > 0.0
     assert history_feature[4] == 0.02
     assert history_feature[5] == 0.5
+
+    nonfinite_vehicles = [
+        {
+            "lane": 11,
+            "junction": -1,
+            "target_junction": 0,
+            "speed": float("nan"),
+            "waiting_time": float("inf"),
+            "delay": float("nan"),
+        },
+        {
+            "lane": 129,
+            "junction": -1,
+            "target_junction": 0,
+            "speed": float("-inf"),
+            "waiting_time": -5.0,
+            "delay": float("inf"),
+        },
+    ]
+    nonfinite_lane_stats = get_lane_statistics(nonfinite_vehicles)
+    assert all(math.isfinite(float(value)) for value in nonfinite_lane_stats["avg_waiting_times"])
+    nonfinite_phase_pressure, nonfinite_totals = get_phase_pressure(nonfinite_vehicles)
+    assert all(math.isfinite(float(value)) for value in nonfinite_phase_pressure)
+    assert all(math.isfinite(float(value)) for value in nonfinite_totals.values())
+    assert nonfinite_totals["vehicle_count"] == 2
+    nonfinite_summary = get_traffic_summary(nonfinite_vehicles)
+    assert all(math.isfinite(float(value)) for value in nonfinite_summary["phase_pressure"])
+    assert math.isfinite(nonfinite_summary["avg_waiting_time"])
+    assert math.isfinite(nonfinite_summary["avg_delay"])
+    noisy_previous_summary = {
+        "phase_pressure": [float("nan"), float("inf")],
+        "vehicle_count": float("inf"),
+        "queue_ratio": float("nan"),
+        "avg_waiting_time": float("-inf"),
+        "avg_delay": float("inf"),
+    }
+    assert all(math.isfinite(value) for value in get_traffic_trend(nonfinite_summary, noisy_previous_summary))
+    noisy_history = [nonfinite_summary, noisy_previous_summary, "bad-summary"]
+    assert all(math.isfinite(value) for value in get_traffic_history_feature(noisy_history))
 
     frame_type = type("Frame", (), {})
     assert sample_process([]) == []

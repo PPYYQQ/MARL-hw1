@@ -80,6 +80,7 @@ Target-DQN 关键文件：
 - Target-DQN 使用独立 target network，并按 `TARGET_UPDATE_FREQ` 同步。
 - `reward_shaping()` 已返回非零奖励，基于相位压力、等待时间变化、排队和延误。
 - `reward_shaping()` 对终局或异常 observation 缺失 `frame_state` / `vehicles` 的情况保守返回零奖励，避免训练循环崩溃。
+- `reward_shaping()` 会将极端延误惩罚限制到 `REWARD_DELAY_CAP=300`，并将每个 reward 分量裁剪到 `[-REWARD_CLIP, REWARD_CLIP]`，降低 TD target 爆炸风险。
 - 训练 workflow 调用 reward shaping 时会隔离异常，奖励计算失败会记录错误并使用 `(0.0, 0.0)`。
 - `FeatureProcess.update_traffic_info()` 对缺失 `frame_state`、缺失 `vehicles` 或畸形车辆记录会保守跳过，避免异常帧中断特征处理。
 - `FeatureProcess` 会清洗 `frame_no`、`frame_time`、车辆 ID、车速和车道位置，等待时间/行驶距离/车道计数统计遇到异常动态字段会跳过单车而不是中断整帧。
@@ -258,7 +259,7 @@ coding agent 无法单独保证：
 - 公平性惩罚：某方向长期排队但未放行时惩罚。
 - 当前公平性实现会跟踪四个相位上次服务帧，高压且长时间未服务的相位被选中时给小额正奖励，否则给小额负项。
 - duration reward 的目标时长必须限制在模型动作空间可表达范围内；当前 20 个 duration 桶覆盖 `MIN_GREEN_DURATION` 到 `MAX_GREEN_DURATION`。
-- 奖励量级应归一化，避免单项过大导致训练不稳定。
+- 奖励量级应归一化，当前通过 `REWARD_DELAY_CAP` 限制极端延误项，并通过 `REWARD_CLIP` 裁剪每个 reward 分量。
 
 ## 实施计划
 

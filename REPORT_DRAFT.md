@@ -167,6 +167,7 @@ duration reward 主要考虑：
 - 过短绿灯惩罚。
 
 奖励设计目标是避免全零奖励，并让策略倾向于服务高压力方向，同时抑制不合理的持续时间。
+为降低 DQN 训练中的 TD target 爆炸风险，延误惩罚会先限制到 `REWARD_DELAY_CAP=300`，最终 `phase_reward` 和 `duration_reward` 都会裁剪到 `[-REWARD_CLIP, REWARD_CLIP]`。这能避免少量异常车辆延误或平台字段尖峰主导整批梯度。
 相位服务年龄会在每个 episode 重置，避免不同局之间的状态泄漏。
 终局或异常帧如果缺少 `frame_state` 或 `vehicles`，奖励函数会保守返回零奖励，避免训练循环因字段缺失中断。
 workflow 调用奖励函数时还有一层兜底：如果奖励计算因异常 observation、动作或 agent 状态抛错，本步奖励会回退为 `(0.0, 0.0)` 并记录错误，episode 继续运行。

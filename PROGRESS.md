@@ -1333,3 +1333,19 @@
   - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
 - 下一步：
   - 平台运行后确认 score 字段实际名称是否命中当前 alias；若监控长期为 0，需要保存一次 `score` / `extra_info` 样例后补 alias。
+
+### Step 90 - reward 尺度裁剪
+
+- 状态：完成
+- Commit：`efc4d7c`
+- 内容：
+  - `Config` 新增 `REWARD_DELAY_CAP=300.0` 和 `REWARD_CLIP=5.0`，集中管理 reward 稳定性参数。
+  - `reward_shaping()` 的平均延误惩罚先按上限截断，避免少量极端车辆延误主导 phase reward。
+  - 新增 `_clip_reward()`，将 `phase_reward` 和 `duration_reward` 裁剪到固定范围，并把异常 reward 值回退为 0。
+  - 无平台依赖测试增加 NaN/上下界裁剪和极端延误车辆覆盖；静态测试增加 reward cap/clip 锚点。
+- 验证：
+  - 已运行 `python -m compileall agent_target_dqn/conf agent_target_dqn/feature tests/test_target_dqn_features.py tests/test_target_dqn_static.py`，通过。
+  - 已运行 `python tests/test_target_dqn_features.py` 和 `python tests/test_target_dqn_static.py`，均通过。
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 平台训练后观察 `value_loss`、`model_grad_norm` 和平均 reward；如仍爆炸，优先降低 `LR` 或继续收紧 reward 权重。

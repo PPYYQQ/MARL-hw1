@@ -101,6 +101,7 @@ def main():
     require("if not sample_datas" in definition, "sample_process should handle all-invalid trajectories")
     require("def _safe_getattr" in definition, "sample_process should isolate malformed frame attributes")
     require("def _fixed_float_list" in definition, "sample_process should normalize sample field widths")
+    require("except Exception:" in definition, "sample_process should isolate unexpected field conversion failures")
     require("np.nan_to_num(values" in definition, "sample_process should sanitize non-finite sample fields")
     require("_fixed_float_list(obs, Config.DIM_OF_OBSERVATION)" in definition, "sample_process should normalize obs width")
     require("_fixed_action_list(act)" in definition, "sample_process should normalize action width and bounds")

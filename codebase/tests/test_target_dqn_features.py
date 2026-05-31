@@ -381,6 +381,32 @@ def main():
     assert attr_samples[0].done == 1
     assert attr_samples[0].legal_action == [1, 0, 0, 0]
 
+    class FailingArray:
+        def __array__(self, dtype=None):
+            raise RuntimeError("array conversion failed")
+
+    class FailingAction:
+        def __len__(self):
+            raise RuntimeError("action length failed")
+
+    conversion_frame = frame_type()
+    conversion_frame.obs = FailingArray()
+    conversion_frame.act = [0, 2, Config.MIN_GREEN_DURATION + 2]
+    conversion_frame.rew = FailingArray()
+    conversion_frame.done = 0
+    conversion_frame.legal_action = [1, 0, 0, 0]
+    bad_action_frame = frame_type()
+    bad_action_frame.obs = [1.0] * Config.DIM_OF_OBSERVATION
+    bad_action_frame.act = FailingAction()
+    bad_action_frame.rew = (1.0, 1.0)
+    bad_action_frame.done = 0
+    bad_action_frame.legal_action = [1, 1, 1, 1]
+    conversion_samples = sample_process([conversion_frame, bad_action_frame, attr_second])
+    assert len(conversion_samples) == 2
+    assert conversion_samples[0].obs == [0.0] * Config.DIM_OF_OBSERVATION
+    assert conversion_samples[0].rew == [0.0, 0.0]
+    assert conversion_samples[0].act == [0.0, 2.0, float(Config.MIN_GREEN_DURATION + 2)]
+
     preprocess_type = type("Preprocess", (), {})
     agent_type = type("Agent", (), {})
     dummy_agent = agent_type()

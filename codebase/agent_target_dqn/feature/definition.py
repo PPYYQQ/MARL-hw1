@@ -54,7 +54,7 @@ def _safe_getattr(obj, name, default=None):
 def _fixed_float_list(value, width, default=0.0):
     try:
         values = np.asarray(value, dtype=np.float32).flatten()
-    except (TypeError, ValueError):
+    except Exception:
         values = np.asarray([], dtype=np.float32)
 
     values = np.nan_to_num(values, nan=default, posinf=default, neginf=default)
@@ -106,7 +106,7 @@ def sample_process(list_game_data):
         try:
             if len(act) < 3 or any(act[index] is None for index in range(3)):
                 continue
-        except (TypeError, IndexError):
+        except Exception:
             continue
 
         obs = _fixed_float_list(obs, Config.DIM_OF_OBSERVATION)

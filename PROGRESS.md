@@ -826,3 +826,19 @@
   - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
 - 下一步：
   - 平台环境可用后确认异常 frame_time、frame_no、vehicle id 或 position 不再导致 episode 在特征预处理阶段失败。
+
+### Step 56 - 相位时间标量清洗
+
+- 状态：完成
+- Commit：`695d5d6`
+- 内容：
+  - `Agent` 增加 `_safe_float()`、`_safe_nonnegative_float()` 和 `_safe_int()`，用于清洗观测编码中的标量字段。
+  - `_phase_feature()` 使用动作索引清洗逻辑处理异常 `phase_id`，并对 `duration`、`remaining_duration` 的 NaN/Inf/Overflow 做非负有限值归零。
+  - `_phase_age_feature()` 会清洗 `frame_no` 和历史 `phase_last_served_frame`，异常相位服务记录回退为当前帧，避免相位年龄特征计算崩溃。
+  - `reward_shaping()` 对动作 duration overflow、异常 `frame_no` 和畸形相位服务历史做容错，公平性 reward 保持有限值。
+  - workflow 的 `_finite_float()` 和 `_safe_frame_no()` 覆盖 malformed/NaN/Inf/Overflow 标量，避免日志和结束路径读取帧号失败。
+  - 无平台依赖测试增加 infinity duration、infinity frame_no、畸形 phase service history 和 workflow frame_no 覆盖；静态测试增加相位标量清洗锚点。
+- 验证：
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 平台环境可用后确认异常 `phase_id`、`duration`、`remaining_duration`、`frame_no` 或旧相位服务状态不再导致推理、reward 或 workflow 日志路径崩溃。

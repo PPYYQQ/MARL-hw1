@@ -98,6 +98,8 @@
 
 交通统计工具会清洗车辆速度、等待时间、延误、相位压力、交通趋势和历史统计中的 NaN/Inf；最终 observation 返回前也会统一补齐或截断到 `DIM_OF_OBSERVATION`，并把非有限特征归零。这样即使平台返回少量异常车辆字段，也不会把 NaN/Inf 送入模型推理或 reward 计算。
 
+相位时间特征、相位服务年龄、reward 公平性项和 workflow 帧号读取也使用有限值清洗；异常 `phase_id`、`duration`、`remaining_duration`、`frame_no` 或旧相位服务记录会回退为保守默认值。
+
 如果后续平台评估显示当前状态表达不足，可增加更长时间窗口或更细粒度的车道趋势。
 
 增加特征时必须同步修改 `Config.DIM_OF_OBSERVATION` 和模型输入层。

@@ -74,6 +74,7 @@ def main():
         _log_error,
         _log_info,
         _get_training_metrics,
+        _handle_disaster_recovery,
         _load_latest_model,
         _need_to_predict,
         _normalize_reset_result,
@@ -463,6 +464,23 @@ def main():
         assert _read_usr_conf("agent_target_dqn/conf/train_env_conf.toml", FailingLogger()) is None
     finally:
         train_workflow.read_usr_conf = original_read_usr_conf
+
+    original_handle_disaster_recovery = train_workflow.handle_disaster_recovery
+    try:
+        train_workflow.handle_disaster_recovery = lambda *args, **kwargs: True
+        assert _handle_disaster_recovery({"observation": {}}, FailingLogger()) is True
+        train_workflow.handle_disaster_recovery = lambda *args, **kwargs: "non-empty"
+        assert _handle_disaster_recovery({"observation": {}}, FailingLogger()) is True
+        train_workflow.handle_disaster_recovery = lambda *args, **kwargs: None
+        assert _handle_disaster_recovery({"observation": {}}, FailingLogger()) is False
+
+        def raise_disaster(*args, **kwargs):
+            raise RuntimeError("disaster recovery failed")
+
+        train_workflow.handle_disaster_recovery = raise_disaster
+        assert _handle_disaster_recovery({"observation": {}}, FailingLogger()) is False
+    finally:
+        train_workflow.handle_disaster_recovery = original_handle_disaster_recovery
 
     original_get_training_metrics = train_workflow.get_training_metrics
     try:

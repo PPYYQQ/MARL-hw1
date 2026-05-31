@@ -114,7 +114,7 @@ def run_episodes(n_episode, env, agent, usr_conf, logger):
             env_obs = _normalize_reset_result(env.reset(usr_conf=usr_conf))
             # Disaster recovery
             # 容灾
-            if handle_disaster_recovery(env_obs, logger):
+            if _handle_disaster_recovery(env_obs, logger):
                 break
 
             agent.reset(env_obs)
@@ -153,7 +153,7 @@ def run_episodes(n_episode, env, agent, usr_conf, logger):
                 env_reward, env_obs = _normalize_step_result(env.step(act))
                 # Disaster recovery
                 # 容灾
-                if handle_disaster_recovery(env_obs, logger):
+                if _handle_disaster_recovery(env_obs, logger):
                     if len(collector) > 10:
                         collector = sample_process(collector)
                         yield collector
@@ -231,6 +231,14 @@ def _read_usr_conf(path, logger):
         _log_error(logger, f"read usr conf failed: {err}")
         return None
     return usr_conf if isinstance(usr_conf, dict) else None
+
+
+def _handle_disaster_recovery(env_obs, logger):
+    try:
+        return bool(handle_disaster_recovery(env_obs, logger))
+    except Exception as err:
+        _log_error(logger, f"handle disaster recovery failed: {err}")
+        return False
 
 
 def _finite_float(value):

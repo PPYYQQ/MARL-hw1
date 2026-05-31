@@ -109,8 +109,7 @@ class Algorithm:
         self.optim.zero_grad()
         loss = F.smooth_l1_loss(q_values.float(), q_targets.float())
         if not bool(torch.isfinite(loss).item()):
-            if self.logger:
-                self.logger.info("skip learn step, non-finite loss")
+            self._log_info("skip learn step, non-finite loss")
             return
         loss.backward()
         model_grad_norm = torch.nn.utils.clip_grad_norm_(self.model.parameters(), 1.0)
@@ -120,8 +119,7 @@ class Algorithm:
             model_grad_norm = float(model_grad_norm)
         if not math.isfinite(model_grad_norm):
             self.optim.zero_grad()
-            if self.logger:
-                self.logger.info("skip learn step, non-finite grad norm")
+            self._log_info("skip learn step, non-finite grad norm")
             return
         self.optim.step()
         self.train_step += 1
@@ -143,19 +141,33 @@ class Algorithm:
                 "q_value": q_value,
                 "model_grad_norm": model_grad_norm,
             }
-            if self.monitor:
-                self.monitor.put_data({os.getpid(): monitor_data})
-            if self.logger:
-                self.logger.info(
-                    f"value_loss: {value_loss}, target_q_value: {target_q_value},\
-                                    q_value: {q_value},\
-                                    model_grad_norm: {model_grad_norm}"
-                )
+            self._put_monitor_data(monitor_data)
+            self._log_info(
+                f"value_loss: {value_loss}, target_q_value: {target_q_value},\
+                                q_value: {q_value},\
+                                model_grad_norm: {model_grad_norm}"
+            )
             self.last_report_monitor_time = now
 
     def update_target_q(self):
         self.target_model.load_state_dict(self.model.state_dict())
         self.target_model.eval()
+
+    def _put_monitor_data(self, monitor_data):
+        if not self.monitor:
+            return
+        try:
+            self.monitor.put_data({os.getpid(): monitor_data})
+        except Exception as err:
+            self._log_info(f"monitor put_data failed: {err}")
+
+    def _log_info(self, message):
+        if not self.logger:
+            return
+        try:
+            self.logger.info(message)
+        except Exception:
+            pass
 
     def _stack_tensor(self, values, dtype, width=None):
         tensors = [self._normalize_tensor(value, dtype=dtype, width=width) for value in values]

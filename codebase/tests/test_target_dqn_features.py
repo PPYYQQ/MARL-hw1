@@ -71,10 +71,13 @@ def main():
         normalize_phase_legal_action,
     )
     from agent_target_dqn.workflow.train_workflow import (
+        _log_error,
+        _log_info,
         _need_to_predict,
         _normalize_reset_result,
         _normalize_step_result,
         _predict_action,
+        _put_monitor_data,
         _reward_components,
         _safe_done_flag,
         _safe_extra_info,
@@ -412,6 +415,32 @@ def main():
     assert _should_log_progress(0, False, False) is False
     assert _should_log_progress(20, False, True) is True
     assert _should_log_progress(0, True, False) is True
+
+    class FailingLogger:
+        def info(self, message):
+            raise RuntimeError("logger info failed")
+
+        def error(self, message):
+            raise RuntimeError("logger error failed")
+
+    class RecordingMonitor:
+        def __init__(self):
+            self.records = []
+
+        def put_data(self, data):
+            self.records.append(data)
+
+    class FailingMonitor:
+        def put_data(self, data):
+            raise RuntimeError("monitor failed")
+
+    _log_info(FailingLogger(), "info")
+    _log_error(FailingLogger(), "error")
+    recording_monitor = RecordingMonitor()
+    assert _put_monitor_data(recording_monitor, {"reward": 1.0}, FailingLogger()) is True
+    assert recording_monitor.records
+    assert _put_monitor_data(FailingMonitor(), {"reward": 1.0}, FailingLogger()) is False
+    assert _put_monitor_data(None, {"reward": 1.0}, FailingLogger()) is False
 
     class PredictingAgent:
         def predict(self, list_obs_data):

@@ -82,8 +82,7 @@ def workflow(envs, agents, logger=None, monitor=None, *args, **kwargs):
             monitor_data["phase_reward"] = avg_phase_reward
             monitor_data["duration_reward"] = avg_duration_reward
             monitor_data["data_length"] = data_length
-            if monitor:
-                monitor.put_data({os.getpid(): monitor_data})
+            if _put_monitor_data(monitor, monitor_data, logger):
                 last_report_monitor_time = now
 
         _log_info(
@@ -326,10 +325,29 @@ def _predict_action(agent, obs_data, obs, logger):
 
 
 def _log_info(logger, message):
-    if logger:
+    if not logger:
+        return
+    try:
         logger.info(message)
+    except Exception:
+        pass
 
 
 def _log_error(logger, message):
-    if logger:
+    if not logger:
+        return
+    try:
         logger.error(message)
+    except Exception:
+        pass
+
+
+def _put_monitor_data(monitor, monitor_data, logger=None):
+    if not monitor:
+        return False
+    try:
+        monitor.put_data({os.getpid(): monitor_data})
+        return True
+    except Exception as err:
+        _log_error(logger, f"monitor put_data failed: {err}")
+        return False

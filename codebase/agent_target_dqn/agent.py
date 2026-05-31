@@ -144,14 +144,21 @@ class Agent(BaseAgent):
         try:
             obs_data = self.observation_process(raw_obs, extra_info)
             if not obs_data:
-                return self.rule_based_action(raw_obs)
+                return self._safe_rule_based_action(raw_obs)
             act_data = self.__predict_detail([obs_data], exploit_flag=True)
             if not act_data:
-                return self.rule_based_action(raw_obs)
+                return self._safe_rule_based_action(raw_obs)
             return self.action_process(act_data[0])
         except Exception as err:
             self._log_error(f"exploit fallback to rule_based_action: {err}")
+            return self._safe_rule_based_action(raw_obs)
+
+    def _safe_rule_based_action(self, raw_obs):
+        try:
             return self.rule_based_action(raw_obs)
+        except Exception as err:
+            self._log_error(f"rule_based_action failed, use default action: {err}")
+            return [0, 0, Config.MIN_GREEN_DURATION]
 
     def learn(self, list_sample_data):
         try:

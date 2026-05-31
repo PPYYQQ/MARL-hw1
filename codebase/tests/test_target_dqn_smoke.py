@@ -239,6 +239,12 @@ def main():
     assert fallback_action[0] == 0
     assert 0 <= fallback_action[1] < Config.DIM_OF_ACTION_PHASE
     assert Config.MIN_GREEN_DURATION <= fallback_action[2] <= Config.MAX_GREEN_DURATION
+    original_rule_based_action = agent.rule_based_action
+    try:
+        agent.rule_based_action = lambda raw_obs: (_ for _ in ()).throw(RuntimeError("rule failed"))
+        assert agent.exploit({"obs": None}) == [0, 0, Config.MIN_GREEN_DURATION]
+    finally:
+        agent.rule_based_action = original_rule_based_action
     assert agent._eps == training_eps
 
     phase_reward, duration_reward = reward_shaping(make_fake_obs(), [0, 0, Config.MIN_GREEN_DURATION], agent)

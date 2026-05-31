@@ -947,3 +947,18 @@
   - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
 - 下一步：
   - 平台环境可用后确认配置文件缺失、格式错误或校验工具异常时训练入口给出明确日志且不会产生二次崩溃。
+
+### Step 64 - 平台容灾检测失败隔离
+
+- 状态：完成
+- Commit：`57897f2`
+- 内容：
+  - workflow 增加 `_handle_disaster_recovery()`，封装 reset 后和 step 后的 `handle_disaster_recovery(env_obs, logger)` 调用。
+  - 容灾 helper 抛错时记录 `handle disaster recovery failed` 并返回 `False`，避免平台容灾 SDK 或异常 env_obs 格式中断训练循环。
+  - 容灾 helper 返回非 bool 对象时显式转为 bool，保持原有触发容灾 break 的语义。
+  - 无平台依赖测试覆盖容灾检测 True、非空对象、None 和抛错且 logger 后端也失败的路径；静态测试增加 safe disaster recovery helper 锚点。
+- 验证：
+  - 已运行 `python -m compileall agent_target_dqn tests`、`python tests/test_target_dqn_features.py` 和 `python tests/test_target_dqn_static.py`，均通过。
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 平台环境可用后确认容灾 SDK 临时异常不会阻止 episode 继续执行；真实容灾信号仍能触发 break。

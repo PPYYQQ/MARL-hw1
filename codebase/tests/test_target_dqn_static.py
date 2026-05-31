@@ -94,6 +94,11 @@ def main():
     require("get_phase_pressure" in definition, "reward should use shared phase pressure")
     require("if not list_game_data" in definition, "sample_process should handle empty trajectories")
     require("if not sample_datas" in definition, "sample_process should handle all-invalid trajectories")
+    require("def _fixed_float_list" in definition, "sample_process should normalize sample field widths")
+    require("np.nan_to_num(values" in definition, "sample_process should sanitize non-finite sample fields")
+    require("_fixed_float_list(obs, Config.DIM_OF_OBSERVATION)" in definition, "sample_process should normalize obs width")
+    require("_fixed_action_list(act)" in definition, "sample_process should normalize action width and bounds")
+    require("_not_done_flag" in definition, "sample_process should normalize done flags")
     require('reward = getattr(data, "rew", None)' in definition, "sample_process should handle missing rewards")
     require("sample_datas[i].legal_action = sample_datas[i + 1].legal_action" in definition, "samples should carry next-state phase legality")
     require('frame_state = _obs.get("frame_state")' in definition, "reward should tolerate missing frame_state")
@@ -150,6 +155,7 @@ def main():
     require("def get_traffic_trend" in traffic_utils, "shared traffic trend helper is required")
     require("def get_traffic_history_feature" in traffic_utils, "shared traffic history helper is required")
     require("get_lane_position_meters" in traffic_utils, "lane coordinate normalization helper is required")
+    require("np.nan_to_num(values" in traffic_utils, "legal action normalizer should sanitize non-finite values")
     require(
         "except (KeyError, TypeError, ValueError, AttributeError)" in traffic_utils,
         "traffic helpers should skip malformed vehicle records",

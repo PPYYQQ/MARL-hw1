@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import math
 import sys
 import types
 from pathlib import Path
@@ -89,6 +90,8 @@ def main():
     assert normalize_phase_legal_action([0]) == [0, 0, 0, 0]
     assert normalize_phase_legal_action([1, 0, 2, -1]) == [1, 0, 1, 0]
     assert normalize_phase_legal_action([0, 1]) == [0, 1, 1, 1]
+    assert normalize_phase_legal_action(float("nan")) == [0, 0, 0, 0]
+    assert normalize_phase_legal_action([1, float("nan"), float("inf"), float("-inf")]) == [1, 0, 0, 0]
     assert normalize_phase_legal_action("bad-input") == [1, 1, 1, 1]
 
     vehicles = [
@@ -172,11 +175,41 @@ def main():
     samples = sample_process([first, second])
     assert len(samples) == 2
     assert isinstance(samples[0], SampleData)
-    assert samples[0].rew == (0.0, 0.0)
+    assert samples[0].rew == [0.0, 0.0]
     assert samples[0]._obs == second.obs
     assert samples[0].legal_action == [0, 1, 0, 1]
     assert samples[1].done == 0
     assert samples[1]._obs == second.obs
+
+    ragged_first = frame_type()
+    ragged_first.obs = [float("nan"), float("inf"), 2.0]
+    ragged_first.act = [0, float("nan"), float("inf")]
+    ragged_first.rew = (float("nan"), float("inf"), 9.0)
+    ragged_first.done = "0"
+    ragged_first.legal_action = [1, float("nan"), float("inf"), float("-inf")]
+    ragged_second = frame_type()
+    ragged_second.obs = [1.0] * (Config.DIM_OF_OBSERVATION + 5)
+    ragged_second.act = [7, 3, Config.MIN_GREEN_DURATION + Config.DIM_OF_ACTION_DURATION + 5, 99]
+    ragged_second.rew = (0.25,)
+    ragged_second.done = "1"
+    ragged_second.legal_action = [0, 1]
+    ragged_samples = sample_process([ragged_first, ragged_second])
+    assert len(ragged_samples) == 2
+    assert len(ragged_samples[0].obs) == Config.DIM_OF_OBSERVATION
+    assert len(ragged_samples[0]._obs) == Config.DIM_OF_OBSERVATION
+    assert ragged_samples[0].obs[:3] == [0.0, 0.0, 2.0]
+    assert all(math.isfinite(value) for value in ragged_samples[0].obs)
+    assert ragged_samples[0].act == [0.0, 0.0, float(Config.MIN_GREEN_DURATION)]
+    assert ragged_samples[0].rew == [0.0, 0.0]
+    assert ragged_samples[0].done == 1
+    assert ragged_samples[0].legal_action == [0, 1, 1, 1]
+    assert ragged_samples[1].act == [
+        0.0,
+        3.0,
+        float(Config.MIN_GREEN_DURATION + Config.DIM_OF_ACTION_DURATION - 1),
+    ]
+    assert ragged_samples[1].rew == [0.25, 0.0]
+    assert ragged_samples[1].done == 0
 
     preprocess_type = type("Preprocess", (), {})
     agent_type = type("Agent", (), {})

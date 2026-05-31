@@ -23,6 +23,8 @@ def normalize_phase_legal_action(legal_action, phase_count=4):
     if values.size == 0:
         return [1] * phase_count
 
+    values = np.nan_to_num(values, nan=0.0, posinf=0.0, neginf=0.0)
+
     if values.size == 1:
         return [1 if values[0] != 0 else 0] * phase_count
 

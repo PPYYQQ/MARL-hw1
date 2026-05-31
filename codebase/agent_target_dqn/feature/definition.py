@@ -37,6 +37,36 @@ ObsData = create_cls("ObsData", feature=None, legal_action=None)
 ActData = create_cls("ActData", junction_id=None, phase_index=None, duration=None)
 
 
+def _fixed_float_list(value, width, default=0.0):
+    try:
+        values = np.asarray(value, dtype=np.float32).flatten()
+    except (TypeError, ValueError):
+        values = np.asarray([], dtype=np.float32)
+
+    values = np.nan_to_num(values, nan=default, posinf=default, neginf=default)
+    if values.size < width:
+        values = np.pad(values, (0, width - values.size), constant_values=default)
+    elif values.size > width:
+        values = values[:width]
+    return values.astype(np.float32).tolist()
+
+
+def _fixed_action_list(value):
+    action = _fixed_float_list(value, 3)
+    max_duration = Config.MIN_GREEN_DURATION + Config.DIM_OF_ACTION_DURATION - 1
+    action[0] = 0.0
+    action[1] = float(np.clip(action[1], 0, Config.DIM_OF_ACTION_PHASE - 1))
+    action[2] = float(np.clip(action[2], Config.MIN_GREEN_DURATION, max_duration))
+    return action
+
+
+def _not_done_flag(value):
+    try:
+        return 1 if int(value) == 0 else 0
+    except (TypeError, ValueError):
+        return 1
+
+
 def sample_process(list_game_data):
     if not list_game_data:
         return []
@@ -48,23 +78,26 @@ def sample_process(list_game_data):
         if obs is None or act is None:
             continue
         try:
-            if len(act) < 3 or act[0] is None:
+            if len(act) < 3 or any(act[index] is None for index in range(3)):
                 continue
         except (TypeError, IndexError):
             continue
 
+        obs = _fixed_float_list(obs, Config.DIM_OF_OBSERVATION)
+        act = _fixed_action_list(act)
         legal_action = normalize_phase_legal_action(
             getattr(data, "legal_action", None),
             Config.DIM_OF_ACTION_PHASE,
         )
         reward = getattr(data, "rew", None)
         reward = reward if reward is not None else (0.0, 0.0)
+        reward = _fixed_float_list(reward, 2)
         sample_data = SampleData(
             obs=obs,
             _obs=None,
             act=act,
             rew=reward,
-            done=1 if getattr(data, "done", 0) == 0 else 0,
+            done=_not_done_flag(getattr(data, "done", 0)),
             legal_action=legal_action,
         )
 

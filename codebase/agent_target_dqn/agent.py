@@ -150,8 +150,7 @@ class Agent(BaseAgent):
                 return self.rule_based_action(raw_obs)
             return self.action_process(act_data[0])
         except Exception as err:
-            if self.logger:
-                self.logger.error(f"exploit fallback to rule_based_action: {err}")
+            self._log_error(f"exploit fallback to rule_based_action: {err}")
             return self.rule_based_action(raw_obs)
 
     def learn(self, list_sample_data):
@@ -181,8 +180,7 @@ class Agent(BaseAgent):
                     pass
             raise
 
-        if self.logger:
-            self.logger.info(f"save model {model_file_path} successfully")
+        self._log_info(f"save model {model_file_path} successfully")
 
     def load_model(self, path=None, id="1"):
         # When loading the model, you can load multiple files,
@@ -193,16 +191,14 @@ class Agent(BaseAgent):
         model_file_path = f"{path}/model.ckpt-{str(id)}.pkl"
         if not os.path.exists(model_file_path):
             if str(id) == "latest":
-                if self.logger:
-                    self.logger.info(f"skip load model, {model_file_path} does not exist yet")
+                self._log_info(f"skip load model, {model_file_path} does not exist yet")
                 return
             raise FileNotFoundError(model_file_path)
         try:
             model_state = torch.load(model_file_path, map_location=self.model.device)
         except Exception as err:
             if str(id) == "latest":
-                if self.logger:
-                    self.logger.info(f"skip load model, unreadable checkpoint {model_file_path}: {err}")
+                self._log_info(f"skip load model, unreadable checkpoint {model_file_path}: {err}")
                 return
             raise
         if isinstance(model_state, dict) and "state_dict" in model_state:
@@ -210,22 +206,35 @@ class Agent(BaseAgent):
         if not isinstance(model_state, dict):
             err = TypeError(f"checkpoint payload should be dict, got {type(model_state).__name__}")
             if str(id) == "latest":
-                if self.logger:
-                    self.logger.info(f"skip load model, invalid checkpoint {model_file_path}: {err}")
+                self._log_info(f"skip load model, invalid checkpoint {model_file_path}: {err}")
                 return
             raise err
         try:
             self.model.load_state_dict(model_state)
         except (RuntimeError, TypeError, ValueError) as err:
             if str(id) == "latest":
-                if self.logger:
-                    self.logger.info(f"skip load model, incompatible checkpoint {model_file_path}: {err}")
+                self._log_info(f"skip load model, incompatible checkpoint {model_file_path}: {err}")
                 return
             raise
         self.algorithm.update_target_q()
 
-        if self.logger:
-            self.logger.info(f"load model {model_file_path} successfully")
+        self._log_info(f"load model {model_file_path} successfully")
+
+    def _log_info(self, message):
+        if not self.logger:
+            return
+        try:
+            self.logger.info(message)
+        except Exception:
+            pass
+
+    def _log_error(self, message):
+        if not self.logger:
+            return
+        try:
+            self.logger.error(message)
+        except Exception:
+            pass
 
     def observation_process(self, raw_obs, extra_info=None):
         """

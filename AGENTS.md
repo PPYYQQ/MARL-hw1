@@ -80,6 +80,7 @@ Target-DQN 关键文件：
 - Target-DQN 使用独立 target network，并按 `TARGET_UPDATE_FREQ` 同步。
 - `reward_shaping()` 已返回非零奖励，基于相位压力、等待时间变化、排队和延误。
 - `reward_shaping()` 对终局或异常 observation 缺失 `frame_state` / `vehicles` 的情况保守返回零奖励，避免训练循环崩溃。
+- 训练 workflow 调用 reward shaping 时会隔离异常，奖励计算失败会记录错误并使用 `(0.0, 0.0)`。
 - `FeatureProcess.update_traffic_info()` 对缺失 `frame_state`、缺失 `vehicles` 或畸形车辆记录会保守跳过，避免异常帧中断特征处理。
 - `FeatureProcess` 会清洗 `frame_no`、`frame_time`、车辆 ID、车速和车道位置，等待时间/行驶距离/车道计数统计遇到异常动态字段会跳过单车而不是中断整帧。
 - `observation_process()`、`rule_based_action()` 和共享交通统计工具会保守处理缺失 `frame_state`、缺失 `vehicles`、缺失 `obs` 包装和畸形车辆/相位记录。

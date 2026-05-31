@@ -962,3 +962,18 @@
   - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
 - 下一步：
   - 平台环境可用后确认容灾 SDK 临时异常不会阻止 episode 继续执行；真实容灾信号仍能触发 break。
+
+### Step 65 - reward shaping 失败隔离
+
+- 状态：完成
+- Commit：`0c1503e`
+- 内容：
+  - workflow 增加 `_shape_reward()`，封装中间 transition 和终局 transition 的 `reward_shaping()` 调用。
+  - 奖励函数抛错时记录 `reward shaping failed` 并返回 `(0.0, 0.0)`，避免异常 observation、动作或 agent 状态直接中断 episode。
+  - 奖励函数返回 NaN/Inf 或异常结构时继续复用 `_reward_components()` 清洗为有限二元 reward。
+  - 无平台依赖测试覆盖 reward 返回非有限值、reward 函数抛错且 logger 后端也失败的路径；静态测试增加 safe reward shaping helper 锚点。
+- 验证：
+  - 已运行 `python -m compileall agent_target_dqn tests`、`python tests/test_target_dqn_features.py` 和 `python tests/test_target_dqn_static.py`，均通过。
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 平台环境可用后确认单步 reward 计算异常只影响该 transition 奖励，不会导致 episode 或 workflow 崩溃。

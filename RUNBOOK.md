@@ -113,9 +113,9 @@ python tests/test_target_dqn_smoke.py
 - repeated 字段是 dict 形态：当前 `vehicles`、`phases`、`lanes`、路网初始化和 reward 解析会兼容单条 dict 记录和 dict-of-records；若平台使用 protobuf repeated wrapper 或其它特殊容器，保存原始类型、repr 和可迭代行为后继续扩展。
 - `env reset failed`：当前 workflow 会跳过当前 episode 并在下一 epoch 重试；如果持续出现，检查环境配置、平台任务状态和 reset 返回协议。
 - `env step failed`：当前 workflow 会中止当前 episode 并丢弃未完成 collector；如果持续出现，优先确认动作合法性、平台环境状态和前一帧 observation。
-- `env.step()` 返回形态不一致：当前 workflow 支持对象式返回、dict/object step envelope、二元封装返回、Gym 四元返回、Gymnasium 五元返回和作业文档六元返回，并会保留对象式 `extra_info`；如果平台返回其他结构，需要保存原始返回值再扩展 `_normalize_step_result()`。
-- env_obs/obs 字段读取失败：当前 workflow 会兼容 dict 与属性对象字段读取，嵌套 `observation` / `obs` / `_obs` 和直接包含 `frame_state` / `legal_action` 的裸 observation 都会保留，`extra_info` / `_state` / `state` 都会作为额外信息读取；标量 observation / extra_info 会回退为空对象。如果频繁出现，需要保存原始环境返回类型，确认平台封装是否已经损坏。
-- 评估入口 observation 包装不同：当前 `Agent.exploit()` 会兼容 `obs`、`observation`、`_obs` 以及 `extra_info`、`_state`、`state`，如果评估仍固定输出默认动作，优先保存评估入口传入对象的类型和 repr。
+- `env.step()` 返回形态不一致：当前 workflow 支持对象式返回、dict/object step envelope、二元封装返回、Gym 四元返回、Gymnasium 五元返回和作业文档六元返回，并会保留对象式 `extra_info` / `_state` / `state` / `info`；如果平台返回其他结构，需要保存原始返回值再扩展 `_normalize_step_result()`。
+- env_obs/obs 字段读取失败：当前 workflow 会兼容 dict 与属性对象字段读取，嵌套 `observation` / `obs` / `_obs` 和直接包含 `frame_state` / `legal_action` 的裸 observation 都会保留，`extra_info` / `_state` / `state` / `info` 都会作为额外信息读取；标量 observation / extra_info 会回退为空对象。如果频繁出现，需要保存原始环境返回类型，确认平台封装是否已经损坏。
+- 评估入口 observation 包装不同：当前 `Agent.exploit()` 会兼容 `obs`、`observation`、`_obs` 以及 `extra_info`、`_state`、`state`、`info`，如果评估仍固定输出默认动作，优先保存评估入口传入对象的类型和 repr。
 - `terminated` / `truncated` 字段异常：当前 workflow 只把 bool true、非零有限数值或明确 true 字符串视为结束；未知字符串、NaN/Inf 和异常对象按 False 处理。
 - 样本 `done` 字段异常：当前 `sample_process()` 会把 bool、有限数值和 true/false 字符串统一转成 not_done 标记；未知字符串、NaN/Inf 和异常对象按非终局处理。
 - `agent reset failed`：当前 workflow 会跳过本局 episode，避免使用半初始化 agent 状态继续采样；如果反复出现，优先检查 `FeatureProcess.reset()` 和 agent 初始化状态。
@@ -131,7 +131,7 @@ python tests/test_target_dqn_smoke.py
 - `junction` / `target_junction` 是字符串：当前会先转换成有限整数再判断进口车道、路口内状态和等待时间归属，`"0"` 会匹配单路口，`"-1"` 会按无目标或不在路口处理；若平台提供其它哨兵值，保存原始车辆样例后扩展清洗规则。
 - 路网或车辆 ID 是字符串：当前会清洗 `junction_id`、`edge_id`、`lane_id`、`vehicle_config_id`、车辆 `lane` 和 `v_config_id`，避免路网 key 与车辆字段一个是 `"11"`、一个是 `11` 时相位压力、车道统计或 max speed 查找失效。
 - init_state 字段命名差异：当前路网初始化兼容 `j_id/e_id/l_id/v_config_id` 与 `junction_id/edge_id/lane_id/vehicle_config_id`；如果平台还有其它字段名，保存 `extra_info.init_state` 原始样例后补充别名。
-- 观测里有异常相位字段或帧号字段：当前相位 ID、duration、remaining duration 和相位年龄都会清洗为有限值；workflow 会从顶层 `frame_no` / `frameNo` 或嵌套 `extra_info` / `_state` / `state` 中回退读取帧号并清洗。若仍异常，优先保留原始 `frame_state.phases` 和 env_obs 返回样例。
+- 观测里有异常相位字段或帧号字段：当前相位 ID、duration、remaining duration 和相位年龄都会清洗为有限值；workflow 会从顶层 `frame_no` / `frameNo` 或嵌套 `extra_info` / `_state` / `state` / `info` 中回退读取帧号并清洗。若仍异常，优先保留原始 `frame_state.phases` 和 env_obs 返回样例。
 - 模型输入含 NaN/Inf 或异常 array-like：当前 `Model._prepare_input()` 会把非有限值归零，ragged 或转换失败的 Python observation 会补零或截断；如果仍出现非有限 Q 值，优先保留进入模型前的 feature。
 - reward 长期为 0：检查 `reward_shaping()` 是否收到真实车辆字段或 lane 字段，`vehicles` 和 `lanes` 是否同时为空，以及相位压力是否一直为 0。
 - loss 爆炸或 NaN：当前特征、样本和 learner 都会清洗 NaN/Inf，reward 还会限制极端延误项并裁剪到 `[-Config.REWARD_CLIP, Config.REWARD_CLIP]`；若仍出现，优先降低 `Config.LR`，再缩小 reward 权重并保留异常 observation 样例。

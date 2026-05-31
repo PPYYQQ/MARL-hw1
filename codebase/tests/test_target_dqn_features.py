@@ -1050,6 +1050,12 @@ def main():
     assert object_envelope_obs["observation"].legal_action == 1
     assert object_envelope_obs["truncated"] is True
     assert object_envelope_obs["extra_info"].frameNo == 18
+    info_envelope_reward, info_envelope_obs = _normalize_step_result(
+        {"observation": {"legal_action": 1}, "reward": 0.3, "done": False, "info": {"frameNo": 22}}
+    )
+    assert info_envelope_reward == 0.3
+    assert info_envelope_obs["frame_no"] == 22
+    assert info_envelope_obs["extra_info"] == {"frameNo": 22}
     bare_observation_object_step = AttrObject(frame_state=AttrObject(), legal_action=1)
     assert _normalize_step_result(bare_observation_object_step) == (0.0, bare_observation_object_step)
     assert _normalize_step_result(None) == (0.0, {})
@@ -1087,6 +1093,9 @@ def main():
     assert _safe_extra_info({"state": {"init_state": {"source": "state"}}}) == {
         "init_state": {"source": "state"}
     }
+    assert _safe_extra_info({"info": {"init_state": {"source": "info"}}}) == {
+        "init_state": {"source": "info"}
+    }
     assert _safe_extra_info({"extra_info": None}) == {}
     assert _safe_extra_info({"extra_info": 2}) == {}
     object_env_obs = AttrObject(
@@ -1115,6 +1124,7 @@ def main():
     assert _safe_frame_no({"extra_info": {"frame_no": 19}}) == 19
     assert _safe_frame_no({"_state": {"frame_no": "20"}}) == 20
     assert _safe_frame_no({"state": AttrObject(frameNo=21)}) == 21
+    assert _safe_frame_no({"info": {"frameNo": 22}}) == 22
     assert _safe_done_flag({"terminated": 1}, "terminated") is True
     assert _safe_done_flag({"terminated": 0}, "terminated") is False
     assert _safe_done_flag({"terminated": "true"}, "terminated") is True

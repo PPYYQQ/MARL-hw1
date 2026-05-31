@@ -522,7 +522,7 @@ def _normalize_step_record_result(step_result):
         return 0.0, step_result
 
     observation = _first_env_value(step_result, ("observation", "obs", "_obs"), {})
-    extra_info = _first_env_value(step_result, ("extra_info", "_state", "state"), {})
+    extra_info = _first_env_value(step_result, ("extra_info", "_state", "state", "info"), {})
     reward = _first_env_value(step_result, ("reward", "score", "env_reward"), 0.0)
     terminated = _first_env_value(step_result, ("terminated", "done"), False)
     truncated = _safe_env_value(step_result, "truncated", False)
@@ -586,6 +586,7 @@ def _looks_like_step_envelope(value):
             "extra_info",
             "_state",
             "state",
+            "info",
         )
     )
 
@@ -601,7 +602,7 @@ def _safe_observation(env_obs):
 
 
 def _safe_extra_info(env_obs):
-    for key in ("extra_info", "_state", "state"):
+    for key in ("extra_info", "_state", "state", "info"):
         extra_info = _first_env_value(env_obs, (key,), None)
         if _is_record(extra_info):
             return extra_info

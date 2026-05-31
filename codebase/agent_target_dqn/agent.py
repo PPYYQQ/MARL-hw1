@@ -247,7 +247,7 @@ class Agent(BaseAgent):
 
     def exploit(self, observation):
         raw_obs = _first_record_field(observation, ("obs", "observation", "_obs"), observation)
-        extra_info = _first_record_field(observation, ("extra_info", "_state", "state"), None)
+        extra_info = _first_record_field(observation, ("extra_info", "_state", "state", "info"), None)
         if raw_obs is None:
             raw_obs = {}
         try:

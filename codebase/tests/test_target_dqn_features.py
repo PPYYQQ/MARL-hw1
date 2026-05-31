@@ -100,6 +100,7 @@ def main():
         _handle_disaster_recovery,
         _load_latest_model,
         _looks_like_observation,
+        _looks_like_step_envelope,
         _need_to_predict,
         _normalize_reset_result,
         _normalize_step_result,
@@ -1027,8 +1028,28 @@ def main():
     raw_dict_step_reward, raw_dict_step_obs = _normalize_step_result({"frame_state": {}, "legal_action": 1})
     assert raw_dict_step_reward == 0.0
     assert raw_dict_step_obs == {"frame_state": {}, "legal_action": 1}
+    dict_envelope_reward, dict_envelope_obs = _normalize_step_result(
+        {"obs": {"legal_action": 1}, "reward": 0.9, "done": "true", "_state": {"frame_no": 17}}
+    )
+    assert dict_envelope_reward == 0.9
+    assert dict_envelope_obs["frame_no"] == 17
+    assert dict_envelope_obs["observation"] == {"legal_action": 1}
+    assert dict_envelope_obs["terminated"] == "true"
+    assert dict_envelope_obs["extra_info"] == {"frame_no": 17}
+    assert _safe_done_flag(dict_envelope_obs, "terminated") is True
     bare_object_step = AttrObject(frame_no=16, observation=AttrObject(legal_action=1))
-    assert _normalize_step_result(bare_object_step) == (0.0, bare_object_step)
+    bare_object_reward, bare_object_obs = _normalize_step_result(bare_object_step)
+    assert bare_object_reward == 0.0
+    assert bare_object_obs["frame_no"] == 16
+    assert bare_object_obs["observation"].legal_action == 1
+    object_envelope_step = AttrObject(_obs=AttrObject(legal_action=1), score=2.5, truncated=True, state=AttrObject(frame_no=18))
+    assert _looks_like_step_envelope(object_envelope_step) is True
+    object_envelope_reward, object_envelope_obs = _normalize_step_result(object_envelope_step)
+    assert object_envelope_reward == 2.5
+    assert object_envelope_obs["frame_no"] == 18
+    assert object_envelope_obs["observation"].legal_action == 1
+    assert object_envelope_obs["truncated"] is True
+    assert object_envelope_obs["extra_info"].frame_no == 18
     bare_observation_object_step = AttrObject(frame_state=AttrObject(), legal_action=1)
     assert _normalize_step_result(bare_observation_object_step) == (0.0, bare_observation_object_step)
     assert _normalize_step_result(None) == (0.0, {})

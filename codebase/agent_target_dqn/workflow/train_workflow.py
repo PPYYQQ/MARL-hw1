@@ -511,10 +511,38 @@ def _normalize_step_result(step_result):
             env_reward, env_obs = step_result[:2]
             return env_reward, env_obs if _is_record(env_obs) else {}
     if isinstance(step_result, dict):
-        return 0.0, step_result
+        return _normalize_step_record_result(step_result)
     if _is_record(step_result):
-        return 0.0, step_result
+        return _normalize_step_record_result(step_result)
     return 0.0, {}
+
+
+def _normalize_step_record_result(step_result):
+    if _looks_like_observation(step_result) or not _looks_like_step_envelope(step_result):
+        return 0.0, step_result
+
+    observation = _first_env_value(step_result, ("observation", "obs", "_obs"), {})
+    extra_info = _first_env_value(step_result, ("extra_info", "_state", "state"), {})
+    reward = _first_env_value(step_result, ("reward", "score", "env_reward"), 0.0)
+    terminated = _first_env_value(step_result, ("terminated", "done"), False)
+    truncated = _safe_env_value(step_result, "truncated", False)
+    frame_no = _safe_env_value(step_result, "frame_no", _safe_env_value(extra_info, "frame_no", 0))
+
+    return reward, {
+        "frame_no": frame_no,
+        "observation": observation if _is_record(observation) else {},
+        "terminated": terminated,
+        "truncated": truncated,
+        "extra_info": extra_info if _is_record(extra_info) else {},
+    }
+
+
+def _first_env_value(env_obs, keys, default=None):
+    for key in keys:
+        value = _safe_env_value(env_obs, key, None)
+        if value is not None:
+            return value
+    return default
 
 
 def _safe_env_value(env_obs, key, default):
@@ -542,9 +570,29 @@ def _looks_like_observation(value):
     )
 
 
+def _looks_like_step_envelope(value):
+    return _is_record(value) and any(
+        _safe_env_value(value, key, None) is not None
+        for key in (
+            "observation",
+            "obs",
+            "_obs",
+            "reward",
+            "score",
+            "env_reward",
+            "terminated",
+            "truncated",
+            "done",
+            "extra_info",
+            "_state",
+            "state",
+        )
+    )
+
+
 def _safe_observation(env_obs):
     for key in ("observation", "obs", "_obs"):
-        observation = _safe_env_value(env_obs, key, None)
+        observation = _first_env_value(env_obs, (key,), None)
         if _is_record(observation):
             return observation
     if _looks_like_observation(env_obs):
@@ -554,7 +602,7 @@ def _safe_observation(env_obs):
 
 def _safe_extra_info(env_obs):
     for key in ("extra_info", "_state", "state"):
-        extra_info = _safe_env_value(env_obs, key, None)
+        extra_info = _first_env_value(env_obs, (key,), None)
         if _is_record(extra_info):
             return extra_info
     return {}

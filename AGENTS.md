@@ -140,7 +140,7 @@ Target-DQN 关键文件：
 - Target-DQN 已将 `legal_action` 归一化为 4 维相位 mask，用于贪心预测、随机探索和规则兜底选相位。
 - Agent 推理侧对全零相位 mask 会回退为四个相位都可选，joint action mask 的空行也会回退为全动作可选，避免直接调用 `predict()` / `exploit()` 时无可采样动作导致崩溃。
 - 训练 workflow 已用同一归一化逻辑判断是否需要决策，兼容平台文档中的 `int32` 标量门控和 4 维相位 mask。
-- 训练 workflow 会归一化 `env.reset()` 的对象式返回、二元 tuple 返回和 `env.step()` 的对象式返回、二元、Gym 四元、Gymnasium 五元、作业文档六元 tuple 返回，兼容当前封装、常见环境封装与作业文档形式。
+- 训练 workflow 会归一化 `env.reset()` 的对象式返回、二元 tuple 返回和 `env.step()` 的对象式返回、dict/object step envelope、二元、Gym 四元、Gymnasium 五元、作业文档六元 tuple 返回，兼容当前封装、常见环境封装与作业文档形式。
 - 训练 workflow 会隔离 `env.reset()` 和 `env.step()` 抛出的平台异常；reset 失败跳过当前 episode，step 失败中止当前 episode。
 - 训练 workflow 对 reset/step 返回的 `observation` / `obs` / `_obs`、`extra_info` / `_state` / `state`、`frame_no`、结束标记和采样帧 `legal_action` 会安全读取；如果平台直接返回带 `frame_state` / `legal_action` 的裸 observation dict 或对象，也会按原始 observation 处理，避免被误归一化为空观测。
 - step/reset 归一化阶段会保留对象式 env_obs 和对象式 extra_info，避免先前字段读取兼容逻辑在进入安全 helper 前丢失平台 score 或 observation payload。

@@ -1615,3 +1615,19 @@
   - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
 - 下一步：
   - 平台运行后确认 `info` 中是否还包含更细的 score 或环境状态子容器；若平台监控字段仍为空，保存原始 `info` 样例后扩展 score alias。
+
+### Step 107 - 读取嵌套平台指标容器
+
+- 状态：完成
+- Commit：`cad2748`
+- 内容：
+  - workflow 新增 `METRIC_SOURCE_KEYS`，集中维护 `score`、`score_info`、`scoreInfo`、`metrics`、`env_info`、`info` 等平台指标容器别名。
+  - `_append_metric_sources()` 改为带 `seen` 集合和最大深度的有界递归，能读取 `info.env_info.metrics` 这类嵌套指标，同时避免循环引用卡住监控提取。
+  - 无平台依赖测试增加嵌套 `metrics` / `info.env_info.metrics` 中的 `total_score`、`avg_wait_time`、`switch_count` 提取覆盖；静态测试增加指标容器 alias 和有界递归锚点。
+  - 更新 `AGENTS.md`、`RUNBOOK.md` 和 `REPORT_DRAFT.md`，记录平台 score 监控已支持嵌套指标容器。
+- 验证：
+  - 已运行 `python -m compileall agent_target_dqn/workflow/train_workflow.py tests/test_target_dqn_features.py tests/test_target_dqn_static.py`，通过。
+  - 已运行 `python tests/test_target_dqn_features.py` 和 `python tests/test_target_dqn_static.py`，均通过。
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 平台运行后对比 monitor 上报与评估页面指标；如果仍缺字段，保存 env_reward/env_obs/info 样例后补充对应容器或字段别名。

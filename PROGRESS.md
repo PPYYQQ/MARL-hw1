@@ -1549,3 +1549,20 @@
   - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
 - 下一步：
   - 平台运行后确认 `env.reset()` / `env.step()` 的真实返回是否为裸 observation、嵌套 env_obs 或其它封装；若仍有空观测日志，保存原始返回 repr 后继续扩展归一化。
+
+### Step 103 - 兼容 observation 与 state 字段别名
+
+- 状态：完成
+- Commit：`c0b3297`
+- 内容：
+  - workflow 的 `_safe_observation()` 兼容 `observation`、`obs`、`_obs` 三种观测字段名。
+  - workflow 的 `_safe_extra_info()` 兼容 `extra_info`、`_state`、`state` 三种额外信息字段名。
+  - `Agent.exploit()` 兼容评估入口传入 `obs`、`observation`、`_obs` 观测包装和 `extra_info`、`_state`、`state` 信息包装，避免评估侧字段别名导致空 observation。
+  - 无平台依赖测试增加 dict 与对象式 alias env_obs 覆盖；静态测试增加 workflow 和 exploit 字段别名锚点。
+  - 更新 `AGENTS.md`、`RUNBOOK.md` 和 `REPORT_DRAFT.md`，记录作业文档中的 `observation/_obs`、`extra_info/_state` 别名已覆盖。
+- 验证：
+  - 已运行 `python -m compileall agent_target_dqn/agent.py agent_target_dqn/workflow/train_workflow.py tests/test_target_dqn_features.py tests/test_target_dqn_static.py`，通过。
+  - 已运行 `python tests/test_target_dqn_features.py` 和 `python tests/test_target_dqn_static.py`，均通过。
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 平台运行后确认 env_obs 和评估入口是否还有其它包装字段；若仍出现空 observation 或默认动作，保存原始类型和 repr 后继续补 alias。

@@ -228,6 +228,8 @@ def main():
     require("def _finite_float" in traffic_utils, "traffic helpers should sanitize scalar values")
     require("def _nonnegative_float" in traffic_utils, "traffic helpers should clamp non-negative traffic metrics")
     require("def _phase_array" in traffic_utils, "traffic helpers should normalize phase arrays")
+    require("def _vehicle_value" in traffic_utils, "traffic helpers should tolerate missing vehicle mapping fields")
+    require('target_junction = _vehicle_value(vehicle, "target_junction", 0)' in traffic_utils, "enter-lane checks should not require target_junction")
     require("if not np.isfinite(y_pos)" in traffic_utils, "lane position helper should reject non-finite positions")
     require("except Exception:" in traffic_utils, "traffic helpers should isolate unexpected array conversion failures")
     require("np.nan_to_num(values" in traffic_utils, "legal action normalizer should sanitize non-finite values")

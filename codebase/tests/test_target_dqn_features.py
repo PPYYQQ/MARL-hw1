@@ -76,6 +76,7 @@ def main():
         get_traffic_summary,
         get_traffic_trend,
         normalize_phase_legal_action,
+        on_enter_lane,
     )
     from agent_target_dqn.workflow.train_workflow import (
         _default_env_metric_snapshot,
@@ -138,6 +139,19 @@ def main():
             raise RuntimeError("legal action conversion failed")
 
     assert normalize_phase_legal_action(FailingLegalAction()) == [1, 1, 1, 1]
+
+    doc_style_vehicle = {
+        "lane": 11,
+        "junction": -1,
+        "speed": 0.0,
+        "waiting_time": 5.0,
+        "delay": 4.0,
+    }
+    assert on_enter_lane(doc_style_vehicle) is True
+    assert get_lane_statistics([doc_style_vehicle])["counts"][0] == 1.0
+    doc_phase_pressure, doc_totals = get_phase_pressure([doc_style_vehicle])
+    assert doc_phase_pressure[0] > 0.0
+    assert doc_totals["vehicle_count"] == 1
 
     vehicles = [
         {

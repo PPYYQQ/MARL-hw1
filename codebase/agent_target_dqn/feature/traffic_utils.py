@@ -62,6 +62,18 @@ def normalize_phase_legal_action(legal_action, phase_count=4):
     return mask
 
 
+def _vehicle_value(vehicle, key, default=None):
+    if isinstance(vehicle, dict):
+        try:
+            return vehicle.get(key, default)
+        except Exception:
+            return default
+    try:
+        return getattr(vehicle, key, default)
+    except Exception:
+        return default
+
+
 def on_enter_lane(vehicle):
     """
     This function determines whether the vehicle is located on the enter lane
@@ -75,7 +87,7 @@ def on_enter_lane(vehicle):
     参数:
         - vehicle
     """
-    lane_id = vehicle["lane"]
+    lane_id = _vehicle_value(vehicle, "lane")
     inlane_code = {
         11: 0,
         10: 1,
@@ -92,7 +104,8 @@ def on_enter_lane(vehicle):
         163: 12,
         162: 13,
     }
-    if lane_id in inlane_code and vehicle["target_junction"] != -1:
+    target_junction = _vehicle_value(vehicle, "target_junction", 0)
+    if lane_id in inlane_code and target_junction != -1:
         return True
     else:
         return False
@@ -111,8 +124,7 @@ def in_junction(vehicle):
     参数:
         - vehicle
     """
-    junction = vehicle["junction"]
-    target_junction = vehicle["target_junction"]
+    junction = _vehicle_value(vehicle, "junction", -1)
     if junction != -1:
         return True
     else:
@@ -132,8 +144,8 @@ def on_depart_lane(vehicle):
     参数:
         - vehicle
     """
-    junction = vehicle["junction"]
-    target_junction = vehicle["target_junction"]
+    junction = _vehicle_value(vehicle, "junction", -1)
+    target_junction = _vehicle_value(vehicle, "target_junction", -1)
     # Prevent vehicles in the right turn lane from being judged as being in the exit lane
     # 避免车辆在右转车道被判定为在出口车道上
     if (on_enter_lane(vehicle) or in_junction(vehicle)) or (junction == -1 and target_junction != -1):

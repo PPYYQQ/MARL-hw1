@@ -103,7 +103,7 @@
 
 交通统计工具会清洗车辆速度、等待时间、延误、相位压力、交通趋势和历史统计中的 NaN/Inf；最终 observation 返回前也会统一补齐或截断到 `DIM_OF_OBSERVATION`，并把非有限特征归零。这样即使平台返回少量异常车辆字段，也不会把 NaN/Inf 送入模型推理或 reward 计算。
 
-相位时间特征、相位服务年龄、reward 公平性项和 workflow 帧号读取也使用有限值清洗；异常 `phase_id`、`duration`、`remaining_duration`、`frame_no` / `frameNo` 或旧相位服务记录会回退为保守默认值。相位记录读取会兼容 `s_id` / `signal_id`、`phase_id` / `phase_idx` / `current_phase`、`remaining_duration` / `remaining_time` 等字段别名，适配平台对象或封装层命名差异。workflow 帧号会优先读取顶层字段，也会从 `extra_info` / `_state` / `state` / `info` 中回退读取，适配平台把帧号放在额外信息对象里的返回形态。
+相位时间特征、相位服务年龄、reward 公平性项和 workflow 帧号读取也使用有限值清洗；异常 `phase_id`、`duration`、`remaining_duration`、`frame_no` / `frameNo` 或旧相位服务记录会回退为保守默认值。相位记录读取会兼容 `s_id` / `signal_id` / `signalId`、`phase_id` / `phase_idx` / `phase` / `current_phase` / `currentPhase`、`remaining_duration` / `remaining_time` / `remainingTime` 等字段别名，适配平台对象或封装层命名差异。workflow 帧号会优先读取顶层字段，也会从 `extra_info` / `_state` / `state` / `info` 中回退读取，适配平台把帧号放在额外信息对象里的返回形态。
 
 如果后续平台评估显示当前状态表达不足，可增加更长时间窗口或更细粒度的车道趋势。
 

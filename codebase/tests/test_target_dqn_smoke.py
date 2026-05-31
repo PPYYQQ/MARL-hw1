@@ -95,7 +95,7 @@ def make_fake_obs():
 def make_phase_alias_obs():
     obs = make_fake_obs()
     obs["frame_state"]["phases"] = [
-        {"signal_id": 0, "current_phase": 2, "duration": 24, "remaining_time": 6}
+        {"signalId": 0, "phase": 2, "duration": 24, "remainingTime": 6}
     ]
     return obs
 

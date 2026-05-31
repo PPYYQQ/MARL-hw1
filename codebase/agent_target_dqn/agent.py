@@ -112,15 +112,26 @@ _RECORD_FIELD_KEYS = {
     "s_id",
     "signal_id",
     "signal_idx",
+    "signalId",
+    "signalIdx",
     "phase_id",
     "phase_idx",
+    "phase",
+    "phaseId",
+    "phaseIdx",
     "current_phase",
     "current_phase_id",
+    "currentPhase",
+    "currentPhaseId",
     "duration",
     "remaining_duration",
     "remaining_time",
     "remain_duration",
     "remain_time",
+    "remainingDuration",
+    "remainingTime",
+    "remainDuration",
+    "remainTime",
     "lane_id",
     "v_count",
     "congestion",
@@ -603,14 +614,37 @@ class Agent(BaseAgent):
             return phase_feature + [0.0, 0.0, 0.0, 0.0]
 
         phase_id = self._safe_action_index(
-            self._phase_record_value(phase_info, ("phase_id", "phase_idx", "current_phase", "current_phase_id"), 0),
+            self._phase_record_value(
+                phase_info,
+                (
+                    "phase_id",
+                    "phase_idx",
+                    "phase",
+                    "phaseId",
+                    "phaseIdx",
+                    "current_phase",
+                    "current_phase_id",
+                    "currentPhase",
+                    "currentPhaseId",
+                ),
+                0,
+            ),
             Config.DIM_OF_ACTION_PHASE,
         )
         duration = _safe_nonnegative_float(self._phase_record_value(phase_info, ("duration",), 0.0))
         remaining_duration = _safe_nonnegative_float(
             self._phase_record_value(
                 phase_info,
-                ("remaining_duration", "remaining_time", "remain_duration", "remain_time"),
+                (
+                    "remaining_duration",
+                    "remaining_time",
+                    "remain_duration",
+                    "remain_time",
+                    "remainingDuration",
+                    "remainingTime",
+                    "remainDuration",
+                    "remainTime",
+                ),
                 0.0,
             )
         )
@@ -637,7 +671,21 @@ class Agent(BaseAgent):
         self.preprocess.phase_last_served_frame = last_served
         if phase_info:
             phase_id = self._safe_action_index(
-                self._phase_record_value(phase_info, ("phase_id", "phase_idx", "current_phase", "current_phase_id"), 0),
+                self._phase_record_value(
+                    phase_info,
+                    (
+                        "phase_id",
+                        "phase_idx",
+                        "phase",
+                        "phaseId",
+                        "phaseIdx",
+                        "current_phase",
+                        "current_phase_id",
+                        "currentPhase",
+                        "currentPhaseId",
+                    ),
+                    0,
+                ),
                 Config.DIM_OF_ACTION_PHASE,
             )
             last_served[phase_id] = frame_no
@@ -649,7 +697,14 @@ class Agent(BaseAgent):
     def _current_phase_info(self, frame_state):
         phases = _as_record_list(_safe_mapping_get(frame_state, "phases", []))
         for candidate in phases:
-            if self._phase_record_value(candidate, ("s_id", "signal_id", "signal_idx"), 0) == 0:
+            if (
+                self._phase_record_value(
+                    candidate,
+                    ("s_id", "signal_id", "signal_idx", "signalId", "signalIdx"),
+                    0,
+                )
+                == 0
+            ):
                 return candidate
         for candidate in phases:
             return candidate

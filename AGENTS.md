@@ -121,7 +121,7 @@ Target-DQN 关键文件：
 - 训练时已将 `[phase_idx, duration_seconds]` 转换为 80 维联合动作索引，避免 Q head gather 越界。
 - 观测处理已兼容 `position_in_lane["y"]` 的米/毫米单位。
 - 交通统计工具会清洗车辆 `speed`、`waiting_time`、`delay`、历史趋势和相位压力中的 NaN/Inf，避免异常车辆字段污染 reward、规则兜底和观测统计。
-- 相位时间特征、相位年龄、reward 公平性项和 workflow `frame_no` 会清洗 NaN/Inf/Overflow；相位特征会兼容 `s_id` / `signal_id`、`phase_id` / `phase_idx` / `current_phase`、`remaining_duration` / `remaining_time` 等别名，workflow 帧号会从顶层 `frame_no` / `frameNo` 或嵌套 `extra_info` / `_state` / `state` 中回退读取，避免异常相位字段或帧号中断推理和奖励计算。
+- 相位时间特征、相位年龄、reward 公平性项和 workflow `frame_no` 会清洗 NaN/Inf/Overflow；相位特征会兼容 `s_id` / `signal_id` / `signalId`、`phase_id` / `phase_idx` / `phase` / `current_phase` / `currentPhase`、`remaining_duration` / `remaining_time` / `remainingTime` 等别名，workflow 帧号会从顶层 `frame_no` / `frameNo` 或嵌套 `extra_info` / `_state` / `state` 中回退读取，避免异常相位字段或帧号中断推理和奖励计算。
 - `observation_process()` 会在返回前统一清洗最终特征向量，保证长度为 `Config.DIM_OF_OBSERVATION` 且非有限值归零。
 - `Model.forward()` 会把单条一维 observation 转成 batch，并对异常长度或 ragged Python batch observation 做补零或截断，避免输入形状差异直接触发线性层错误。
 - `Model.forward()` 的 `_prepare_input()` 会统一清洗 NaN/Inf，异常 array-like observation 转换失败会补零，避免直接模型调用产生非有限 Q 值。

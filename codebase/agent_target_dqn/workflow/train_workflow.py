@@ -107,7 +107,7 @@ def run_episodes(n_episode, env, agent, usr_conf, logger):
 
             # At the start of each environment, loading the latest model file
             # 每次对局开始时, 加载最新model文件
-            agent.load_model(id="latest")
+            _load_latest_model(agent, logger)
 
             # Reset the environment and get the initial extra_info
             # 重置环境, 并获取初始状态
@@ -330,6 +330,15 @@ def _save_latest_model(agent, logger):
         return True
     except Exception as err:
         _log_error(logger, f"save latest model failed: {err}")
+        return False
+
+
+def _load_latest_model(agent, logger):
+    try:
+        agent.load_model(id="latest")
+        return True
+    except Exception as err:
+        _log_error(logger, f"load latest model failed: {err}")
         return False
 
 

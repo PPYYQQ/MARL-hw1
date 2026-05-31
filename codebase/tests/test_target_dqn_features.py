@@ -74,6 +74,7 @@ def main():
         _log_error,
         _log_info,
         _get_training_metrics,
+        _load_latest_model,
         _need_to_predict,
         _normalize_reset_result,
         _normalize_step_result,
@@ -516,6 +517,22 @@ def main():
     assert _save_latest_model(saving_agent, FailingLogger()) is True
     assert saving_agent.saved_ids == ["latest"]
     assert _save_latest_model(FailingSaveAgent(), FailingLogger()) is False
+
+    class LoadingAgent:
+        def __init__(self):
+            self.loaded_ids = []
+
+        def load_model(self, id):
+            self.loaded_ids.append(id)
+
+    class FailingLoadAgent:
+        def load_model(self, id):
+            raise RuntimeError("load failed")
+
+    loading_agent = LoadingAgent()
+    assert _load_latest_model(loading_agent, FailingLogger()) is True
+    assert loading_agent.loaded_ids == ["latest"]
+    assert _load_latest_model(FailingLoadAgent(), FailingLogger()) is False
 
     class SendingAgent:
         def __init__(self):

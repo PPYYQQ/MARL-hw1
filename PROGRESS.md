@@ -1729,3 +1729,19 @@
   - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
 - 下一步：
   - 平台运行后确认真实 Vehicle 字段是否还有其它命名，例如速度或延误的单位/别名；若相位压力或等待统计仍异常，保存原始车辆样例继续扩展字段映射。
+
+### Step 114 - 兼容评分驼峰字段别名
+
+- 状态：完成
+- Commit：`043070e`
+- 内容：
+  - workflow 的 `ENV_SCORE_ALIASES` 扩展到 `totalScore`、`envScore`、`finalScore`、`avgDelay`、`avgJunctionDelay`、`avgQueueLength`、`avgWaitingTime`、`switchPenalty`、`signalSwitchCount` 等平台常见驼峰评分字段。
+  - `_env_score_metrics()` 既保留 snake_case 评分字段和嵌套指标容器读取，也能从 `scoreInfo` / `envInfo.metrics` 这类驼峰容器里提取 score、延误、排队、等待和切换惩罚。
+  - 无平台依赖测试增加嵌套驼峰评分字段提取覆盖；静态测试增加评分字段 alias 锚点，避免后续误删。
+  - 更新 `AGENTS.md`、`RUNBOOK.md` 和 `REPORT_DRAFT.md`，记录平台 score 监控已兼容驼峰评分字段。
+- 验证：
+  - 已运行 `python -m compileall agent_target_dqn/workflow/train_workflow.py tests/test_target_dqn_features.py tests/test_target_dqn_static.py`，通过。
+  - 已运行 `python tests/test_target_dqn_features.py` 和 `python tests/test_target_dqn_static.py`，均通过。
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 平台短训后对照评估页面确认监控中的 `env_score`、`avg_delay`、`avg_queue_length`、`avg_waiting_time` 和 `switch_penalty` 是否被实时填充；若为空，保存原始 score/env_obs/info 样例继续补 alias。

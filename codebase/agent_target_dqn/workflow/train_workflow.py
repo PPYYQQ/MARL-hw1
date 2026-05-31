@@ -20,6 +20,34 @@ from tools.metrics_utils import get_training_metrics
 from common_python.utils.workflow_disaster_recovery import handle_disaster_recovery
 
 
+ENV_SCORE_ALIASES = {
+    "env_score": ("score", "total_score", "total", "final_score"),
+    "avg_delay": ("avg_delay", "average_delay", "avg_junction_delay", "junction_delay", "delay"),
+    "avg_queue_length": (
+        "avg_queue_length",
+        "average_queue_length",
+        "avg_queue",
+        "queue_length",
+        "queue",
+    ),
+    "avg_waiting_time": (
+        "avg_waiting_time",
+        "average_waiting_time",
+        "avg_wait_time",
+        "waiting_time",
+    ),
+    "switch_penalty": (
+        "switch_penalty",
+        "phase_change_penalty",
+        "signal_switch_penalty",
+        "signal_change_penalty",
+        "signal_switch_count",
+        "phase_change_count",
+        "switch_count",
+    ),
+}
+
+
 def workflow(envs, agents, logger=None, monitor=None, *args, **kwargs):
     env, agent = envs[0], agents[0]
     epoch_num = 100000
@@ -34,6 +62,7 @@ def workflow(envs, agents, logger=None, monitor=None, *args, **kwargs):
         "duration_reward": 0,
         "data_length": 0,
     }
+    monitor_data.update(_default_env_metric_snapshot())
     last_report_monitor_time = time.time()
 
     # Read and validate configuration file
@@ -47,9 +76,10 @@ def workflow(envs, agents, logger=None, monitor=None, *args, **kwargs):
         epoch_total_rew = 0
         epoch_phase_rew = 0
         epoch_duration_rew = 0
+        env_metric_snapshot = _default_env_metric_snapshot()
 
         data_length = 0
-        for g_data in run_episodes(episode_num_every_epoch, env, agent, usr_conf, logger):
+        for g_data in run_episodes(episode_num_every_epoch, env, agent, usr_conf, logger, env_metric_snapshot):
             batch_length, batch_phase_rew, batch_duration_rew = _sample_batch_stats(g_data, logger)
             data_length += batch_length
             epoch_phase_rew += batch_phase_rew
@@ -81,17 +111,22 @@ def workflow(envs, agents, logger=None, monitor=None, *args, **kwargs):
             monitor_data["phase_reward"] = avg_phase_reward
             monitor_data["duration_reward"] = avg_duration_reward
             monitor_data["data_length"] = data_length
+            monitor_data.update(env_metric_snapshot)
             if _put_monitor_data(monitor, monitor_data, logger):
                 last_report_monitor_time = now
 
         _log_info(
             logger,
             f"Avg Step Reward: {avg_step_reward}, Avg Phase Reward: {avg_phase_reward}, "
-            f"Avg Duration Reward: {avg_duration_reward}, Epoch: {epoch}, Data Length: {data_length}",
+            f"Avg Duration Reward: {avg_duration_reward}, Env Score: {env_metric_snapshot['env_score']}, "
+            f"Avg Delay: {env_metric_snapshot['avg_delay']}, Avg Queue Length: "
+            f"{env_metric_snapshot['avg_queue_length']}, Avg Waiting Time: "
+            f"{env_metric_snapshot['avg_waiting_time']}, Switch Penalty: "
+            f"{env_metric_snapshot['switch_penalty']}, Epoch: {epoch}, Data Length: {data_length}",
         )
 
 
-def run_episodes(n_episode, env, agent, usr_conf, logger):
+def run_episodes(n_episode, env, agent, usr_conf, logger, env_metric_snapshot=None):
     try:
         train_test_quick_stop = os.environ.get("is_train_test", "False").lower() == "true"
         for _ in range(n_episode):
@@ -157,6 +192,7 @@ def run_episodes(n_episode, env, agent, usr_conf, logger):
                 if step_result is None:
                     break
                 env_reward, env_obs = step_result
+                _update_env_metric_snapshot(env_metric_snapshot, env_reward, env_obs)
                 # Disaster recovery
                 # 容灾
                 if _handle_disaster_recovery(env_obs, logger):
@@ -230,6 +266,69 @@ def _reward_components(reward):
     except (TypeError, ValueError, IndexError):
         return 0.0, 0.0
     return phase_reward, duration_reward
+
+
+def _default_env_metric_snapshot():
+    return {name: 0.0 for name in ENV_SCORE_ALIASES}
+
+
+def _update_env_metric_snapshot(snapshot, env_reward, env_obs):
+    if snapshot is None:
+        return {}
+    metrics = _env_score_metrics(env_reward, env_obs)
+    snapshot.update(metrics)
+    return metrics
+
+
+def _env_score_metrics(env_reward, env_obs=None):
+    metrics = {}
+    sources = []
+    _append_metric_sources(sources, env_reward)
+    _append_metric_sources(sources, env_obs)
+    _append_metric_sources(sources, _safe_extra_info(env_obs))
+
+    direct_score = _optional_finite_float(env_reward)
+    if direct_score is not None:
+        metrics["env_score"] = direct_score
+
+    for metric_name, aliases in ENV_SCORE_ALIASES.items():
+        for source in sources:
+            value = _source_metric_value(source, aliases)
+            if value is not None:
+                metrics[metric_name] = value
+                break
+    return metrics
+
+
+def _append_metric_sources(sources, source):
+    if source is None:
+        return
+    sources.append(source)
+    for key in ("score", "score_info", "scoreInfo"):
+        nested_source = _source_raw_value(source, key)
+        if nested_source is not None and nested_source is not source:
+            sources.append(nested_source)
+
+
+def _source_metric_value(source, aliases):
+    for alias in aliases:
+        value = _source_raw_value(source, alias)
+        finite_value = _optional_finite_float(value)
+        if finite_value is not None:
+            return finite_value
+    return None
+
+
+def _source_raw_value(source, key):
+    if isinstance(source, dict):
+        try:
+            return source.get(key)
+        except Exception:
+            return None
+    try:
+        return getattr(source, key)
+    except Exception:
+        return None
 
 
 def _sample_batch_stats(sample_data, logger):
@@ -337,6 +436,16 @@ def _finite_float(value):
         return 0.0
     if not math.isfinite(value):
         return 0.0
+    return value
+
+
+def _optional_finite_float(value):
+    try:
+        value = float(value)
+    except (TypeError, ValueError, OverflowError):
+        return None
+    if not math.isfinite(value):
+        return None
     return value
 
 

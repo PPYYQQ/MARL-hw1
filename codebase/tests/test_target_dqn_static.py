@@ -252,6 +252,17 @@ def main():
     require("np.flatnonzero" in agent, "random exploration should sample only legal phase actions")
 
     require("phase_reward" in workflow and "duration_reward" in workflow, "workflow should monitor reward components")
+    require("env_score" in workflow and "avg_delay" in workflow, "workflow should monitor platform score components")
+    require("ENV_SCORE_ALIASES" in workflow, "workflow platform score aliases should be centralized")
+    require("def _default_env_metric_snapshot" in workflow, "workflow should initialize score metric snapshots")
+    require("def _env_score_metrics" in workflow, "workflow should extract platform score metrics safely")
+    require("def _update_env_metric_snapshot" in workflow, "workflow should update score metric snapshots safely")
+    require(
+        "_update_env_metric_snapshot(env_metric_snapshot, env_reward, env_obs)" in workflow,
+        "workflow should update platform score metrics after env.step",
+    )
+    require("score_info" in workflow and "scoreInfo" in workflow, "workflow should inspect common score info containers")
+    require("def _optional_finite_float" in workflow, "workflow score metrics should reject non-finite values")
     require("def _shape_reward" in workflow, "workflow reward shaping should be isolated")
     require("_shape_reward(obs, last_predict_act, agent, logger)" in workflow, "workflow should shape intermediate rewards through helper")
     require("_shape_reward(_obs, last_predict_act, agent, logger)" in workflow, "workflow should shape terminal rewards through helper")

@@ -77,6 +77,8 @@ def main():
         normalize_phase_legal_action,
     )
     from agent_target_dqn.workflow.train_workflow import (
+        _default_env_metric_snapshot,
+        _env_score_metrics,
         _log_error,
         _log_info,
         _get_training_metrics,
@@ -107,6 +109,7 @@ def main():
         _should_log_progress,
         _step_env,
         _update_traffic_info,
+        _update_env_metric_snapshot,
     )
 
     assert Config.duration_index_to_seconds(0) == Config.MIN_GREEN_DURATION
@@ -504,6 +507,40 @@ def main():
     assert _reward_components((1.5, float("nan"))) == (1.5, 0.0)
     assert _reward_components((float("inf"), 2.0)) == (0.0, 2.0)
     assert _reward_components("bad") == (0.0, 0.0)
+
+    class ScoreObject:
+        average_waiting_time = 7.0
+        phase_change_penalty = 2.0
+
+    score_metrics = _env_score_metrics(
+        {
+            "score_info": {
+                "total_score": 88.0,
+                "avg_delay": 2.5,
+                "avg_queue_length": 4.0,
+            }
+        },
+        {"extra_info": {"score_info": ScoreObject()}},
+    )
+    assert score_metrics["env_score"] == 88.0
+    assert score_metrics["avg_delay"] == 2.5
+    assert score_metrics["avg_queue_length"] == 4.0
+    assert score_metrics["avg_waiting_time"] == 7.0
+    assert score_metrics["switch_penalty"] == 2.0
+    assert _env_score_metrics(3.5)["env_score"] == 3.5
+
+    env_metric_snapshot = _default_env_metric_snapshot()
+    assert env_metric_snapshot["env_score"] == 0.0
+    updated_metrics = _update_env_metric_snapshot(
+        env_metric_snapshot,
+        {"score_info": {"total_score": 12.0, "avg_delay": float("nan")}},
+        {"score": {"average_queue_length": 5.0}},
+    )
+    assert updated_metrics == {"env_score": 12.0, "avg_queue_length": 5.0}
+    assert env_metric_snapshot["env_score"] == 12.0
+    assert env_metric_snapshot["avg_delay"] == 0.0
+    assert env_metric_snapshot["avg_queue_length"] == 5.0
+    assert _update_env_metric_snapshot(None, 1.0, {}) == {}
 
     class RewardData:
         def __init__(self, reward):

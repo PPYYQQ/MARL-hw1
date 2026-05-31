@@ -110,10 +110,17 @@ _RECORD_FIELD_KEYS = {
     "delay",
     "waiting_time",
     "s_id",
+    "signal_id",
+    "signal_idx",
     "phase_id",
     "phase_idx",
+    "current_phase",
+    "current_phase_id",
     "duration",
     "remaining_duration",
+    "remaining_time",
+    "remain_duration",
+    "remain_time",
     "lane_id",
     "v_count",
     "congestion",
@@ -589,25 +596,24 @@ class Agent(BaseAgent):
         ]
 
     def _phase_feature(self, frame_state):
-        phases = _as_record_list(_safe_mapping_get(frame_state, "phases", []))
-        phase_info = {}
-        for candidate in phases:
-            if _safe_mapping_get(candidate, "s_id", 0) == 0:
-                phase_info = candidate
-                break
-        if not phase_info and phases:
-            phase_info = phases[0]
+        phase_info = self._current_phase_info(frame_state)
 
         phase_feature = [0.0] * Config.DIM_OF_ACTION_PHASE
         if not phase_info:
             return phase_feature + [0.0, 0.0, 0.0, 0.0]
 
         phase_id = self._safe_action_index(
-            _safe_mapping_get(phase_info, "phase_id", _safe_mapping_get(phase_info, "phase_idx", 0)),
+            self._phase_record_value(phase_info, ("phase_id", "phase_idx", "current_phase", "current_phase_id"), 0),
             Config.DIM_OF_ACTION_PHASE,
         )
-        duration = _safe_nonnegative_float(_safe_mapping_get(phase_info, "duration", 0.0))
-        remaining_duration = _safe_nonnegative_float(_safe_mapping_get(phase_info, "remaining_duration", 0.0))
+        duration = _safe_nonnegative_float(self._phase_record_value(phase_info, ("duration",), 0.0))
+        remaining_duration = _safe_nonnegative_float(
+            self._phase_record_value(
+                phase_info,
+                ("remaining_duration", "remaining_time", "remain_duration", "remain_time"),
+                0.0,
+            )
+        )
         elapsed_duration = max(duration - remaining_duration, 0.0)
 
         phase_feature[phase_id] = 1.0
@@ -631,7 +637,7 @@ class Agent(BaseAgent):
         self.preprocess.phase_last_served_frame = last_served
         if phase_info:
             phase_id = self._safe_action_index(
-                _safe_mapping_get(phase_info, "phase_id", _safe_mapping_get(phase_info, "phase_idx", 0)),
+                self._phase_record_value(phase_info, ("phase_id", "phase_idx", "current_phase", "current_phase_id"), 0),
                 Config.DIM_OF_ACTION_PHASE,
             )
             last_served[phase_id] = frame_no
@@ -643,11 +649,18 @@ class Agent(BaseAgent):
     def _current_phase_info(self, frame_state):
         phases = _as_record_list(_safe_mapping_get(frame_state, "phases", []))
         for candidate in phases:
-            if _safe_mapping_get(candidate, "s_id", 0) == 0:
+            if self._phase_record_value(candidate, ("s_id", "signal_id", "signal_idx"), 0) == 0:
                 return candidate
         for candidate in phases:
             return candidate
         return {}
+
+    def _phase_record_value(self, phase_info, keys, default=None):
+        for key in keys:
+            value = _safe_mapping_get(phase_info, key, None)
+            if value is not None:
+                return value
+        return default
 
     def _traffic_feature(self, traffic_summary):
         traffic_feature = [

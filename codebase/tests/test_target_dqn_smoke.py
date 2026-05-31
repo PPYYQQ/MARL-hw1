@@ -92,6 +92,14 @@ def make_fake_obs():
     }
 
 
+def make_phase_alias_obs():
+    obs = make_fake_obs()
+    obs["frame_state"]["phases"] = [
+        {"signal_id": 0, "current_phase": 2, "duration": 24, "remaining_time": 6}
+    ]
+    return obs
+
+
 def make_extra_info():
     return {
         "init_state": {
@@ -191,6 +199,10 @@ def main():
     obs_data_without_extra = agent.observation_process(make_fake_obs(), None)
     assert len(obs_data_without_extra.feature) == Config.DIM_OF_OBSERVATION
     assert len(agent.preprocess.traffic_history) == 2
+    alias_phase_obs_data = agent.observation_process(make_phase_alias_obs(), None)
+    assert len(alias_phase_obs_data.feature) == Config.DIM_OF_OBSERVATION
+    assert alias_phase_obs_data.feature[phase_feature_start + 2] == 1.0
+    assert abs(alias_phase_obs_data.feature[phase_feature_start + 5] - (6.0 / Config.MAX_GREEN_DURATION)) < 1e-6
     empty_obs_data = agent.observation_process({}, None)
     assert len(empty_obs_data.feature) == Config.DIM_OF_OBSERVATION
     assert empty_obs_data.legal_action == [1, 1, 1, 1]

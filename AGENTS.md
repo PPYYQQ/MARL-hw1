@@ -99,6 +99,7 @@ Target-DQN 关键文件：
 - `load_model(id="latest")` 会跳过缺失、不可读、payload 非 dict 或结构不兼容的 checkpoint，避免坏 `latest` 卡住每局加载。
 - workflow 周期性保存 `latest` checkpoint 失败时只记录错误并节流重试，不会中断当前训练循环。
 - 四个 agent 入口已对 `torch.set_num_threads()` 和 `torch.set_num_interop_threads()` 的 `RuntimeError` 做容错，避免平台预先启动 Torch 并行后导入 agent 崩溃。
+- workflow 读取平台训练指标时会隔离异常，`get_training_metrics()` 临时失败只记录错误并返回空指标。
 - Target-DQN 已将 `legal_action` 归一化为 4 维相位 mask，用于贪心预测、随机探索和规则兜底选相位。
 - 训练 workflow 已用同一归一化逻辑判断是否需要决策，兼容平台文档中的 `int32` 标量门控和 4 维相位 mask。
 - 训练 workflow 会归一化 `env.reset()` 的二元 tuple 返回和 `env.step()` 的二元/六元 tuple 返回，兼容当前封装与作业文档形式。

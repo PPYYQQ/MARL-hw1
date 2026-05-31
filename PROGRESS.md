@@ -887,3 +887,18 @@
   - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
 - 下一步：
   - 平台环境可用后确认 checkpoint 目录权限或磁盘短暂异常时训练仍继续，并在下一保存周期重试 `latest`。
+
+### Step 60 - 平台训练指标读取失败隔离
+
+- 状态：完成
+- Commit：`16ce1cd`
+- 内容：
+  - workflow 增加 `_get_training_metrics()`，封装平台 `get_training_metrics()` 调用。
+  - 指标服务抛错时记录 `get training metrics failed` 并返回空字典，避免非核心监控读取失败中断 episode。
+  - 指标返回非字典对象时也按空指标处理，避免后续日志格式假设导致异常。
+  - 无平台依赖测试覆盖指标读取成功、返回 `None` 和抛错且 logger 后端也失败的路径；静态测试增加 safe metrics helper 锚点。
+- 验证：
+  - 已运行 `python -m compileall agent_target_dqn tests`、`python tests/test_target_dqn_features.py` 和 `python tests/test_target_dqn_static.py`，均通过。
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 平台环境可用后确认 metrics 服务短暂异常时训练 episode 仍继续，并在后续轮次恢复指标日志。

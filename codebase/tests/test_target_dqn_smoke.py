@@ -264,6 +264,10 @@ def main():
     assert short_outputs[0].shape == (1, Config.DIM_OF_ACTION)
     long_outputs = agent.model([obs_data.feature + [0.0] * 5])[0]
     assert long_outputs[0].shape == (1, Config.DIM_OF_ACTION)
+    ragged_outputs = agent.model([obs_data.feature[:-3], obs_data.feature + [0.0] * 3])[0]
+    assert ragged_outputs[0].shape == (2, Config.DIM_OF_ACTION)
+    invalid_row_outputs = agent.model([obs_data.feature, ["bad"]])[0]
+    assert invalid_row_outputs[0].shape == (2, Config.DIM_OF_ACTION)
     action_tensor = torch.tensor([[0, 2, Config.MIN_GREEN_DURATION + 5], [0, 99, 999]], dtype=torch.float32)
     action_indices = algorithm._action_to_joint_index(action_tensor)
     assert action_indices.tolist() == [[45], [Config.DIM_OF_ACTION - 1]]

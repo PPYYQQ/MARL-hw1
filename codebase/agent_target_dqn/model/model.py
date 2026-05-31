@@ -62,7 +62,7 @@ class Model(nn.Module):
     def _prepare_input(self, s):
         if not isinstance(s, torch.Tensor):
             s = torch.tensor(
-                np.asarray(s, dtype=np.float32),
+                self._as_numpy_array(s),
                 device=self.device,
                 dtype=torch.float32,
             )
@@ -84,3 +84,27 @@ class Model(nn.Module):
         elif feature_dim > Config.DIM_OF_OBSERVATION:
             s = s[:, : Config.DIM_OF_OBSERVATION]
         return s
+
+    def _as_numpy_array(self, s):
+        try:
+            return np.asarray(s, dtype=np.float32)
+        except (TypeError, ValueError):
+            if not isinstance(s, (list, tuple)):
+                return np.zeros((1, 0), dtype=np.float32)
+            rows = []
+            for item in s:
+                try:
+                    row = np.asarray(item, dtype=np.float32).reshape(-1)
+                except (TypeError, ValueError):
+                    row = np.zeros(0, dtype=np.float32)
+                rows.append(self._fit_numpy_width(row))
+            if not rows:
+                return np.zeros((1, 0), dtype=np.float32)
+            return np.stack(rows)
+
+    def _fit_numpy_width(self, row):
+        if row.size < Config.DIM_OF_OBSERVATION:
+            return np.pad(row, (0, Config.DIM_OF_OBSERVATION - row.size))
+        if row.size > Config.DIM_OF_OBSERVATION:
+            return row[: Config.DIM_OF_OBSERVATION]
+        return row

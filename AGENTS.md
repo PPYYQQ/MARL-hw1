@@ -145,7 +145,7 @@ Target-DQN 关键文件：
 - 训练 workflow 对 reset/step 返回的 `observation` / `obs` / `_obs`、`extra_info` / `_state` / `state` / `info`、顶层或嵌套的 `frame_no` / `frameNo`、结束标记和采样帧 `legal_action` 会安全读取；如果平台直接返回带 `frame_state` / `legal_action` 的裸 observation dict 或对象，也会按原始 observation 处理，避免被误归一化为空观测。
 - step/reset 归一化阶段会保留对象式 env_obs 和对象式 extra_info，避免先前字段读取兼容逻辑在进入安全 helper 前丢失平台 score 或 observation payload。
 - 训练 workflow 对 env_obs/obs 映射读取异常会统一回退默认值，避免异常 dict-like 返回对象中断预测门控和状态解析。
-- 训练 workflow 会显式解析 `terminated` / `truncated` 的 bool、数值和字符串形式，避免 `"False"` 这类非空字符串被误判为结束。
+- 训练 workflow 会显式解析 `terminated` / `done` / `is_done` / `terminal` 与 `truncated` / `timeout` / `is_truncated` 等结束或截断别名，并兼容 bool、数值和字符串形式，避免 `"False"` 这类非空字符串被误判为结束。
 - 训练 workflow 调用 `agent.reset(env_obs)` 时会隔离异常，reset 失败会记录错误并跳过当前 episode，避免半初始化状态继续采样。
 - 训练 workflow 读取 `train_env_conf.toml` 时会隔离配置校验工具异常，读取失败会记录错误并清晰退出入口。
 - 训练 workflow 调用平台容灾 helper 时会隔离异常，容灾检测失败会记录错误并按无容灾信号继续。

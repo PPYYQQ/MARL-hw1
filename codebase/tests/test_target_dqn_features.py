@@ -1057,6 +1057,12 @@ def main():
     assert object_envelope_obs["observation"].legal_action == 1
     assert object_envelope_obs["truncated"] is True
     assert object_envelope_obs["extra_info"].frameNo == 18
+    alias_done_reward, alias_done_obs = _normalize_step_result(
+        {"_obs": {"legal_action": 1}, "reward": 0.2, "isDone": "yes", "timeout": 1}
+    )
+    assert alias_done_reward == 0.2
+    assert _safe_done_flag(alias_done_obs, "terminated") is True
+    assert _safe_done_flag(alias_done_obs, "truncated") is True
     info_envelope_reward, info_envelope_obs = _normalize_step_result(
         {"observation": {"legal_action": 1}, "reward": 0.3, "done": False, "info": {"frameNo": 22}}
     )
@@ -1139,6 +1145,10 @@ def main():
     assert _safe_done_flag({"terminated": "bad"}, "terminated") is False
     assert _safe_done_flag({"terminated": float("inf")}, "terminated") is False
     assert _safe_done_flag({"terminated": object()}, "terminated") is False
+    assert _safe_done_flag({"is_done": "yes"}, "terminated") is True
+    assert _safe_done_flag({"terminal": 1}, "terminated") is True
+    assert _safe_done_flag({"info": {"timedOut": "true"}}, "truncated") is True
+    assert _safe_done_flag({"info": {"is_truncated": 0}}, "truncated") is False
     assert _safe_done_flag({}, "terminated") is False
     assert _safe_legal_action({"legal_action": [1, 0, 0, 0]}) == [1, 0, 0, 0]
     assert _safe_legal_action(None) is None

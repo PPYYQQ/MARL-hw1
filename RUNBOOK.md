@@ -117,7 +117,7 @@ python tests/test_target_dqn_smoke.py
 - `env.step()` 返回形态不一致：当前 workflow 支持对象式返回、dict/object step envelope、二元封装返回、Gym 四元返回、Gymnasium 五元返回和作业文档六元返回，并会保留对象式 `extra_info` / `_state` / `state` / `info`；如果平台返回其他结构，需要保存原始返回值再扩展 `_normalize_step_result()`。
 - env_obs/obs 字段读取失败：当前 workflow 会兼容 dict 与属性对象字段读取，嵌套 `observation` / `obs` / `_obs` 和直接包含 `frame_state` / `legal_action` 的裸 observation 都会保留，`extra_info` / `_state` / `state` / `info` 都会作为额外信息读取；标量 observation / extra_info 会回退为空对象。如果频繁出现，需要保存原始环境返回类型，确认平台封装是否已经损坏。
 - 评估入口 observation 包装不同：当前 `Agent.exploit()` 会兼容 `obs`、`observation`、`_obs` 以及 `extra_info`、`_state`、`state`、`info`，如果评估仍固定输出默认动作，优先保存评估入口传入对象的类型和 repr。
-- `terminated` / `truncated` 字段异常：当前 workflow 只把 bool true、非零有限数值或明确 true 字符串视为结束；未知字符串、NaN/Inf 和异常对象按 False 处理。
+- `terminated` / `truncated` 字段异常：当前 workflow 会兼容 `terminated` / `done` / `is_done` / `terminal` 与 `truncated` / `timeout` / `is_truncated` 等别名，只把 bool true、非零有限数值或明确 true 字符串视为结束或截断；未知字符串、NaN/Inf 和异常对象按 False 处理。
 - 样本 `done` 字段异常：当前 `sample_process()` 会把 bool、有限数值和 true/false 字符串统一转成 not_done 标记；未知字符串、NaN/Inf 和异常对象按非终局处理。
 - `agent reset failed`：当前 workflow 会跳过本局 episode，避免使用半初始化 agent 状态继续采样；如果反复出现，优先检查 `FeatureProcess.reset()` 和 agent 初始化状态。
 - `run_episodes error: ...`：优先看冒号后的原始异常信息和 Python chained traceback，当前 workflow 不再只抛通用错误。

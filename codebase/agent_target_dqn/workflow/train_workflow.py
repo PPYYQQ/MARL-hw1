@@ -60,6 +60,27 @@ METRIC_SOURCE_KEYS = (
     "info",
 )
 
+DONE_FIELD_ALIASES = {
+    "terminated": (
+        "terminated",
+        "done",
+        "is_done",
+        "isDone",
+        "terminal",
+        "is_terminal",
+        "isTerminal",
+    ),
+    "truncated": (
+        "truncated",
+        "timeout",
+        "timed_out",
+        "timedOut",
+        "time_out",
+        "is_truncated",
+        "isTruncated",
+    ),
+}
+
 
 def workflow(envs, agents, logger=None, monitor=None, *args, **kwargs):
     env, agent = envs[0], agents[0]
@@ -545,8 +566,8 @@ def _normalize_step_record_result(step_result):
     observation = _first_env_value(step_result, ("observation", "obs", "_obs"), {})
     extra_info = _first_env_value(step_result, ("extra_info", "_state", "state", "info"), {})
     reward = _first_env_value(step_result, ("reward", "score", "env_reward"), 0.0)
-    terminated = _first_env_value(step_result, ("terminated", "done"), False)
-    truncated = _safe_env_value(step_result, "truncated", False)
+    terminated = _first_env_value(step_result, DONE_FIELD_ALIASES["terminated"], False)
+    truncated = _first_env_value(step_result, DONE_FIELD_ALIASES["truncated"], False)
     frame_no = _safe_frame_no(step_result)
 
     return reward, {
@@ -604,6 +625,17 @@ def _looks_like_step_envelope(value):
             "terminated",
             "truncated",
             "done",
+            "is_done",
+            "isDone",
+            "terminal",
+            "is_terminal",
+            "isTerminal",
+            "timeout",
+            "timed_out",
+            "timedOut",
+            "time_out",
+            "is_truncated",
+            "isTruncated",
             "extra_info",
             "_state",
             "state",
@@ -638,7 +670,10 @@ def _safe_frame_no(env_obs):
 
 
 def _safe_done_flag(env_obs, key):
-    value = _safe_env_value(env_obs, key, False)
+    aliases = DONE_FIELD_ALIASES.get(key, (key,))
+    value = _first_env_value(env_obs, aliases, None)
+    if value is None:
+        value = _first_env_value(_safe_extra_info(env_obs), aliases, False)
     if isinstance(value, bool):
         return value
     if isinstance(value, str):

@@ -40,6 +40,7 @@ class Algorithm:
     def learn(self, list_sample_data):
         # Convert list of SampleData to tensor batch
         # 将 SampleData 数组 转换为 tensor batch
+        list_sample_data = self._sample_batch(list_sample_data)
         if not list_sample_data:
             return
 
@@ -186,6 +187,15 @@ class Algorithm:
     def _stack_tensor(self, values, dtype, width=None):
         tensors = [self._normalize_tensor(value, dtype=dtype, width=width) for value in values]
         return torch.stack(tensors)
+
+    def _sample_batch(self, list_sample_data):
+        if list_sample_data is None:
+            return []
+        try:
+            return list(list_sample_data)
+        except Exception as err:
+            self._log_info(f"skip learn step, sample batch iteration failed: {err}")
+            return []
 
     def _sample_field(self, frame, name, default):
         try:

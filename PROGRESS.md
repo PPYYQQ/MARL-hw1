@@ -1020,3 +1020,18 @@
   - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
 - 下一步：
   - 平台环境可用后确认偶发 agent reset 异常只影响当前 episode，不会导致 workflow 进程退出。
+
+### Step 69 - env reset/step 失败隔离
+
+- 状态：完成
+- Commit：`22879d3`
+- 内容：
+  - workflow 增加 `_reset_env()`，封装 `env.reset(usr_conf=usr_conf)` 和 reset 返回值归一化。
+  - reset 抛错时记录 `env reset failed` 并跳过当前 episode，下一 epoch 继续尝试启动新局。
+  - workflow 增加 `_step_env()`，封装 `env.step(act)` 和 step 返回值归一化。
+  - step 抛错时记录 `env step failed` 并中止当前 episode，避免在缺失下一状态时继续构造 transition 或发送未闭合样本。
+  - 无平台依赖测试覆盖 env reset/step 成功、失败且 logger 后端也失败的路径；静态测试增加 safe env reset/step helper 锚点。
+- 验证：
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 平台环境可用后确认偶发环境 RPC 或封装异常只影响当前 episode；若长期反复出现，再根据平台日志区分环境故障和非法动作问题。

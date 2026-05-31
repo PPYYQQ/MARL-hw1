@@ -86,6 +86,7 @@ def main():
         _safe_legal_action,
         _safe_observation,
         _save_latest_model,
+        _send_sample_data,
         _should_log_progress,
     )
 
@@ -515,6 +516,24 @@ def main():
     assert _save_latest_model(saving_agent, FailingLogger()) is True
     assert saving_agent.saved_ids == ["latest"]
     assert _save_latest_model(FailingSaveAgent(), FailingLogger()) is False
+
+    class SendingAgent:
+        def __init__(self):
+            self.sent_samples = []
+
+        def send_sample_data(self, samples):
+            self.sent_samples.append(samples)
+
+    class FailingSendAgent:
+        def send_sample_data(self, samples):
+            raise RuntimeError("send failed")
+
+    sending_agent = SendingAgent()
+    samples_to_send = [object()]
+    assert _send_sample_data(sending_agent, samples_to_send, FailingLogger()) is True
+    assert sending_agent.sent_samples == [samples_to_send]
+    assert _send_sample_data(FailingSendAgent(), samples_to_send, FailingLogger()) is False
+    assert _send_sample_data(sending_agent, [], FailingLogger()) is False
 
 
 if __name__ == "__main__":

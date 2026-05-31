@@ -57,7 +57,7 @@ def workflow(envs, agents, logger=None, monitor=None, *args, **kwargs):
                 epoch_duration_rew += duration_rew
 
             epoch_total_rew = epoch_phase_rew + epoch_duration_rew
-            agent.send_sample_data(list(g_data))
+            _send_sample_data(agent, list(g_data), logger)
             g_data.clear()
 
         avg_step_reward = 0.0
@@ -330,6 +330,17 @@ def _save_latest_model(agent, logger):
         return True
     except Exception as err:
         _log_error(logger, f"save latest model failed: {err}")
+        return False
+
+
+def _send_sample_data(agent, sample_data, logger):
+    if not sample_data:
+        return False
+    try:
+        agent.send_sample_data(sample_data)
+        return True
+    except Exception as err:
+        _log_error(logger, f"send sample data failed: {err}")
         return False
 
 

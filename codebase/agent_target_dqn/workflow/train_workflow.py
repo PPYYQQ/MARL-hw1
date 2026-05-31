@@ -149,6 +149,7 @@ def run_episodes(n_episode, env, agent, usr_conf, logger):
                     # 不需要预测的情况
                     _update_traffic_info(agent, obs, extra_info, logger)
                     act = [None, None, None]
+                act = _safe_action(act, need_to_predict, logger)
 
                 # Interact with the environment, execute actions, get the next extra_info
                 # 与环境交互, 执行动作, 获取下一步的状态, 如果遇到不需要预测的帧，则env.step直到得到需要预测的帧
@@ -427,6 +428,34 @@ def _need_to_predict(obs):
 
 def _should_log_progress(predict_cnt, done, need_to_predict):
     return done or (need_to_predict and predict_cnt > 0 and predict_cnt % 20 == 0)
+
+
+def _action_scalar(value):
+    try:
+        value = float(value)
+    except (TypeError, ValueError, OverflowError) as err:
+        raise ValueError(f"invalid action scalar {value}") from err
+    if not math.isfinite(value):
+        raise ValueError(f"non-finite action scalar {value}")
+    return value
+
+
+def _safe_action(act, need_to_predict, logger):
+    if not need_to_predict:
+        return [None, None, None]
+    try:
+        if len(act) < 3:
+            raise ValueError("action should contain junction, phase and duration")
+        phase_index = int(_action_scalar(act[1]))
+        duration = int(_action_scalar(act[2]))
+    except Exception as err:
+        _log_error(logger, f"invalid action, use default action: {err}")
+        return [0, 0, Config.MIN_GREEN_DURATION]
+
+    max_duration = Config.MIN_GREEN_DURATION + Config.DIM_OF_ACTION_DURATION - 1
+    phase_index = max(0, min(phase_index, Config.DIM_OF_ACTION_PHASE - 1))
+    duration = max(Config.MIN_GREEN_DURATION, min(duration, max_duration))
+    return [0, phase_index, duration]
 
 
 def _predict_action(agent, obs_data, obs, logger):

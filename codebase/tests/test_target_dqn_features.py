@@ -89,6 +89,7 @@ def main():
         _reset_agent,
         _reward_components,
         _sample_batch_stats,
+        _safe_action,
         _safe_done_flag,
         _safe_extra_info,
         _safe_frame_no,
@@ -510,6 +511,19 @@ def main():
     assert _should_log_progress(0, False, False) is False
     assert _should_log_progress(20, False, True) is True
     assert _should_log_progress(0, True, False) is True
+    assert _safe_action([9, 2, Config.MIN_GREEN_DURATION + 3], True, None) == [
+        0,
+        2,
+        Config.MIN_GREEN_DURATION + 3,
+    ]
+    assert _safe_action([9, -1, 999], True, None) == [
+        0,
+        0,
+        Config.MIN_GREEN_DURATION + Config.DIM_OF_ACTION_DURATION - 1,
+    ]
+    assert _safe_action([None, None, None], False, None) == [None, None, None]
+    assert _safe_action([0, "bad", 8], True, None) == [0, 0, Config.MIN_GREEN_DURATION]
+    assert _safe_action([0, 1, float("nan")], True, None) == [0, 0, Config.MIN_GREEN_DURATION]
 
     class FailingLogger:
         def info(self, message):

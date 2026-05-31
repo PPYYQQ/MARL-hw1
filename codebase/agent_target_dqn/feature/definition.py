@@ -214,7 +214,7 @@ def reward_shaping(_obs, act, agent):
         return 0.0, 0.0
 
     avg_waiting_time = pressure_totals["waiting_time"] / enter_vehicle_count
-    avg_delay = pressure_totals["delay"] / enter_vehicle_count
+    avg_delay = min(pressure_totals["delay"] / enter_vehicle_count, Config.REWARD_DELAY_CAP)
     waiting_delta = agent.preprocess.old_waiting_time - avg_waiting_time
     agent.preprocess.old_waiting_time = avg_waiting_time
 
@@ -251,7 +251,17 @@ def reward_shaping(_obs, act, agent):
     _mark_phase_served(agent, phase_index, frame_no)
     agent.preprocess.last_phase_index = phase_index
 
-    return float(phase_reward), float(duration_reward)
+    return _clip_reward(phase_reward), _clip_reward(duration_reward)
+
+
+def _clip_reward(value):
+    try:
+        value = float(value)
+    except (TypeError, ValueError, OverflowError):
+        value = 0.0
+    if not np.isfinite(value):
+        value = 0.0
+    return float(np.clip(value, -Config.REWARD_CLIP, Config.REWARD_CLIP))
 
 
 def _fairness_reward(agent, phase_index, frame_no, phase_pressure):

@@ -62,6 +62,7 @@ def main():
     from agent_target_dqn.conf.conf import Config
     from agent_target_dqn.feature.definition import (
         SampleData,
+        _clip_reward,
         _max_action_duration,
         _not_done_flag,
         reward_shaping,
@@ -116,6 +117,9 @@ def main():
     assert Config.duration_index_to_seconds(Config.DIM_OF_ACTION_DURATION - 1) == Config.MAX_GREEN_DURATION
     assert Config.duration_seconds_to_index(Config.MIN_GREEN_DURATION) == 0
     assert Config.duration_seconds_to_index(Config.MAX_GREEN_DURATION) == Config.DIM_OF_ACTION_DURATION - 1
+    assert _clip_reward(float("nan")) == 0.0
+    assert _clip_reward(Config.REWARD_CLIP + 1.0) == Config.REWARD_CLIP
+    assert _clip_reward(-Config.REWARD_CLIP - 1.0) == -Config.REWARD_CLIP
 
     assert normalize_phase_legal_action(None) == [1, 1, 1, 1]
     assert normalize_phase_legal_action([]) == [1, 1, 1, 1]
@@ -471,6 +475,27 @@ def main():
         dummy_agent,
     )
     assert all(math.isfinite(value) for value in finite_reward)
+    dummy_agent.preprocess.old_waiting_time = 0.0
+    clipped_reward = reward_shaping(
+        {
+            "frame_state": {
+                "frame_no": 2,
+                "vehicles": [
+                    {
+                        "lane": 11,
+                        "junction": -1,
+                        "target_junction": 0,
+                        "speed": 0.0,
+                        "waiting_time": 100000.0,
+                        "delay": 100000.0,
+                    }
+                ],
+            }
+        },
+        [0, 3, Config.MIN_GREEN_DURATION],
+        dummy_agent,
+    )
+    assert all(-Config.REWARD_CLIP <= value <= Config.REWARD_CLIP for value in clipped_reward)
     dummy_agent.preprocess.old_waiting_time = 300.0
     dummy_agent.preprocess.phase_last_served_frame = [0, 0, 0, 0]
     dummy_agent.preprocess.last_phase_index = None

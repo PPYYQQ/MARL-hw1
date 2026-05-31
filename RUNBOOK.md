@@ -99,6 +99,7 @@ python tests/test_target_dqn_smoke.py
 - `latest` 模型结构不兼容：当前联合动作模型会跳过不兼容的旧 `latest` checkpoint，并从当前参数继续训练；若要强制加载指定模型 ID，结构不兼容仍会抛错。
 - `legal_action` 是标量而不是列表：当前 workflow 会先归一化为 4 维相位 mask，再判断是否需要决策；若平台提供相位级 mask，也会沿用相位约束。
 - `invalid action, use default action`：当前 workflow 会在进入 `env.step()` 前把异常动作回退为 `[0, 0, MIN_GREEN_DURATION]`；如果频繁出现，检查 `predict()`、`action_process()` 或规则兜底返回值。
+- `rule_based_action failed, use default action`：评估 `exploit()` 的最终规则兜底失败时会返回默认动作；如果反复出现，保存评估 observation 并检查规则策略输入结构。
 - `env reset failed`：当前 workflow 会跳过当前 episode 并在下一 epoch 重试；如果持续出现，检查环境配置、平台任务状态和 reset 返回协议。
 - `env step failed`：当前 workflow 会中止当前 episode 并丢弃未完成 collector；如果持续出现，优先确认动作合法性、平台环境状态和前一帧 observation。
 - `terminated` / `truncated` 字段异常：当前 workflow 只把 bool true、非零有限数值或明确 true 字符串视为结束；未知字符串、NaN/Inf 和异常对象按 False 处理。

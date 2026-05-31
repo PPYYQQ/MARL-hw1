@@ -1092,3 +1092,17 @@
   - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
 - 下一步：
   - 平台环境可用后确认样本池偶发坏 batch 只影响该 batch 学习，不会导致 learner 进程退出；若连续出现，再保存 batch 定位字段问题。
+
+### Step 74 - exploit 最终兜底动作
+
+- 状态：完成
+- Commit：`e43363a`
+- 内容：
+  - `Agent.exploit()` 在 observation 处理失败、模型预测为空或异常时不再直接调用 `rule_based_action()`，改为 `_safe_rule_based_action()`。
+  - `_safe_rule_based_action()` 封装规则策略异常，规则策略失败时记录 `rule_based_action failed, use default action`。
+  - 最终默认动作固定为 `[0, 0, Config.MIN_GREEN_DURATION]`，避免评估入口在最后兜底也失败时崩溃。
+  - smoke 测试增加规则策略被 monkeypatch 为抛错时 `exploit()` 返回默认动作；静态测试增加 final exploit fallback 锚点。
+- 验证：
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 平台环境可用后确认评估任务中异常 observation 或规则兜底异常不会导致 `exploit()` 抛错。

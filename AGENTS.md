@@ -119,6 +119,7 @@ Target-DQN 关键文件：
 - 训练 workflow 抛错时会保留原始异常信息和异常链，便于平台日志定位真实崩溃点。
 - workflow 和 `Algorithm.learn()` 的日志/监控上报已隔离异常，`logger` 或 `monitor.put_data()` 后端失败不会中断训练。
 - `Agent` 的 `exploit()`、`save_model()` 和 `load_model()` 日志调用已隔离异常，日志后端失败不会打断评估兜底或 checkpoint 流程。
+- `Agent.exploit()` 的规则策略兜底也会隔离异常；规则策略失败时返回 `[0, 0, MIN_GREEN_DURATION]`，避免评估入口因最终兜底失败崩溃。
 - 训练 workflow 发送样本时会传递 `g_data` 的浅拷贝，再清理本地列表，避免异步消费时引用被清空。
 - 训练 workflow 的进度日志只在 episode 结束或真实预测计数达到间隔时打印，避免无决策帧刷屏。
 - `sample_process()` 会把训练样本中的 `legal_action` 设置为下一状态相位 mask，供 Double DQN target 选择下一相位时使用。

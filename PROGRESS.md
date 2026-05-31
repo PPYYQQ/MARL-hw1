@@ -1450,7 +1450,7 @@
 ### Step 97 - 接入 lanes 聚合压力 fallback
 
 - 状态：完成
-- Commit：待提交
+- Commit：`e6a5606`
 - 内容：
   - `traffic_utils` 新增 lane 字段读取、进口车道 ID 映射、lane 聚合统计、lane 聚合相位压力和车辆/lane 统计合并 helper。
   - `observation_process()` 在解析 `frame_state.lanes` 后，将 lanes 传入交通统计，并把 lanes 逐车道统计与车辆逐车道统计合并，保持 `Config.DIM_OF_OBSERVATION = 638` 不变。

@@ -1162,3 +1162,18 @@
   - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
 - 下一步：
   - 平台环境可用后确认异常样本字段不会触发 `sample process failed` 并导致整段 collector 被丢弃。
+
+### Step 79 - 合法动作归一化异常隔离
+
+- 状态：完成
+- Commit：`5379302`
+- 内容：
+  - `normalize_phase_legal_action()` 对异常 array-like 合法动作输入回退为四个相位都可选。
+  - `_phase_array()` 同步隔离异常 array-like 转换失败，返回零相位数组。
+  - `_finite_float()` 补充 `OverflowError` 处理，减少异常数值对象中断交通统计 helper 的风险。
+  - 无平台依赖测试增加 `legal_action.__array__()` 抛错和 `_need_to_predict()` 复用该兜底的覆盖；静态测试增加 traffic helper 转换异常锚点。
+- 验证：
+  - 已运行 `python tests/test_target_dqn_features.py` 和 `python tests/test_target_dqn_static.py`，均通过。
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 平台环境可用后确认真实 `legal_action` 的异常格式是否应按全相位可选处理，或需要更严格地区分不可决策帧。

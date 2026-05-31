@@ -130,6 +130,7 @@ Target-DQN 关键文件：
 - `sample_process()` 的字段定宽转换会隔离异常 array-like 对象，异常 observation/reward 按默认零向量处理；畸形 action 对象会跳过当前帧。
 - `sample_process()` 在创建 `SampleData` 前会对 `obs`、`act`、`rew` 和 `done` 做定宽归一化、NaN/Inf 清洗和动作边界裁剪，避免畸形轨迹污染样本池。
 - `normalize_phase_legal_action()` 会将合法动作里的 NaN/Inf 显式归零，避免非有限值被误判为可选相位。
+- `normalize_phase_legal_action()` 会隔离异常 array-like 合法动作输入；转换失败时按保守全相位可选处理，避免 workflow 决策门控、Agent 推理和样本转换被坏 mask 中断。
 - workflow 聚合样本批次 reward 监控时会隔离异常样本、异常 `rew` 字段和异常 batch 长度；坏样本只按零 reward 统计。
 - `Algorithm.learn()` 会清洗 observation、reward、action、not_done、legal_action 和 TD target 中的 NaN/Inf，workflow reward 监控也会把非有限值归零。
 - `Algorithm.learn()` 会在 `torch.stack()` 前对 obs、_obs、action、reward、done 和 legal_action 做定宽补齐/截断，避免畸形样本长度不一致时训练崩溃。

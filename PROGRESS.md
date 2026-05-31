@@ -1119,3 +1119,18 @@
   - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
 - 下一步：
   - 平台环境可用后确认真实 `legal_action=0` 的帧不会进入 `predict()`，若平台评估入口直接调用 `exploit()`，空 mask 也不会触发空采样异常。
+
+### Step 76 - 样本 done 标记解析修正
+
+- 状态：完成
+- Commit：`7bfee58`
+- 内容：
+  - `sample_process()` 的 `_not_done_flag()` 显式解析 bool、有限数值和 true/false 字符串。
+  - `"true"`、`"1"`、`"yes"`、`"y"` 会写成终局 `not_done=0`；`"false"`、`"0"`、`"no"`、`"n"` 和空字符串写成非终局 `not_done=1`。
+  - 未知字符串、NaN/Inf 和异常对象按非终局处理，避免平台字符串 done 标记被 `int()` 解析失败后误判。
+  - 无平台依赖测试增加 `_not_done_flag()` 的 bool、字符串和 Inf 覆盖；静态测试增加字符串 done 解析锚点。
+- 验证：
+  - 已运行 `python tests/test_target_dqn_features.py` 和 `python tests/test_target_dqn_static.py`，均通过。
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 平台环境可用后确认样本池终局 transition 的 `done` / `not_done` 语义与 learner target 一致。

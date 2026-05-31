@@ -104,6 +104,7 @@ python tests/test_target_dqn_smoke.py
 - `env reset failed`：当前 workflow 会跳过当前 episode 并在下一 epoch 重试；如果持续出现，检查环境配置、平台任务状态和 reset 返回协议。
 - `env step failed`：当前 workflow 会中止当前 episode 并丢弃未完成 collector；如果持续出现，优先确认动作合法性、平台环境状态和前一帧 observation。
 - `terminated` / `truncated` 字段异常：当前 workflow 只把 bool true、非零有限数值或明确 true 字符串视为结束；未知字符串、NaN/Inf 和异常对象按 False 处理。
+- 样本 `done` 字段异常：当前 `sample_process()` 会把 bool、有限数值和 true/false 字符串统一转成 not_done 标记；未知字符串、NaN/Inf 和异常对象按非终局处理。
 - `agent reset failed`：当前 workflow 会跳过本局 episode，避免使用半初始化 agent 状态继续采样；如果反复出现，优先检查 `FeatureProcess.reset()` 和 agent 初始化状态。
 - `run_episodes error: ...`：优先看冒号后的原始异常信息和 Python chained traceback，当前 workflow 不再只抛通用错误。
 - 日志或监控异常：当前 workflow、learner 和 `Agent` checkpoint/评估兜底日志失败不会中断训练；如果平台看不到指标，先查 monitor 后端或日志权限。

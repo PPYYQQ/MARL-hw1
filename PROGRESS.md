@@ -1647,3 +1647,20 @@
   - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
 - 下一步：
   - 平台运行后确认终局和超时日志是否与真实 episode 结束原因一致；如平台使用其它字段名，保存 step_result 样例后扩展 `DONE_FIELD_ALIASES`。
+
+### Step 109 - 兼容相位字段别名
+
+- 状态：完成
+- Commit：`4ea8b94`
+- 内容：
+  - `Agent` 新增 `_phase_record_value()`，相位特征和相位服务年龄统一通过安全 helper 读取字段别名。
+  - 相位记录现在兼容 `s_id` / `signal_id` / `signal_idx`、`phase_id` / `phase_idx` / `current_phase` / `current_phase_id`、`remaining_duration` / `remaining_time` / `remain_duration` / `remain_time`。
+  - `_RECORD_FIELD_KEYS` 同步加入相位别名，避免 dict-of-records 解析时把别名相位记录误当成普通嵌套 dict。
+  - smoke 测试增加 `signal_id + current_phase + remaining_time` 观测覆盖；静态测试增加相位字段 alias 锚点。
+  - 更新 `AGENTS.md`、`RUNBOOK.md` 和 `REPORT_DRAFT.md`，记录相位字段别名兼容情况。
+- 验证：
+  - 已运行 `python -m compileall agent_target_dqn/agent.py tests/test_target_dqn_static.py tests/test_target_dqn_smoke.py`，通过。
+  - 已运行 `python tests/test_target_dqn_features.py` 和 `python tests/test_target_dqn_static.py`，均通过。
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 平台运行后确认真实 `frame_state.phases` 是否还有 `signalId`、`phase`、`remainTime` 等驼峰字段；如有，保存样例后继续扩展相位 alias。

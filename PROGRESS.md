@@ -842,3 +842,18 @@
   - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
 - 下一步：
   - 平台环境可用后确认异常 `phase_id`、`duration`、`remaining_duration`、`frame_no` 或旧相位服务状态不再导致推理、reward 或 workflow 日志路径崩溃。
+
+### Step 57 - 日志和监控上报隔离
+
+- 状态：完成
+- Commit：`6fd6f40`
+- 内容：
+  - `Algorithm.learn()` 增加 `_put_monitor_data()` 和 `_log_info()`，隔离 logger/monitor 后端异常。
+  - 非有限 loss、非有限梯度和训练指标日志改走安全 logger helper，日志后端失败不会中断 learner。
+  - workflow 增加 `_put_monitor_data()`，监控上报成功时才更新时间戳，上报失败时只记录错误并继续训练。
+  - workflow 的 `_log_info()` 和 `_log_error()` 捕获 logger 后端异常，避免平台日志服务异常反向打断 episode。
+  - 无平台依赖测试覆盖 logger.info/error 抛错、monitor.put_data 成功/失败/缺失路径；静态测试增加算法和 workflow 上报隔离锚点。
+- 验证：
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 平台环境可用后确认日志或 monitor 服务短暂失败时训练 episode 仍能继续运行。

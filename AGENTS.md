@@ -104,6 +104,7 @@ Target-DQN 关键文件：
 - 训练 workflow 对 reset/step 返回的 `observation`、`extra_info`、`frame_no`、结束标记和采样帧 `legal_action` 会安全读取，避免不完整环境响应直接触发 `KeyError`。
 - 训练 workflow 的预测动作通过 `_predict_action()` 统一处理，模型预测返回空或异常时会回退到规则策略，规则策略再失败则输出 `[0, 0, MIN_GREEN_DURATION]`。
 - 训练 workflow 抛错时会保留原始异常信息和异常链，便于平台日志定位真实崩溃点。
+- workflow 和 `Algorithm.learn()` 的日志/监控上报已隔离异常，`logger` 或 `monitor.put_data()` 后端失败不会中断训练。
 - 训练 workflow 发送样本时会传递 `g_data` 的浅拷贝，再清理本地列表，避免异步消费时引用被清空。
 - 训练 workflow 的进度日志只在 episode 结束或真实预测计数达到间隔时打印，避免无决策帧刷屏。
 - `sample_process()` 会把训练样本中的 `legal_action` 设置为下一状态相位 mask，供 Double DQN target 选择下一相位时使用。

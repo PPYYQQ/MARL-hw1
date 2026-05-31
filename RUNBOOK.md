@@ -105,6 +105,7 @@ python tests/test_target_dqn_smoke.py
 - 空合法动作 mask 或 `ValueError: 'a' cannot be empty`：当前 Agent 推理侧会把全零相位 mask 和空 joint mask 行回退为可选全集；如果仍出现，优先检查是否有新代码绕过了 `_phase_action_mask()` / `_joint_action_mask()`。
 - `invalid action, use default action`：当前 workflow 会在进入 `env.step()` 前把异常动作回退为 `[0, 0, MIN_GREEN_DURATION]`；如果频繁出现，检查 `predict()`、`action_process()` 或规则兜底返回值。
 - `rule_based_action failed, use default action`：评估 `exploit()` 的最终规则兜底失败时会返回默认动作；如果反复出现，保存评估 observation 并检查规则策略输入结构。
+- 评估 observation 字段读取失败：当前 `Agent.exploit()`、`observation_process()` 和 `rule_based_action()` 会对异常 dict-like observation 使用安全读取并进入规则/默认兜底；如果反复出现，需要保存原始 observation 类型和 repr。
 - `env reset failed`：当前 workflow 会跳过当前 episode 并在下一 epoch 重试；如果持续出现，检查环境配置、平台任务状态和 reset 返回协议。
 - `env step failed`：当前 workflow 会中止当前 episode 并丢弃未完成 collector；如果持续出现，优先确认动作合法性、平台环境状态和前一帧 observation。
 - `env.step()` 返回 tuple 形态不一致：当前 workflow 支持二元封装返回、Gym 四元返回、Gymnasium 五元返回和作业文档六元返回；如果平台返回其他结构，需要保存原始返回值再扩展 `_normalize_step_result()`。

@@ -1253,3 +1253,20 @@
   - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
 - 下一步：
   - 有 `torch` 和平台样本池环境后确认 learner 实际收到的 batch 类型，必要时把原始类型写入日志。
+
+### Step 85 - Agent 评估映射读取隔离
+
+- 状态：完成
+- Commit：`3f03ad0`
+- 内容：
+  - 新增 `_safe_mapping_get()`，隔离 Agent 侧 dict-like 对象 `.get()` 抛错。
+  - `exploit()` 读取外层 observation、`obs` 包装和 `extra_info` 时改用安全读取，避免异常 observation 在兜底链路前直接抛出。
+  - `observation_process()`、`rule_based_action()`、相位特征和相位年龄特征的关键字段读取改用安全 helper。
+  - `observation_process()` 隔离 `preprocess.update_traffic_info()` 异常，特征构造失败前仍可继续使用当前 observation 做保守处理。
+  - 静态测试增加 Agent 安全映射读取锚点，并防止评估入口回退到直接 `observation.get()` / `raw_obs.get()`。
+- 验证：
+  - 已运行 `python -m compileall agent_target_dqn/agent.py tests/test_target_dqn_static.py`，通过。
+  - 已运行 `python tests/test_target_dqn_static.py`，通过。
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 有 `torch` 环境后补跑 smoke，确认异常 observation 评估入口会返回默认合法动作而不是抛错。

@@ -1664,3 +1664,19 @@
   - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
 - 下一步：
   - 平台运行后确认真实 `frame_state.phases` 是否还有 `signalId`、`phase`、`remainTime` 等驼峰字段；如有，保存样例后继续扩展相位 alias。
+
+### Step 110 - 兼容相位驼峰字段别名
+
+- 状态：完成
+- Commit：`1ee80ec`
+- 内容：
+  - `Agent` 相位字段 alias 扩展到 `signalId` / `signalIdx`、`phase` / `phaseId` / `phaseIdx`、`currentPhase` / `currentPhaseId`、`remainingDuration` / `remainingTime` / `remainDuration` / `remainTime`。
+  - `_RECORD_FIELD_KEYS` 同步加入驼峰相位字段，避免 dict 容器解析时漏掉仅使用驼峰命名的相位记录。
+  - smoke 测试中的相位 alias 观测改用 `signalId + phase + remainingTime`，静态测试增加驼峰字段锚点。
+  - 更新 `AGENTS.md`、`RUNBOOK.md` 和 `REPORT_DRAFT.md`，记录相位驼峰字段别名已覆盖。
+- 验证：
+  - 已运行 `python -m compileall agent_target_dqn/agent.py tests/test_target_dqn_static.py tests/test_target_dqn_smoke.py`，通过。
+  - 已运行 `python tests/test_target_dqn_features.py` 和 `python tests/test_target_dqn_static.py`，均通过。
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 平台运行后确认相位特征 one-hot、remaining duration 和相位年龄是否与真实 `frame_state.phases` 一致；如仍异常，保存原始 phases 样例继续补 alias。

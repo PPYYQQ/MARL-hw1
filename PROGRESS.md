@@ -1497,3 +1497,20 @@
   - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
 - 下一步：
   - 平台运行后确认 `extra_info.init_state` 的真实字段名；如仍有未识别命名，保存样例后继续扩展别名。
+
+### Step 100 - 清洗车辆路口 ID 字段
+
+- 状态：完成
+- Commit：`14e60bf`
+- 内容：
+  - `traffic_utils` 新增路口 ID 清洗逻辑，`on_enter_lane()`、`in_junction()` 和 `on_depart_lane()` 会先把 `junction` / `target_junction` 转成有限整数再判断。
+  - `FeatureProcess` 的跨帧路口状态和交叉口等待时间统计也改用清洗后的路口 ID，兼容平台把 `"0"` / `"-1"` 作为字符串返回。
+  - 等待时间目标路口匹配新增 `_junction_key()`，当 `junction_dict` 的 key 是字符串 `"0"` 而车辆 `target_junction` 是 `"0"` 或数值 `0` 时仍能正确归属。
+  - 无平台依赖测试增加字符串 `junction` / `target_junction`、畸形 target、字符串路网 key 的等待时间统计覆盖；静态测试增加路口 ID 清洗锚点。
+  - 更新 `AGENTS.md`、`RUNBOOK.md` 和 `REPORT_DRAFT.md`，记录字符串路口 ID 已处理及真实平台哨兵值仍需确认。
+- 验证：
+  - 已运行 `python -m compileall agent_target_dqn/feature/traffic_utils.py agent_target_dqn/feature/preprocessor.py tests/test_target_dqn_features.py tests/test_target_dqn_static.py`，通过。
+  - 已运行 `python tests/test_target_dqn_features.py` 和 `python tests/test_target_dqn_static.py`，均通过。
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 平台运行后确认真实车辆 `junction` / `target_junction` 的哨兵值是否只使用 `-1`；如存在其它目标字段或哨兵值，保存原始车辆样例后扩展清洗规则。

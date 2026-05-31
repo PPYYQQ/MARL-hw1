@@ -722,6 +722,8 @@ def main():
         "extra_info": {"init_state": {}},
     }
     assert _normalize_reset_result({"observation": {}}) == {"observation": {}}
+    object_reset_result = AttrObject(observation=AttrObject(legal_action=1), extra_info=AttrObject(init_state={}))
+    assert _normalize_reset_result(object_reset_result) is object_reset_result
     assert _normalize_reset_result(None) == {}
 
     class ResetEnv:
@@ -744,6 +746,10 @@ def main():
     two_item_reward, two_item_obs = _normalize_step_result((0.5, {"frame_no": 3}))
     assert two_item_reward == 0.5
     assert two_item_obs == {"frame_no": 3}
+    object_step_obs = AttrObject(frame_no=13, observation=AttrObject(legal_action=1))
+    object_step_reward, normalized_object_step_obs = _normalize_step_result((0.8, object_step_obs))
+    assert object_step_reward == 0.8
+    assert normalized_object_step_obs is object_step_obs
     six_item_reward, six_item_obs = _normalize_step_result((7, {"legal_action": 1}, 1.25, True, False, {"x": 1}))
     assert six_item_reward == 1.25
     assert six_item_obs["frame_no"] == 7
@@ -760,13 +766,29 @@ def main():
     assert five_item_obs["terminated"] is False
     assert five_item_obs["truncated"] is True
     assert five_item_obs["extra_info"] == {"frame_no": 11}
+    five_object_extra = AttrObject(frame_no=14, score_info=AttrObject(total_score=9.0))
+    five_object_reward, five_object_obs = _normalize_step_result(
+        (AttrObject(legal_action=1), 0.6, False, False, five_object_extra)
+    )
+    assert five_object_reward == 0.6
+    assert five_object_obs["frame_no"] == 14
+    assert five_object_obs["extra_info"] is five_object_extra
     four_item_reward, four_item_obs = _normalize_step_result(({"legal_action": 1}, 0.5, True, {"frame_no": 12}))
     assert four_item_reward == 0.5
     assert four_item_obs["frame_no"] == 12
     assert four_item_obs["observation"] == {"legal_action": 1}
     assert four_item_obs["terminated"] is True
     assert four_item_obs["truncated"] is False
+    four_object_extra = AttrObject(frame_no=15, score_info=AttrObject(total_score=8.0))
+    four_object_reward, four_object_obs = _normalize_step_result(
+        (AttrObject(legal_action=1), 0.4, False, four_object_extra)
+    )
+    assert four_object_reward == 0.4
+    assert four_object_obs["frame_no"] == 15
+    assert four_object_obs["extra_info"] is four_object_extra
     assert _normalize_step_result({"frame_no": 4}) == (0.0, {"frame_no": 4})
+    bare_object_step = AttrObject(frame_no=16, observation=AttrObject(legal_action=1))
+    assert _normalize_step_result(bare_object_step) == (0.0, bare_object_step)
     assert _normalize_step_result(None) == (0.0, {})
 
     class StepEnv:

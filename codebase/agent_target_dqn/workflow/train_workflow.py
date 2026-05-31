@@ -473,6 +473,8 @@ def _normalize_reset_result(reset_result):
             "observation": reset_result[0],
             "extra_info": reset_result[1],
         }
+    if _is_record(reset_result):
+        return reset_result
     return {}
 
 
@@ -494,7 +496,7 @@ def _normalize_step_result(step_result):
                 "observation": observation,
                 "terminated": terminated,
                 "truncated": truncated,
-                "extra_info": extra_info if isinstance(extra_info, dict) else {},
+                "extra_info": extra_info if _is_record(extra_info) else {},
             }
         if len(step_result) == 4:
             observation, reward, done, extra_info = step_result
@@ -503,12 +505,14 @@ def _normalize_step_result(step_result):
                 "observation": observation,
                 "terminated": done,
                 "truncated": False,
-                "extra_info": extra_info if isinstance(extra_info, dict) else {},
+                "extra_info": extra_info if _is_record(extra_info) else {},
             }
         if len(step_result) >= 2:
             env_reward, env_obs = step_result[:2]
-            return env_reward, env_obs if isinstance(env_obs, dict) else {}
+            return env_reward, env_obs if _is_record(env_obs) else {}
     if isinstance(step_result, dict):
+        return 0.0, step_result
+    if _is_record(step_result):
         return 0.0, step_result
     return 0.0, {}
 

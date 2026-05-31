@@ -132,7 +132,7 @@ def run_episodes(n_episode, env, agent, usr_conf, logger):
                     if len(collector) > 0:
                         # Calculate reward Rewards
                         # 计算奖励
-                        reward = reward_shaping(obs, last_predict_act, agent)
+                        reward = _shape_reward(obs, last_predict_act, agent, logger)
                         collector[-1].rew = reward
 
                     # Feature processing
@@ -201,7 +201,7 @@ def run_episodes(n_episode, env, agent, usr_conf, logger):
                     if len(collector) > 1:
                         # Calculate reward Rewards include phase_reward and duration_reward
                         # 奖励有phase_reward和duration_reward
-                        reward = reward_shaping(_obs, last_predict_act, agent)
+                        reward = _shape_reward(_obs, last_predict_act, agent, logger)
                         collector[-1].done = 1
                         collector[-1].rew = reward
                         collector = sample_process(collector)
@@ -222,6 +222,15 @@ def _reward_components(reward):
     except (TypeError, ValueError, IndexError):
         return 0.0, 0.0
     return phase_reward, duration_reward
+
+
+def _shape_reward(obs, act, agent, logger):
+    try:
+        reward = reward_shaping(obs, act, agent)
+    except Exception as err:
+        _log_error(logger, f"reward shaping failed: {err}")
+        return 0.0, 0.0
+    return _reward_components(reward)
 
 
 def _read_usr_conf(path, logger):

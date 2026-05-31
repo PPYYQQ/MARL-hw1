@@ -90,6 +90,7 @@ def main():
         _safe_observation,
         _save_latest_model,
         _send_sample_data,
+        _shape_reward,
         _should_log_progress,
     )
 
@@ -386,6 +387,26 @@ def main():
     assert _reward_components((1.5, float("nan"))) == (1.5, 0.0)
     assert _reward_components((float("inf"), 2.0)) == (0.0, 2.0)
     assert _reward_components("bad") == (0.0, 0.0)
+
+    import agent_target_dqn.workflow.train_workflow as train_workflow
+
+    class EarlyFailingLogger:
+        def error(self, message):
+            raise RuntimeError("logger error failed")
+
+    original_reward_shaping = train_workflow.reward_shaping
+    try:
+        train_workflow.reward_shaping = lambda *args, **kwargs: (1.5, float("nan"))
+        assert _shape_reward({}, [0, 0, Config.MIN_GREEN_DURATION], dummy_agent, None) == (1.5, 0.0)
+
+        def raise_reward(*args, **kwargs):
+            raise RuntimeError("reward failed")
+
+        train_workflow.reward_shaping = raise_reward
+        assert _shape_reward({}, [0, 0, Config.MIN_GREEN_DURATION], dummy_agent, EarlyFailingLogger()) == (0.0, 0.0)
+    finally:
+        train_workflow.reward_shaping = original_reward_shaping
+
     assert _normalize_reset_result(({"legal_action": 1}, {"init_state": {}})) == {
         "observation": {"legal_action": 1},
         "extra_info": {"init_state": {}},
@@ -447,8 +468,6 @@ def main():
     assert recording_monitor.records
     assert _put_monitor_data(FailingMonitor(), {"reward": 1.0}, FailingLogger()) is False
     assert _put_monitor_data(None, {"reward": 1.0}, FailingLogger()) is False
-
-    import agent_target_dqn.workflow.train_workflow as train_workflow
 
     original_read_usr_conf = train_workflow.read_usr_conf
     try:

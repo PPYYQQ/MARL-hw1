@@ -212,6 +212,10 @@ def main():
     require("np.flatnonzero" in agent, "random exploration should sample only legal phase actions")
 
     require("phase_reward" in workflow and "duration_reward" in workflow, "workflow should monitor reward components")
+    require("def _shape_reward" in workflow, "workflow reward shaping should be isolated")
+    require("_shape_reward(obs, last_predict_act, agent, logger)" in workflow, "workflow should shape intermediate rewards through helper")
+    require("_shape_reward(_obs, last_predict_act, agent, logger)" in workflow, "workflow should shape terminal rewards through helper")
+    require("reward shaping failed" in workflow, "workflow should log reward shaping failures")
     require("def _read_usr_conf" in workflow, "workflow user config reading should be isolated")
     require("_read_usr_conf(\"agent_target_dqn/conf/train_env_conf.toml\", logger)" in workflow, "workflow should read user config through the safe helper")
     require("read usr conf failed" in workflow, "workflow should log user config read failures")

@@ -521,7 +521,7 @@ def get_phase_pressure(vehicles, waiting_speed_threshold=0.1, phase_count=4):
             if not on_enter_lane(vehicle):
                 continue
 
-            lane_phase = lane_to_phase.get(vehicle_value(vehicle, "lane"))
+            lane_phase = lane_to_phase.get(_safe_lane_id(vehicle_value(vehicle, "lane")))
             if lane_phase is None:
                 continue
 

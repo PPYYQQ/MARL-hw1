@@ -30,14 +30,18 @@ def _safe_int(value, default=0):
     return int(_safe_float(value, default))
 
 
-def _safe_junction_id(value, default=None):
+def _safe_id(value, default=None):
     try:
-        junction_id = float(value)
+        id_value = float(value)
     except (TypeError, ValueError, OverflowError):
         return default
-    if not math.isfinite(junction_id):
+    if not math.isfinite(id_value):
         return default
-    return int(junction_id)
+    return int(id_value)
+
+
+def _safe_junction_id(value, default=None):
+    return _safe_id(value, default)
 
 
 def _junction_key(value, junction_ids, default=None):
@@ -228,7 +232,7 @@ class FeatureProcess:
         # Store road structure information in various variables
         # 将道路结构信息存储到各个变量
         for junction in junctions:
-            junction_id = _first_record_value(junction, "j_id", "junction_id")
+            junction_id = _safe_id(_first_record_value(junction, "j_id", "junction_id"), None)
             if junction_id is None:
                 continue
             self.junction_dict[junction_id] = junction
@@ -237,27 +241,33 @@ class FeatureProcess:
             index = 0
             for approaching_edges in _safe_list(record_value(junction, "enter_lanes_on_directions", [])):
                 for lane in _safe_list(record_value(approaching_edges, "lanes", [])):
-                    self.l_id_to_index[junction_id][lane] = index
+                    lane_id = _safe_id(lane, None)
+                    if lane_id is None:
+                        continue
+                    self.l_id_to_index[junction_id][lane_id] = index
                     index += 1
 
             for edge in edges:
-                edge_id = _first_record_value(edge, "e_id", "edge_id")
+                edge_id = _safe_id(_first_record_value(edge, "e_id", "edge_id"), None)
                 if edge_id is not None:
                     self.edge_dict[edge_id] = edge
             for lane in lane_configs:
-                lane_id = _first_record_value(lane, "l_id", "lane_id")
+                lane_id = _safe_id(_first_record_value(lane, "l_id", "lane_id"), None)
                 if lane_id is not None:
                     self.lane_dict[lane_id] = lane
             for vehicle_config in vehicle_configs:
-                vehicle_config_id = _first_record_value(
-                    vehicle_config,
-                    "v_config_id",
-                    "vehicle_config_id",
+                vehicle_config_id = _safe_id(
+                    _first_record_value(
+                        vehicle_config,
+                        "v_config_id",
+                        "vehicle_config_id",
+                    ),
+                    None,
                 )
                 if vehicle_config_id is not None:
                     self.vehicle_configs_dict[vehicle_config_id] = vehicle_config
             for lane in lane_configs:
-                lane_id = _first_record_value(lane, "l_id", "lane_id")
+                lane_id = _safe_id(_first_record_value(lane, "l_id", "lane_id"), None)
                 if lane_id is not None:
                     self.lane_volume[lane_id] = []
 
@@ -423,8 +433,8 @@ class FeatureProcess:
         # Update the number of vehicles on each lane
         # 更新每条车道上的车辆数量
         if on_enter_lane(vehicle):
-            lane_id = vehicle_value(vehicle, "lane")
-            if not _is_hashable(lane_id):
+            lane_id = _safe_id(vehicle_value(vehicle, "lane"), None)
+            if lane_id is None or not _is_hashable(lane_id):
                 return
             if lane_id not in self.lane_volume:
                 # Defensive handling: initialize the lane

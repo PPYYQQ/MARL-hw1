@@ -177,6 +177,18 @@ def main():
     assert in_junction({"junction": "0"}) is True
     assert in_junction({"junction": "-1"}) is False
     assert on_depart_lane({"lane": 11, "junction": "-1", "target_junction": "0"}) is False
+    string_lane_vehicle = {
+        "lane": "11",
+        "junction": "-1",
+        "target_junction": "0",
+        "speed": "0.0",
+        "waiting_time": "6.0",
+        "delay": "2.0",
+    }
+    assert on_enter_lane(string_lane_vehicle) is True
+    string_phase_pressure, string_totals = get_phase_pressure([string_lane_vehicle])
+    assert string_phase_pressure[0] > 0.0
+    assert string_totals["vehicle_count"] == 1
     assert get_lane_statistics([doc_style_vehicle])["counts"][0] == 1.0
     doc_phase_pressure, doc_totals = get_phase_pressure([doc_style_vehicle])
     assert doc_phase_pressure[0] > 0.0
@@ -437,6 +449,45 @@ def main():
     assert doc_alias_preprocess.vehicle_configs_dict[3]["max_speed"] == 15.0
     assert doc_alias_preprocess.l_id_to_index[0][11] == 0
     assert doc_alias_preprocess.l_id_to_index[0][10] == 1
+    string_id_preprocess = FeatureProcess(None)
+    string_id_start_info = {
+        "junctions": {
+            "main": {
+                "junction_id": "0",
+                "enter_lanes_on_directions": {"north": {"lanes": ["11", "10"]}},
+            }
+        },
+        "edges": {"edge_main": {"edge_id": "101"}},
+        "lane_configs": {"lane_main": {"lane_id": "11"}},
+        "vehicle_configs": {"car_cfg": {"vehicle_config_id": "3", "max_speed": 15.0}},
+    }
+    string_id_preprocess.init_road_info(string_id_start_info)
+    assert 0 in string_id_preprocess.junction_dict
+    assert 101 in string_id_preprocess.edge_dict
+    assert 11 in string_id_preprocess.lane_dict
+    assert 11 in string_id_preprocess.lane_volume
+    assert 3 in string_id_preprocess.vehicle_configs_dict
+    assert string_id_preprocess.l_id_to_index[0][11] == 0
+    string_id_preprocess.update_traffic_info(
+        {
+            "frame_state": {
+                "frame_no": 2,
+                "frame_time": 2.0,
+                "vehicles": [
+                    {
+                        "v_id": 12,
+                        "v_config_id": "3",
+                        "lane": "11",
+                        "junction": "-1",
+                        "speed": 0.0,
+                        "position_in_lane": {"x": 0.0, "y": 0.0},
+                    }
+                ],
+            }
+        },
+        None,
+    )
+    assert string_id_preprocess.lane_volume[11] == [12]
     object_preprocess.waiting_time_store[11] = 4.0
     assert object_preprocess.get_all_junction_waiting_time(
         [AttrObject(v_id=11, junction=-1, lane=11)]

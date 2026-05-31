@@ -55,6 +55,32 @@ def _safe_int(value, default=0):
     return int(_safe_float(value, default))
 
 
+def _safe_optional_int(value, default=None):
+    try:
+        value = float(value)
+    except (TypeError, ValueError, OverflowError):
+        return default
+    if not math.isfinite(value):
+        return default
+    return int(value)
+
+
+def _mapping_key(value, mapping, default=None):
+    normalized_value = _safe_optional_int(value, None)
+    if normalized_value is not None:
+        if normalized_value in mapping:
+            return normalized_value
+        for key in mapping:
+            if _safe_optional_int(key, None) == normalized_value:
+                return key
+    try:
+        if value in mapping:
+            return value
+    except TypeError:
+        pass
+    return default
+
+
 def _safe_mapping_get(mapping, key, default=None):
     if isinstance(mapping, dict):
         try:
@@ -76,6 +102,7 @@ def _is_record(value):
 _RECORD_FIELD_KEYS = {
     "v_id",
     "v_config_id",
+    "vehicle_config_id",
     "lane",
     "junction",
     "position_in_lane",
@@ -396,6 +423,9 @@ class Agent(BaseAgent):
         for current_junction_id in junction_ids:
             speed_dict[current_junction_id] = np.zeros((Config.GRID_WIDTH, Config.GRID_NUM))
             position_dict[current_junction_id] = np.zeros((Config.GRID_WIDTH, Config.GRID_NUM))
+        if junction_id not in speed_dict:
+            speed_dict[junction_id] = np.zeros((Config.GRID_WIDTH, Config.GRID_NUM))
+            position_dict[junction_id] = np.zeros((Config.GRID_WIDTH, Config.GRID_NUM))
 
         # Initialize state-related variables to prevent errors when there are no vehicles in the traffic scenario
         # 初始化状态相关变量, 防止交通场景内车辆为空时报错
@@ -416,10 +446,17 @@ class Agent(BaseAgent):
                 try:
                     x_pos = get_lane_code(vehicle)
                     y_pos = int(get_lane_position_meters(vehicle) // Config.GRID_LENGTH)
-                    vehicle_config = self.preprocess.vehicle_configs_dict.get(
-                        _safe_mapping_get(vehicle, "v_config_id"),
-                        {},
+                    vehicle_config_id = _safe_mapping_get(
+                        vehicle,
+                        "v_config_id",
+                        _safe_mapping_get(vehicle, "vehicle_config_id"),
                     )
+                    vehicle_config_key = _mapping_key(
+                        vehicle_config_id,
+                        self.preprocess.vehicle_configs_dict,
+                        vehicle_config_id,
+                    )
+                    vehicle_config = self.preprocess.vehicle_configs_dict.get(vehicle_config_key, {})
                     max_speed = max(
                         _safe_float(_safe_mapping_get(vehicle_config, "max_speed"), Config.DEFAULT_MAX_SPEED),
                         1.0,
@@ -431,9 +468,11 @@ class Agent(BaseAgent):
                 if y_pos < 0 or y_pos >= Config.GRID_NUM:
                     continue
 
-                target_junction = _safe_mapping_get(vehicle, "target_junction", junction_id)
-                if target_junction not in speed_dict:
-                    target_junction = junction_id
+                target_junction = _mapping_key(
+                    _safe_mapping_get(vehicle, "target_junction", junction_id),
+                    speed_dict,
+                    junction_id,
+                )
                 speed_dict[target_junction][x_pos, y_pos] = float(max(0.0, min(speed / max_speed, 1.0)))
                 position_dict[target_junction][x_pos, y_pos] = 1
             else:

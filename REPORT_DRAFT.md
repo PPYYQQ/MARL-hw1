@@ -97,7 +97,7 @@
 特征预处理和观测编码对缺失 `frame_state`、缺失 `vehicles`、缺失 `obs` 包装、畸形车辆记录和异常相位字段采用保守跳过或默认值策略，避免异常帧中断训练循环。字段读取同时兼容普通 dict 和作业协议对象属性，覆盖 Observation、FrameState、Vehicle、Phase、Lane、ExtraInfo 等消息形态；若平台把单个 Vehicle/Phase/Lane 直接作为 dict 或对象返回，或把 repeated 字段编码成 dict-of-records，也会按有效记录处理，而标量坏字段会被视为无效输入。
 作业文档列出的车辆字段不一定包含 `target_junction`，因此进口车道判断和交叉口等待时间统计会在该字段缺失、且车辆可识别为进口车道时按单路口目标路口处理，避免真实 observation 只包含 `lane` 和 `junction` 时把进口车辆全部忽略。
 
-预处理器会清洗 `frame_no`、`frame_time`、车辆 ID、车速、车道位置和路口 ID；`junction` / `target_junction` 即使以字符串形式返回，也会先转换成有限整数，避免字符串 `"-1"` 被误判为有效目标路口或路口内车辆。等待时间、行驶距离、车道车辆数和交叉口等待时间统计遇到异常车辆字段时跳过单车或按 0 处理，避免一个异常车辆破坏跨帧状态。路网初始化、车辆统计、reward 和 workflow 环境返回解析都通过安全字段读取处理 dict / 属性对象差异，并明确排除 int、float、bool 等标量伪记录。
+预处理器会清洗 `frame_no`、`frame_time`、车辆 ID、车速、车道位置和路口 ID；`junction` / `target_junction` 即使以字符串形式返回，也会先转换成有限整数，避免字符串 `"-1"` 被误判为有效目标路口或路口内车辆。路网初始化会把 `junction_id`、`edge_id`、`lane_id`、`vehicle_config_id` 等数字 ID 归一化为整数，车辆 `lane` 和 `v_config_id` 也会在相位压力、车道统计和车辆配置查找前清洗，避免平台 JSON 或 protobuf 转换后出现字符串 key 导致统计信号丢失。等待时间、行驶距离、车道车辆数和交叉口等待时间统计遇到异常车辆字段时跳过单车或按 0 处理，避免一个异常车辆破坏跨帧状态。路网初始化、车辆统计、reward 和 workflow 环境返回解析都通过安全字段读取处理 dict / 属性对象差异，并明确排除 int、float、bool 等标量伪记录。
 
 路网初始化会同时兼容模板字段 `j_id/e_id/l_id/v_config_id` 和文档式字段 `junction_id/edge_id/lane_id/vehicle_config_id`，避免真实平台 init_state 命名差异导致路口、边、车道或车辆配置未写入预处理器。
 

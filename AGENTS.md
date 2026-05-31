@@ -113,6 +113,7 @@ Target-DQN 关键文件：
 - workflow、Agent、reward、preprocessor 和交通统计 helper 的关键协议字段读取已兼容普通 dict 与属性对象，贴合作业文档中的 Observation / FrameState / Vehicle / Phase / Lane 消息形态；标量字段不会被误当成协议对象，单个 dict 记录、dict-of-records 和单个非 dict 对象式 vehicles/phases/lanes 容器都会按有效记录处理。
 - 共享交通统计工具不再要求车辆记录必须包含 `target_junction`；缺失时会按单路口进口车道车辆处理，等待时间统计也会复用同一默认目标路口，贴合作业文档字段列表。
 - 车辆 `junction` / `target_junction` 会统一清洗为有限整数，兼容字符串形式的 `"0"` / `"-1"`，避免字符串 `"-1"` 被误判为有效目标路口或路口内车辆。
+- 路网初始化、相位压力、车道车辆统计和 observation 中的车辆配置查找会清洗数字 ID 字段，兼容 `junction_id`、`edge_id`、`lane_id`、`vehicle_config_id`、车辆 `lane` 和 `v_config_id` 以字符串形式返回。
 - `frame_state.lanes` 已作为车辆列表缺失或稀疏时的 fallback 信号；观测交通统计、逐车道统计、规则兜底和 reward 都能复用 `lane_id`、`v_count`、`queue_length`、`congestion` 聚合出的相位压力。
 - `action_process()` 已将 duration index 映射为实际秒数。
 - `predict()` 对空 observation batch 会返回空列表；`action_process()` 会固定 `junction_id=0` 并清洗异常相位/时长索引，确保输出合法动作。
@@ -282,7 +283,7 @@ coding agent 无法单独保证：
 - 坐标单位必须通过真实 observation 确认；若 `position_in_lane["y"]` 是毫米，应使用 `/ 1000` 后再按 `GRID_LENGTH` 分桶。
 - 原始 observation、frame_state、vehicle、phase、extra_info 可能是 dict，也可能是平台协议对象；新增解析逻辑必须使用安全字段读取 helper，不要直接假设 `.get()` 或下标访问一定可用。注意区分协议对象和标量，避免把 `1`、`False` 这类坏字段当成有效 observation。
 - `frame_state.lanes` 是文档中明确存在的车道聚合字段；当前会在 `vehicles` 推导压力为空时，用 lanes 聚合相位压力，并将 lanes 统计与逐车道统计特征取最大值合并，保持 638 维特征总长不变。
-- 车辆记录可能没有 `target_junction`，进口车道判断和交叉口等待时间统计不能强依赖该字段；单路口场景下缺失且能识别为进口车道时按目标路口 0 处理，字符串路口 ID 要先清洗为整数，无法识别目标的畸形记录应跳过。
+- 车辆记录可能没有 `target_junction`，进口车道判断和交叉口等待时间统计不能强依赖该字段；单路口场景下缺失且能识别为进口车道时按目标路口 0 处理，字符串形式的路口、车道和车辆配置 ID 要先清洗为整数，无法识别目标的畸形记录应跳过。
 - 所有特征必须固定长度、无 NaN、范围稳定；空车辆和缺失字段要有默认值。
 
 奖励设计：

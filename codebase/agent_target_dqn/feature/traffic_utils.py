@@ -62,7 +62,7 @@ def normalize_phase_legal_action(legal_action, phase_count=4):
     return mask
 
 
-def _vehicle_value(vehicle, key, default=None):
+def vehicle_value(vehicle, key, default=None):
     if isinstance(vehicle, dict):
         try:
             return vehicle.get(key, default)
@@ -72,6 +72,9 @@ def _vehicle_value(vehicle, key, default=None):
         return getattr(vehicle, key, default)
     except Exception:
         return default
+
+
+_vehicle_value = vehicle_value
 
 
 def on_enter_lane(vehicle):
@@ -87,7 +90,7 @@ def on_enter_lane(vehicle):
     参数:
         - vehicle
     """
-    lane_id = _vehicle_value(vehicle, "lane")
+    lane_id = vehicle_value(vehicle, "lane")
     inlane_code = {
         11: 0,
         10: 1,
@@ -104,7 +107,7 @@ def on_enter_lane(vehicle):
         163: 12,
         162: 13,
     }
-    target_junction = _vehicle_value(vehicle, "target_junction", 0)
+    target_junction = vehicle_value(vehicle, "target_junction", 0)
     if lane_id in inlane_code and target_junction != -1:
         return True
     else:
@@ -124,7 +127,7 @@ def in_junction(vehicle):
     参数:
         - vehicle
     """
-    junction = _vehicle_value(vehicle, "junction", -1)
+    junction = vehicle_value(vehicle, "junction", -1)
     if junction != -1:
         return True
     else:
@@ -144,8 +147,8 @@ def on_depart_lane(vehicle):
     参数:
         - vehicle
     """
-    junction = _vehicle_value(vehicle, "junction", -1)
-    target_junction = _vehicle_value(vehicle, "target_junction", -1)
+    junction = vehicle_value(vehicle, "junction", -1)
+    target_junction = vehicle_value(vehicle, "target_junction", -1)
     # Prevent vehicles in the right turn lane from being judged as being in the exit lane
     # 避免车辆在右转车道被判定为在出口车道上
     if (on_enter_lane(vehicle) or in_junction(vehicle)) or (junction == -1 and target_junction != -1):
@@ -174,7 +177,7 @@ def get_lane_code(vehicle):
     返回:
         - lane_code: 根据划分规则分配给该车道的编号
     """
-    lane_id = vehicle["lane"]
+    lane_id = vehicle_value(vehicle, "lane")
     lane_code = {
         11: 0,
         10: 1,

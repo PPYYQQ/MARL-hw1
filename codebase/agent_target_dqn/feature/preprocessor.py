@@ -47,6 +47,23 @@ def _safe_position_pair(vehicle):
     return x_pos, y_pos
 
 
+def _default_target_junction(junction_ids):
+    if 0 in junction_ids:
+        return 0
+    for junction_id in junction_ids:
+        return junction_id
+    return None
+
+
+def _waiting_target_junction(vehicle, junction_ids):
+    target_junction = vehicle_value(vehicle, "target_junction", None)
+    if target_junction is not None:
+        return target_junction
+    if on_enter_lane(vehicle):
+        return _default_target_junction(junction_ids)
+    return None
+
+
 class FeatureProcess:
     """
     Update traffic information and perform feature processing
@@ -171,7 +188,7 @@ class FeatureProcess:
             vehicle_id = vehicle.get("v_id")
             if vehicle_id is None or not _is_hashable(vehicle_id):
                 continue
-            vehicle_junction = vehicle.get("junction", -1)
+            vehicle_junction = vehicle_value(vehicle, "junction", -1)
             try:
                 is_enter_lane = on_enter_lane(vehicle)
             except (KeyError, TypeError, ValueError, AttributeError):
@@ -351,11 +368,11 @@ class FeatureProcess:
         for vehicle in vehicles:
             if not isinstance(vehicle, dict):
                 continue
-            target_junction = vehicle.get("target_junction")
-            if vehicle.get("junction") != -1 or target_junction == -1 or target_junction not in res:
+            target_junction = _waiting_target_junction(vehicle, res)
+            if vehicle_value(vehicle, "junction", -1) != -1 or target_junction == -1 or target_junction not in res:
                 continue
-            vehicle_id = vehicle.get("v_id")
-            if vehicle_id is not None and not _is_hashable(vehicle_id):
+            vehicle_id = vehicle_value(vehicle, "v_id")
+            if vehicle_id is None or not _is_hashable(vehicle_id):
                 continue
             if vehicle_id is not None and _is_hashable(vehicle_id) and vehicle_id in self.waiting_time_store:
                 t = _safe_nonnegative_float(self.waiting_time_store[vehicle_id])
@@ -400,10 +417,10 @@ class FeatureProcess:
         for vehicle in vehicles:
             if not isinstance(vehicle, dict):
                 continue
-            target_junction = vehicle.get("target_junction")
-            if vehicle.get("junction") != -1 or target_junction == -1 or target_junction not in res:
+            target_junction = _waiting_target_junction(vehicle, res)
+            if vehicle_value(vehicle, "junction", -1) != -1 or target_junction == -1 or target_junction not in res:
                 continue
-            res[target_junction] += _safe_nonnegative_float(vehicle.get("waiting_time", 0.0))
+            res[target_junction] += _safe_nonnegative_float(vehicle_value(vehicle, "waiting_time", 0.0))
             v_num[target_junction] += 1
         # Calculate the average waiting time of all vehicles in the scene
         # 计算场景内所有车辆的平均等待时间

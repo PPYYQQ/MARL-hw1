@@ -311,22 +311,25 @@ def main():
     }
     preprocess.update_traffic_info(bad_preprocess_frame, "bad-extra-info")
     assert all(math.isfinite(float(value)) for value in preprocess.waiting_time_store.values())
+    preprocess.waiting_time_store[3] = 8.0
     waiting_by_store = preprocess.get_all_junction_waiting_time(
         [
             {"v_id": 1, "junction": -1, "target_junction": 0},
+            {"v_id": 3, "junction": -1, "lane": 11},
             {"v_id": [], "junction": -1, "target_junction": 0},
             {"bad": "vehicle"},
         ]
     )
-    assert waiting_by_store == {0: 2.0}
+    assert waiting_by_store == {0: 5.0}
     waiting_by_origin = preprocess.get_all_junction_waiting_time_by_origin(
         [
             {"junction": -1, "target_junction": 0, "waiting_time": 6.0},
+            {"junction": -1, "lane": 11, "waiting_time": 10.0},
             {"junction": -1, "target_junction": 0, "waiting_time": float("inf")},
             {"bad": "vehicle"},
         ]
     )
-    assert waiting_by_origin == {0: 3.0}
+    assert abs(waiting_by_origin[0] - (16.0 / 3.0)) < 1e-6
 
     frame_type = type("Frame", (), {})
     assert sample_process([]) == []

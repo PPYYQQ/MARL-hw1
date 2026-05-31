@@ -1712,3 +1712,20 @@
   - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
 - 下一步：
   - 平台运行后确认真实 observation 的合法动作字段是否命中当前别名；如果仍出现长期不决策或过度决策，保存原始 observation 样例继续校准门控语义。
+
+### Step 113 - 兼容车辆驼峰字段别名
+
+- 状态：完成
+- Commit：`08de810`
+- 内容：
+  - `traffic_utils` 新增 `VEHICLE_FIELD_ALIASES`，集中兼容 `vehicleId`、`vConfigId` / `vehicleConfigId`、`laneId`、`junctionId`、`targetJunction`、`positionInLane` 和 `waitingTime`。
+  - `Agent.observation_process()` 改用共享 `vehicle_value()` 读取车辆配置 ID 和目标路口，网格特征、max speed 查找和目标路口匹配都能复用车辆字段别名。
+  - `Agent`、reward 和 preprocessor 的 `_RECORD_FIELD_KEYS` 同步加入车辆驼峰字段，避免单条 dict 车辆记录只使用驼峰命名时被容器解析漏掉。
+  - 无平台依赖测试增加驼峰车辆记录的进口车道判断、位置单位、车道统计、相位压力、等待时间统计和跨帧预处理覆盖；smoke 观测中的一辆车改为驼峰字段。
+  - 更新 `AGENTS.md`、`RUNBOOK.md` 和 `REPORT_DRAFT.md`，记录车辆字段别名兼容情况。
+- 验证：
+  - 已运行 `python -m compileall agent_target_dqn/feature/traffic_utils.py agent_target_dqn/feature/preprocessor.py agent_target_dqn/feature/definition.py agent_target_dqn/agent.py tests/test_target_dqn_features.py tests/test_target_dqn_static.py tests/test_target_dqn_smoke.py`，通过。
+  - 已运行 `python tests/test_target_dqn_features.py` 和 `python tests/test_target_dqn_static.py`，均通过。
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 平台运行后确认真实 Vehicle 字段是否还有其它命名，例如速度或延误的单位/别名；若相位压力或等待统计仍异常，保存原始车辆样例继续扩展字段映射。

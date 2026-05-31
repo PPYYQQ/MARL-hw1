@@ -1286,3 +1286,19 @@
   - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
 - 下一步：
   - 有 `torch` 环境后补跑 smoke，确认 generator 式 ObsData batch 和异常属性不会中断直接 `predict()` 调用。
+
+### Step 87 - duration reward 动作空间对齐
+
+- 状态：完成
+- Commit：`12c2f51`
+- 内容：
+  - 新增 `_max_action_duration()`，统一样本动作裁剪和 reward duration 目标上限。
+  - `reward_shaping()` 的目标 duration 从环境全局 `MAX_GREEN_DURATION=40` 改为模型当前可表达的 `MIN_GREEN_DURATION + DIM_OF_ACTION_DURATION - 1`。
+  - 避免高压场景下 duration reward 鼓励模型追逐无法由 80 维联合动作头输出的 40 秒动作。
+  - 无平台依赖测试增加饱和压力下最大可表达 duration 的零惩罚覆盖；静态测试增加 reward/action duration 上限共享锚点。
+- 验证：
+  - 已运行 `python -m compileall agent_target_dqn/feature tests/test_target_dqn_features.py tests/test_target_dqn_static.py`，通过。
+  - 已运行 `python tests/test_target_dqn_features.py` 和 `python tests/test_target_dqn_static.py`，均通过。
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 平台训练后观察 `duration_reward` 是否仍长期强负；若是，继续校准压力尺度或扩大 duration 动作空间。

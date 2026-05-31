@@ -781,3 +781,17 @@
   - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
 - 下一步：
   - 平台环境可用后确认模型入口不会因 Python batch 内各行 observation 长度不一致而失败。
+
+### Step 53 - 样本入口字段规范化
+
+- 状态：完成
+- Commit：`70fc04b`
+- 内容：
+  - `sample_process()` 在创建 `SampleData` 前对 `obs`、`act`、`rew` 和 `done` 做固定宽度归一化。
+  - 样本字段中的 NaN/Inf 会归零，短字段补零、长字段截断，动作会裁剪到单路口、合法相位和模型 20 档 duration 可表达范围。
+  - `normalize_phase_legal_action()` 会将合法动作 mask 中的 NaN/Inf 显式归零，避免非有限值被误判为可选相位。
+  - 无平台依赖测试增加 ragged observation、短 reward、非有限样本值、字符串 done 和非有限 legal_action 覆盖；静态测试增加样本归一化锚点。
+- 验证：
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 平台环境可用后确认样本池中 `obs`、`_obs`、`act`、`rew`、`done` 和 `legal_action` 不再因原始轨迹异常产生 shape 不一致。

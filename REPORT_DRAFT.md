@@ -125,6 +125,7 @@ duration_seconds = MIN_GREEN_DURATION + duration_index
 - 如果平台提供相位级 mask，则预测和随机探索只在合法相位对应的联合动作中选择。
 - 训练 workflow 也使用同一归一化逻辑判断当前帧是否需要调用 `predict()`，避免平台给标量 `int32` 时因下标访问崩溃。
 - 训练样本中的 `legal_action` 保存 `_obs` 对应的下一状态 mask，用于 TD target 的下一联合动作选择。
+- mask 中的 NaN/Inf 会先归零，避免非有限值被误判为合法相位。
 - 如果 mask 全零，推理侧会回退为四个相位都可选，避免无可选动作导致崩溃。
 
 ## 奖励设计
@@ -197,7 +198,7 @@ workflow 会先归一化 `env.reset()` 和 `env.step()` 返回值：既兼容当
 
 训练 workflow 中的预测动作也有兜底链路：模型预测返回空或抛错时回退到 `rule_based_action()`；如果规则策略也异常，则输出 `[0, 0, MIN_GREEN_DURATION]`，避免单次推理异常直接结束整局训练。
 
-样本处理会保留终局 transition，并对空轨迹、全无效轨迹、缺失 reward、缺失合法动作和无效动作帧做防护；终局样本的 `done` 在训练张量中表示 `not_done=0`，Double DQN target 不再引入下一状态 Q 值。
+样本处理会保留终局 transition，并对空轨迹、全无效轨迹、缺失 reward、缺失合法动作和无效动作帧做防护；创建 `SampleData` 前会将 `obs`、`act`、`rew` 和 `done` 归一化为固定宽度，清洗 NaN/Inf，并把动作裁剪到单路口、合法相位和模型可表达的 duration 秒数。终局样本的 `done` 在训练张量中表示 `not_done=0`，Double DQN target 不再引入下一状态 Q 值。
 
 workflow 当前监控：
 
@@ -215,7 +216,7 @@ workflow 当前监控：
 - target q value。
 - gradient norm。
 
-训练张量进入 `Algorithm.learn()` 后会先按字段定宽补齐或截断，再统一清洗 NaN/Inf：`obs`、`_obs`、`rew`、`act`、`done`、`legal_action` 和 TD target 中的非有限值都会归零，`done` 还会裁剪到 `[0, 1]`。如果 loss 或梯度范数仍为 NaN/Inf，本次 optimizer step 会被跳过，避免把异常数值写入模型参数。workflow 统计 reward 分量时同样会把 NaN/Inf 归零，避免监控数据污染。
+训练张量进入 `Algorithm.learn()` 后会再次按字段定宽补齐或截断，并统一清洗 NaN/Inf：`obs`、`_obs`、`rew`、`act`、`done`、`legal_action` 和 TD target 中的非有限值都会归零，`done` 还会裁剪到 `[0, 1]`。如果 loss 或梯度范数仍为 NaN/Inf，本次 optimizer step 会被跳过，避免把异常数值写入模型参数。workflow 统计 reward 分量时同样会把 NaN/Inf 归零，避免监控数据污染。
 
 ## 本地验证
 

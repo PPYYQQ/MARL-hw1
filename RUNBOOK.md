@@ -93,3 +93,4 @@ python tests/test_target_dqn_smoke.py
 - 日志过多：当前进度日志只在 episode 结束或每 20 次真实预测后打印；若平台日志仍过密，优先检查是否有异常反复重启。
 - reward 长期为 0：检查 `reward_shaping()` 是否收到真实车辆字段、`vehicles` 是否为空、相位压力是否一直为 0。
 - loss 爆炸或 NaN：优先降低 `Config.LR`，再缩小 reward 权重或检查 observation 是否含 NaN。
+- 样本 shape 不一致或 `torch.stack` 报错：当前 `sample_process()` 和 `Algorithm.learn()` 都会定宽归一化样本字段；若仍出现，优先保留一局原始 collector 日志来定位平台返回的异常字段。

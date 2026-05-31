@@ -104,6 +104,8 @@ Target-DQN 关键文件：
 - 训练 workflow 的进度日志只在 episode 结束或真实预测计数达到间隔时打印，避免无决策帧刷屏。
 - `sample_process()` 会把训练样本中的 `legal_action` 设置为下一状态相位 mask，供 Double DQN target 选择下一相位时使用。
 - `sample_process()` 对空轨迹、全无效轨迹、缺失 reward 和无效动作帧会保守跳过或补零，避免样本转换边界崩溃。
+- `sample_process()` 在创建 `SampleData` 前会对 `obs`、`act`、`rew` 和 `done` 做定宽归一化、NaN/Inf 清洗和动作边界裁剪，避免畸形轨迹污染样本池。
+- `normalize_phase_legal_action()` 会将合法动作里的 NaN/Inf 显式归零，避免非有限值被误判为可选相位。
 - `Algorithm.learn()` 会清洗 observation、reward、action、not_done、legal_action 和 TD target 中的 NaN/Inf，workflow reward 监控也会把非有限值归零。
 - `Algorithm.learn()` 会在 `torch.stack()` 前对 obs、_obs、action、reward、done 和 legal_action 做定宽补齐/截断，避免畸形样本长度不一致时训练崩溃。
 - `Algorithm.learn()` 遇到非有限 loss 或梯度范数时会跳过本次 optimizer step，避免 NaN/Inf 参数污染模型。
@@ -248,6 +250,7 @@ coding agent 无法单独保证：
 - 验证 `action_process()` 对任意模型输出都能产生合法 `phase_idx` 和合法秒数 duration。
 - 验证 `reward_shaping()` 对排队/等待下降给出更高奖励，对频繁切灯给出惩罚。
 - 验证 `sample_process()` 中 `_obs`、`done`、`rew`、`act` 的 tensor 形状与 `Algorithm.learn()` 一致。
+- 验证 `sample_process()` 对短/长 observation、短 reward、NaN/Inf 和字符串 done 的归一化结果。
 
 集成测试：
 

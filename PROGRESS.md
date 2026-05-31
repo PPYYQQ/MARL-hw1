@@ -1035,3 +1035,18 @@
   - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
 - 下一步：
   - 平台环境可用后确认偶发环境 RPC 或封装异常只影响当前 episode；若长期反复出现，再根据平台日志区分环境故障和非法动作问题。
+
+### Step 70 - 样本批次 reward 聚合隔离
+
+- 状态：完成
+- Commit：`fc91ee0`
+- 内容：
+  - workflow 增加 `_sample_batch_stats()`，封装主循环里对 `g_data` 的长度、phase reward 和 duration reward 聚合。
+  - 样本批次长度读取失败时记录 `sample batch length failed` 并按空批次统计，避免监控聚合异常中断训练。
+  - 单个样本 `rew` 属性读取失败时记录 `sample reward read failed` 并按零 reward 统计，其它样本继续参与聚合。
+  - 批次迭代异常时记录 `sample batch iteration failed` 并保留已聚合的可读 reward。
+  - 无平台依赖测试覆盖正常 reward、NaN reward、异常 `rew` 属性、空批次和异常长度批次；静态测试增加 safe sample batch stats 锚点。
+- 验证：
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 平台环境可用后确认样本批次偶发异常不会影响 reward/data_length 监控上报和后续样本发送。

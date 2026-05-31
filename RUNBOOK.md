@@ -94,6 +94,7 @@ python tests/test_target_dqn_smoke.py
 - `get training metrics failed`：当前 workflow 会忽略本轮平台训练指标读取失败并继续 episode；如果长期出现，检查平台 metrics 服务或 SDK 状态。
 - `send sample data failed`：当前 workflow 会丢弃本批未发送成功的样本并继续后续 episode；如果长期出现，检查样本池、learner 服务和平台通信状态。
 - `sample process failed`：当前 workflow 会丢弃当前 episode 或容灾 collector 并继续后续 episode；如果长期出现，保存原始 collector、最后两帧 observation/action/reward 来定位样本转换输入。
+- `sample reward read failed` / `sample batch length failed`：当前 workflow 会把异常样本批次按可读部分或零 reward 统计，训练发送路径仍单独处理；如果反复出现，检查 `sample_process()` 返回对象是否为 `SampleData` 列表。
 - `latest` 模型结构不兼容：当前联合动作模型会跳过不兼容的旧 `latest` checkpoint，并从当前参数继续训练；若要强制加载指定模型 ID，结构不兼容仍会抛错。
 - `legal_action` 是标量而不是列表：当前 workflow 会先归一化为 4 维相位 mask，再判断是否需要决策；若平台提供相位级 mask，也会沿用相位约束。
 - `env reset failed`：当前 workflow 会跳过当前 episode 并在下一 epoch 重试；如果持续出现，检查环境配置、平台任务状态和 reset 返回协议。

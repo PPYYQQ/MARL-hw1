@@ -406,7 +406,10 @@ def _normalize_step_result(step_result):
 
 def _safe_env_value(env_obs, key, default):
     if isinstance(env_obs, dict):
-        return env_obs.get(key, default)
+        try:
+            return env_obs.get(key, default)
+        except Exception:
+            return default
     return default
 
 
@@ -449,13 +452,11 @@ def _safe_done_flag(env_obs, key):
 
 
 def _safe_legal_action(obs):
-    if isinstance(obs, dict):
-        return obs.get("legal_action")
-    return None
+    return _safe_env_value(obs, "legal_action", None)
 
 
 def _need_to_predict(obs):
-    legal_action = obs.get("legal_action") if isinstance(obs, dict) else None
+    legal_action = _safe_env_value(obs, "legal_action", None)
     phase_mask = normalize_phase_legal_action(legal_action, Config.DIM_OF_ACTION_PHASE)
     return any(phase_mask)
 

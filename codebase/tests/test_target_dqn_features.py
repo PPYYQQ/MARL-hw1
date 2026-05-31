@@ -593,6 +593,18 @@ def main():
     assert _safe_done_flag({}, "terminated") is False
     assert _safe_legal_action({"legal_action": [1, 0, 0, 0]}) == [1, 0, 0, 0]
     assert _safe_legal_action(None) is None
+
+    class FailingEnvObs(dict):
+        def get(self, key, default=None):
+            raise RuntimeError("mapping read failed")
+
+    failing_env_obs = FailingEnvObs()
+    assert _safe_observation(failing_env_obs) == {}
+    assert _safe_extra_info(failing_env_obs) == {}
+    assert _safe_frame_no(failing_env_obs) == 0
+    assert _safe_done_flag(failing_env_obs, "terminated") is False
+    assert _safe_legal_action(failing_env_obs) is None
+    assert _need_to_predict(failing_env_obs) is True
     assert _need_to_predict({"legal_action": 0}) is False
     assert _need_to_predict({"legal_action": [0, 1, 0, 0]}) is True
     assert _need_to_predict({"legal_action": FailingLegalAction()}) is True

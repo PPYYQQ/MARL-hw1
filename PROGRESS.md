@@ -1566,3 +1566,20 @@
   - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
 - 下一步：
   - 平台运行后确认 env_obs 和评估入口是否还有其它包装字段；若仍出现空 observation 或默认动作，保存原始类型和 repr 后继续补 alias。
+
+### Step 104 - 兼容 dict/object step envelope
+
+- 状态：完成
+- Commit：`42e53e1`
+- 内容：
+  - workflow 新增 `_normalize_step_record_result()`，当 `env.step()` 直接返回 dict 或对象式 step envelope 时，会抽取 reward/score、observation、done、truncated 和 extra_info。
+  - 新增 `_looks_like_step_envelope()` 和 `_first_env_value()`，集中识别 `observation` / `obs` / `_obs`、`reward` / `score` / `env_reward`、`terminated` / `done`、`extra_info` / `_state` / `state` 等常见字段别名。
+  - 保留裸 observation 的优先级：直接带 `frame_state` / `legal_action` 的 dict 或对象仍原样作为 observation 处理，不会误当 step envelope。
+  - 无平台依赖测试增加 dict step envelope、对象式 step envelope、`done` 字符串、`score` 数值、对象式 state 和裸 observation 优先级覆盖；静态测试增加 step envelope 识别锚点。
+  - 更新 `AGENTS.md`、`RUNBOOK.md` 和 `REPORT_DRAFT.md`，记录 `env.step()` dict/object envelope 已兼容。
+- 验证：
+  - 已运行 `python -m compileall agent_target_dqn/workflow/train_workflow.py tests/test_target_dqn_features.py tests/test_target_dqn_static.py`，通过。
+  - 已运行 `python tests/test_target_dqn_features.py` 和 `python tests/test_target_dqn_static.py`，均通过。
+  - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 平台运行后确认 `env.step()` 是否还有其它字段名，例如独立 `info` 或自定义 score 容器；若有，保存原始返回样例后继续扩展。

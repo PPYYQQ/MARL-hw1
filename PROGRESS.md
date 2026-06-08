@@ -1763,3 +1763,18 @@
   - 已运行 `./scripts/check_offline.sh`，所有离线检查通过；smoke 因当前本地缺少 `torch` 明确 skip。
 - 下一步：
   - 平台短训后确认真实 Observation 是否还存在其它顶层字段名，例如 `frame`、`stateInfo` 或 protobuf wrapper；如果特征仍长期为零，保存原始 reset/step 返回样例继续扩展。
+
+### Step 116 - 回填首次一小时平台训练结果
+
+- 状态：完成
+- Commit：`6911763`
+- 内容：
+  - 读取 `dqn1/` 下三张平台监控截图，确认平台任务 `194038` 使用 `Target DQN` 分布式训练运行 1h，时间为 2026-06-01 16:47:23 到 17:48:03。
+  - 基础链路表现正常：`predict_succ_cnt` 约 `4300+`，`sample_receive_cnt` 约 `4000+`，`episode_cnt` 约 `52`，`load_model_succ_cnt` 约 `52`。
+  - 环境 score 约从 `1400` 波动到末段 `1200`，平均延误约 `11-24`、等待约 `10-22`、排队约 `6-10`、信号变化惩罚约 `5-16`，未形成稳定提升。
+  - 算法指标中 `reward` 基本为 0，但 `value_loss` 逐步降到接近 0，`q_value` 上升到约 6 后稳定，说明 learner 在更新但 reward 监控或 reward 信号仍需排查。
+  - 更新 `EXPERIMENTS.md` 和 `REPORT_DRAFT.md`，将该结果记为 E01，并保留 `dqn1/` 截图作为证据。
+- 验证：
+  - 已人工查看 `dqn1/微信图片_20260608185906_183_14.png`、`dqn1/微信图片_20260608185916_184_14.png`、`dqn1/微信图片_20260608185922_185_14.png`。
+- 下一步：
+  - 用当前最新 `main` 重新打包跑 30-60 分钟短训；如果 reward 仍为 0，优先在平台日志或 monitor 中排查 `phase_reward`、`duration_reward`、`data_length` 和 observation 字段命中情况。

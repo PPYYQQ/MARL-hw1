@@ -1778,3 +1778,19 @@
   - 已人工查看 `dqn1/微信图片_20260608185906_183_14.png`、`dqn1/微信图片_20260608185916_184_14.png`、`dqn1/微信图片_20260608185922_185_14.png`。
 - 下一步：
   - 用当前最新 `main` 重新打包跑 30-60 分钟短训；如果 reward 仍为 0，优先在平台日志或 monitor 中排查 `phase_reward`、`duration_reward`、`data_length` 和 observation 字段命中情况。
+
+### Step 117 - 确认 E01 平台下载代码为旧模板
+
+- 状态：完成
+- Commit：`249d871`
+- 内容：
+  - 复核 `dqn1/code-intelligent_traffic_lights-IDE-73.1.1.zip`，确认 E01 平台训练使用的代码不是当前 `main`。
+  - 旧包中 `agent_target_dqn/conf/conf.py` 仍是 `DIM_OF_OBSERVATION = 560`、`NUMB_HEAD = 2`；当前主线已是 638 维观测和 80 维联合动作 Q head。
+  - 旧包中 `agent_target_dqn/feature/definition.py` 的 `reward_shaping()` 仍直接 `return 0, 0`，解释了 E01 平台 reward 图基本为 0。
+  - 旧包中 `agent_target_dqn/algorithm/algorithm.py` 仍有 `self.target_model = self.model`，目标网络不是独立网络。
+  - 旧包 workflow 仍直接读取 `env_obs["observation"]`、`obs["legal_action"][0]`，缺少当前主线的 reset/step/字段 alias 容错。
+  - 更新 `EXPERIMENTS.md` 和 `REPORT_DRAFT.md`，明确 E01 只能证明旧包训练链路可跑，不能代表当前代码效果。
+- 验证：
+  - 已运行 `unzip -p dqn1/code-intelligent_traffic_lights-IDE-73.1.1.zip ...` 抽查 `conf.py`、`definition.py`、`algorithm.py` 和 `train_workflow.py`。
+- 下一步：
+  - 重新打包当前 `main` 上传平台。上传后先确认包内 `DIM_OF_OBSERVATION = 638`、`NUMB_HEAD = 1` 且 `reward_shaping()` 不再固定返回 0，再跑 30-60 分钟短训。

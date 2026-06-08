@@ -14,7 +14,7 @@
 
 | 编号 | 日期 | Commit | 环境配置 | 训练时长 | 模型 ID | 评估得分 | 结论 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| E01 | 2026-06-01 | 未知，平台截图未显示 | 平台默认/未记录 | 1h | 任务 ID `194038` | 约 `1200` 训练 score 快照，非正式评估 | 训练链路跑通，score 未稳定提升，reward 监控为 0 需继续排查 |
+| E01 | 2026-06-01 | 平台包为旧模板，非当前 `main` | 平台默认/未记录 | 1h | 任务 ID `194038` | 约 `1200` 训练 score 快照，非正式评估 | 训练链路跑通，但旧包 reward 固定为 0，不能代表当前代码效果 |
 
 ## 实验记录
 
@@ -27,8 +27,8 @@
   - 实验版本：`V73.1.1`
   - 算法：`Target DQN`
   - 训练模式：分布式
-- Commit：未知，平台截图未显示；该记录来自 `dqn1/` 截图。
-- 代码包：未知，平台截图未显示。
+- Commit：平台截图未显示；下载的 `dqn1/code-intelligent_traffic_lights-IDE-73.1.1.zip` 已确认为旧模板代码，不是当前 `main`。
+- 代码包：`dqn1/code-intelligent_traffic_lights-IDE-73.1.1.zip`。
 - 环境配置：平台默认/未记录。
 - 训练时间：2026-06-01 16:47:23 到 2026-06-01 17:48:03。
 - 训练时长：1h。
@@ -37,6 +37,12 @@
   - `dqn1/微信图片_20260608185906_183_14.png`
   - `dqn1/微信图片_20260608185916_184_14.png`
   - `dqn1/微信图片_20260608185922_185_14.png`
+- 代码包复核：
+  - `agent_target_dqn/conf/conf.py` 中 `DIM_OF_OBSERVATION = 560`、`NUMB_HEAD = 2`，仍是旧双头动作结构；当前主线为 638 维观测和 80 维联合动作 Q head。
+  - `agent_target_dqn/feature/definition.py` 中 `reward_shaping()` 末尾仍直接 `return 0, 0`，可解释平台 reward 图基本为 0。
+  - `agent_target_dqn/algorithm/algorithm.py` 中 `self.target_model = self.model`，目标网络仍别名在线网络，未使用独立 target network。
+  - `agent_target_dqn/workflow/train_workflow.py` 仍直接读取 `env_obs["observation"]`、`obs["legal_action"][0]` 和固定二元 step 返回，缺少当前主线的大量平台返回容错。
+  - 该平台包缺少当前主线已完成的字段 alias、reward、sample 归一化、checkpoint 容错、score 监控和离线测试体系。
 - 关键监控：
   - `train_global_step`：约 `118`。
   - `predict_succ_cnt`：约 `4300+`，预测链路正常。
@@ -56,11 +62,12 @@
 - 错误日志：截图未提供训练日志，未看到崩溃信号。
 - 结论：
   - 这是一次有效的 smoke/短训：环境交互、预测、样本接收、模型加载和 learner 更新都在运行。
-  - 训练效果还不能认为有效提升：score 波动较大，末段低于开头，reward 图基本为 0。
-  - 当前最可疑问题是 reward 监控或 reward shaping 信号没有被平台监控体现；也可能是本次运行代码早于后续字段 alias 修复，导致 reward/特征信号不足。
+  - 训练效果不能代表当前代码：平台下载包是旧模板，`reward_shaping()` 固定返回 0，且 Target-DQN 目标网络和动作结构都落后于当前主线。
+  - reward 图基本为 0 的主因已经确认是旧包代码问题，而不是当前最新 `main` 的直接证据。
 - 下一步：
   - 用当前最新 `main` 重新打包后跑 30-60 分钟短训，对比 reward 是否仍为 0。
-  - 若 reward 仍为 0，优先在平台训练日志中打印或上报 `phase_reward`、`duration_reward`、`data_length` 和若干 observation 字段命中情况。
+  - 新包上传前确认平台包内 `agent_target_dqn/feature/definition.py` 不再包含 `return 0, 0`，`conf.py` 中 `DIM_OF_OBSERVATION = 638`，`NUMB_HEAD = 1`。
+  - 若最新包 reward 仍为 0，再在平台训练日志中打印或上报 `phase_reward`、`duration_reward`、`data_length` 和若干 observation 字段命中情况。
   - 若 reward 正常但 score 仍不升，再调 reward 权重、学习率或样本生产/消费配置。
 
 ## 实验模板

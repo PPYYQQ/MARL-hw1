@@ -1794,3 +1794,20 @@
   - 已运行 `unzip -p dqn1/code-intelligent_traffic_lights-IDE-73.1.1.zip ...` 抽查 `conf.py`、`definition.py`、`algorithm.py` 和 `train_workflow.py`。
 - 下一步：
   - 重新打包当前 `main` 上传平台。上传后先确认包内 `DIM_OF_OBSERVATION = 638`、`NUMB_HEAD = 1` 且 `reward_shaping()` 不再固定返回 0，再跑 30-60 分钟短训。
+
+### Step 118 - 回填 E02 更新包平台训练结果
+
+- 状态：完成
+- Commit：`a79fd8a`
+- 内容：
+  - 读取 `dqn2/` 下三张平台监控截图，确认平台任务 `206699` 使用 `Target DQN` 分布式训练运行 1h，时间为 2026-06-08 21:41:46 到 22:42:25。
+  - 基础链路跑通：`train_global_step` 约 `40`，`predict_succ_cnt` 约 `1650-1700`，`sample_receive_cnt` 约 `1600`，`episode_cnt` 和 `load_model_succ_cnt` 均约 `56`。
+  - 算法指标不再是 E01 的零 reward：`reward` 约 `-2.8` 到 `-3.0`，`value_loss` 从约 `2.1` 降到 `0.3`，`q_value` 从接近 `0` 降到约 `-2.5`，说明非零 reward 和 learner 更新链路已进入平台训练。
+  - 环境 score 约 `750-780`，平均延误约 `55-58`，等待约 `26-28`，排队约 `9-10`，平均信号变化惩罚全程接近 `0`，说明当前策略质量较差，优先怀疑相位切换过少、动作分布塌缩或 duration/reward 过度保守。
+  - 更新 `EXPERIMENTS.md`、`REPORT_DRAFT.md` 和 `AGENTS.md`，将该结果记为 E02，并保留 `dqn2/` 截图作为证据。
+- 验证：
+  - 已人工查看 `dqn2/截屏2026-06-08 23.53.17.png`、`dqn2/截屏2026-06-08 23.53.25.png`、`dqn2/截屏2026-06-08 23.53.30.png`。
+  - 已运行 `git diff --check`，通过。
+- 下一步：
+  - 不建议先盲目长训；优先从平台下载 E02 代码包或模型产物，确认上传包内容，再增加动作分布监控，例如各 phase 选择次数、平均 duration 和 phase switch 次数。
+  - 如果动作确实长期不切相，再调低切换惩罚、增强高压相位公平性奖励，并检查 duration 映射是否导致绿灯过长。

@@ -25,17 +25,17 @@ class Config:
 
     # Algorithm Config
     # 算法的配置
-    GAMMA = 0.9
+    GAMMA = 0.99
     EPSILON = 0.1
 
-    LR = 5e-4
+    LR = 3e-4
 
     START_EPSILON_GREEDY = 1.0
-    END_EPSILON_GREEDY = 0.05
-    EPSILON_DECAY = 0.999
-    LAMBDA = 0.75
+    END_EPSILON_GREEDY = 0.1
+    EPSILON_DECAY = 0.97
+    LAMBDA = 0.95
     NUMB_HEAD = 1
-    TARGET_UPDATE_FREQ = 500
+    TARGET_UPDATE_FREQ = 20
 
     GRID_WIDTH = 14
     GRID_NUM = 20

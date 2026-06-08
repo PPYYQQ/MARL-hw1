@@ -94,6 +94,7 @@ Target-DQN 关键文件：
 - `codebase/conf/app_conf_intelligent_traffic_lights.toml` 和 `codebase/train_test.py` 都默认选择 `target_dqn`，当前平台入口与主线一致。
 - `agent_target_dqn` 是唯一被系统性修复和测试覆盖的算法包；`agent_dqn`、`agent_ppo`、`agent_diy` 仍应视为平台模板/备选代码，除非用户明确切换算法，不要把后续改动扩散过去。
 - `tests/test_target_dqn_features.py` 和 `tests/test_target_dqn_static.py` 是当前普通本地环境最可靠的回归检查；`tests/test_target_dqn_smoke.py` 依赖 `torch`，平台或安装 PyTorch 后再补跑。
+- `tests/test_hyperparams_static.py` 用于锁定 E03 调参基线，防止 Target-DQN 和 PPO 参数退回平台模板值。
 - `scripts/package_submission.sh` 当前只打包 `codebase/`；根目录文档、截图、日志、checkpoint、模型 pkl 和 `icml2022.zip` 不会进入提交包。
 - `.gitignore` 已忽略 `__pycache__`、`.pyc`、`dist/`、`codebase/log/` 和 checkpoint；如果本地看到缓存文件，不要手动纳入提交。
 - 普通本地环境仍无法运行真实 `python train_test.py`，因为缺少 `kaiwudrl`、`common_python` 和 `torch`；真实 reset/step、样本池、模型池和评分必须在腾讯开悟/KaiwuDRL 环境确认。
@@ -179,12 +180,13 @@ Target-DQN 关键文件：
 - 观测和 reward 已加入相位服务年龄，用于降低高压相位长期不被服务的风险。
 - Target-DQN 已从 phase/duration 双头改为 80 维联合动作 Q 头，可表达相位和时长组合价值。
 - E02 平台短训结果位于 `dqn2/`：任务 ID `206699`，2026-06-08 21:41:46 到 22:42:25 跑满 1h，reward 约 `-2.8` 到 `-3.0`，`value_loss` 从约 `2.1` 降到 `0.3`，说明最新包的非零 reward 和 learner 更新链路已跑通。
+- E03 参数基线已参考常见 PPO 稳定配置调整：Target-DQN 使用 `GAMMA=0.99`、`LR=3e-4`、`EPSILON_DECAY=0.97`、`END_EPSILON_GREEDY=0.1`、`TARGET_UPDATE_FREQ=20`，PPO 模板使用 `lr=3e-4`、`gamma=0.99`、`lambda=0.95`、`clip=0.2`、`entropy=0.01`、`grad_clip=0.5`。
 
 仍需关注的问题：
 
 - E02 训练 score 仅约 `750-780`，平均延误约 `55-58`、等待约 `26-28`，平均信号变化惩罚全程接近 `0`；后续优先检查动作分布、phase switch 次数和 duration 是否过度保守，不要直接盲目长训。
 - 平台文档中 `legal_action` 更像是否需要决策的标量门控；当前 Target-DQN 已保守兼容标量门控、4 维相位 mask 和常见合法动作字段别名，但仍需在真实平台 observation 上确认是否存在相位级 mask 语义。
-- `agent_dqn`、`agent_ppo`、`agent_diy` 仍基本保留模板状态，不是当前主线。
+- `agent_dqn`、`agent_ppo`、`agent_diy` 仍基本保留模板状态，不是当前主线；`agent_ppo` 虽已调参并切到 Adam，但 reward、policy loss 和 entropy loss 仍未完整实现。
 - 当前状态特征包含占用/速度网格、当前相位、相位服务年龄、持续时间、剩余时间、相位压力、全局等待/延误统计、一帧交通趋势、4 帧滚动交通历史和逐车道车辆/排队/等待统计。
 - 作业文档定义了 `frame_state.lanes` 的 `lane_id`、`v_count`、`congestion`、`queue_length` 字段；当前已接入 lanes fallback，并兼容常见驼峰/别名字段，但仍需在真实 observation 上确认字段单位和是否存在 protobuf repeated wrapper 等特殊容器形态。
 - 当前列表字段解析支持 list、tuple、iterable、单条 dict 记录、dict-of-records 和单个非 dict 协议对象；dict 解析只在出现已知协议字段或值明显是记录/列表时展开，避免盲目把任意 dict 当作有效车辆。

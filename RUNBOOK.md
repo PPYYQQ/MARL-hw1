@@ -11,6 +11,14 @@
 - 进度记录：`PROGRESS.md`
 - 实验台账：`EXPERIMENTS.md`
 
+## 当前调参基线
+
+E02 一小时训练显示 reward 已非零，但 40 次左右 learner step 后训练策略仍偏随机，且 target network 没有同步。当前 E03 基线按 PPO 常用稳定参数思路做了保守调整：
+
+- `agent_target_dqn/conf/conf.py`：`GAMMA = 0.99`、`LR = 3e-4`、`EPSILON_DECAY = 0.97`、`END_EPSILON_GREEDY = 0.1`、`TARGET_UPDATE_FREQ = 20`。
+- `agent_ppo/conf/conf.py`：同步到常见 PPO 基线 `lr = 3e-4`、`gamma = 0.99`、`lambda = 0.95`、`clip = 0.2`、`entropy = 0.01`、`grad_clip = 0.5`。
+- `agent_ppo` 仍是模板备选，reward、policy loss 和 entropy loss 还没有完整实现；默认平台主线仍是 `target_dqn`。
+
 ## 本地可运行检查
 
 在当前普通 Python 环境中可运行：
@@ -31,6 +39,7 @@ python tests/test_target_dqn_smoke.py
 说明：
 
 - `test_target_dqn_static.py` 不依赖 `torch` 和 `kaiwudrl`，用于检查关键源码约束。
+- `test_hyperparams_static.py` 不依赖 `torch` 和 `kaiwudrl`，用于检查 E03 调参基线没有被误改回模板值。
 - `test_target_dqn_smoke.py` 需要 `torch`；当前本地未安装时会输出 skip。
 - `check_offline.sh` 会同时运行编译、静态检查、smoke、空白检查和提交包内容检查。
 - `python train_test.py` 需要 KaiwuDRL 平台依赖，当前本地会因缺少 `kaiwudrl` 失败。
@@ -64,6 +73,8 @@ python tests/test_target_dqn_smoke.py
 - `value_loss`：DQN TD loss，先看是否有限值且不爆炸。
 - `q_value` / `target_q_value`：观察 Q 值是否数值稳定。
 - `model_grad_norm`：梯度范数，频繁过大说明奖励或学习率可能不稳。
+- `train_global_step`：如果 1h 仍只有几十次更新，需要继续按短训步数调 target sync 和 epsilon 衰减。
+- 动作分布：下一轮建议额外记录四个 phase 的选择次数、平均 duration 和实际 phase switch 次数，验证是否过少切相。
 - 平台评分项：若平台监控字段为空，以评估任务页面中的平均延误、平均排队长度、平均等待时间、信号切换惩罚为准。
 
 ## 每次实验回填格式

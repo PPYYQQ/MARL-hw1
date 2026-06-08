@@ -1811,3 +1811,19 @@
 - 下一步：
   - 不建议先盲目长训；优先从平台下载 E02 代码包或模型产物，确认上传包内容，再增加动作分布监控，例如各 phase 选择次数、平均 duration 和 phase switch 次数。
   - 如果动作确实长期不切相，再调低切换惩罚、增强高压相位公平性奖励，并检查 duration 映射是否导致绿灯过长。
+
+### Step 119 - 参考 PPO 基线调整 E03 超参数
+
+- 状态：完成
+- Commit：`8700fa6`
+- 内容：
+  - 参考 PPO 公开稳定基线中常见的 `gamma=0.99`、`gae_lambda=0.95`、`clip=0.2`、`lr≈3e-4`、`entropy≈0.01`、`max_grad_norm=0.5` 参数组合，更新本项目 E03 调参基线。
+  - Target-DQN 主线将 `GAMMA` 从 `0.9` 调到 `0.99`，`LR` 从 `5e-4` 降到 `3e-4`，`EPSILON_DECAY` 从 `0.999` 加快到 `0.97`，`END_EPSILON_GREEDY` 从 `0.05` 调到 `0.1`，`TARGET_UPDATE_FREQ` 从 `500` 调到 `20`。
+  - E02 一小时只有约 `40` 次 learner step，旧 `EPSILON_DECAY=0.999` 会让 epsilon 仍约 `0.96`，且旧 `TARGET_UPDATE_FREQ=500` 导致短训期间 target network 不同步；本次调参优先解决短训仍接近随机和无 target sync 的问题。
+  - PPO 模板参数同步调为 `INIT_LEARNING_RATE_START=3e-4`、`BETA_START=0.01`、`GAMMA=0.99`、`LAMDA=0.95`、`USE_GRAD_CLIP=True`、`GRAD_CLIP_RANGE=0.5`，并将重复 RMSprop 初始化改为单个 Adam。
+  - 新增 `codebase/tests/test_hyperparams_static.py`，并让 `scripts/check_offline.sh` 编译 `agent_ppo`、运行该静态测试，锁定 E03 调参基线。
+  - 更新 `AGENTS.md`、`RUNBOOK.md` 和 `REPORT_DRAFT.md`，记录 E03 参数、PPO 模板仍未完整实现，以及下一轮应重点观察动作分布。
+- 验证：
+  - 已运行 `./scripts/check_offline.sh`，通过；其中 `tests/test_target_dqn_smoke.py` 因本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 重新打包并上传当前 `main`，将下一轮结果记为 E03；平台上优先比较 `train_global_step`、reward、score、平均延误、平均等待、phase switch 次数和动作分布。

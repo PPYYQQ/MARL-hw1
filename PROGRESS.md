@@ -1910,7 +1910,7 @@
 ### Step 124 - 回填 E05 并调整 phase 2 偏置参数
 
 - 状态：完成
-- Commit：`e8371b5`
+- Commit：`a0d8efe`
 - 内容：
   - 读取 `dqn5/` 四张平台监控截图，确认任务 `207778` 在 2026-06-09 15:33:54 到 16:34:33 跑满 1h。
   - E05 关键指标：`train_global_step≈19`、`predict_succ_cnt≈1000`、`sample_receive_cnt≈950`、`episode_cnt≈45`。

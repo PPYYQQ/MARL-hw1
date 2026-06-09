@@ -1827,3 +1827,19 @@
   - 已运行 `./scripts/check_offline.sh`，通过；其中 `tests/test_target_dqn_smoke.py` 因本地缺少 `torch` 明确 skip。
 - 下一步：
   - 重新打包并上传当前 `main`，将下一轮结果记为 E03；平台上优先比较 `train_global_step`、reward、score、平均延误、平均等待、phase switch 次数和动作分布。
+
+### Step 120 - 回填 E03 两小时平台训练结果
+
+- 状态：完成
+- Commit：`fd9f7e5`
+- 内容：
+  - 读取 `dqn3/` 下三张平台监控截图，确认平台任务 `206775` 使用 `Target DQN` 分布式训练运行 2h，时间为 2026-06-09 00:51:34 到 02:52:14。
+  - 基础链路继续跑通：`train_global_step` 约 `130`，`predict_succ_cnt` 约 `4600`，`sample_receive_cnt` 约 `4500`，`episode_cnt` 和 `load_model_succ_cnt` 均约 `100`，样本生产消耗比末段约 `7.3`。
+  - 算法指标显示训练稳定但未改善成绩：`reward` 从约 `-2.3~-2.5` 下降到约 `-3.1~-3.2`，`value_loss` 先降到 `0.1-0.2` 后回升到约 `0.45-0.6`，`q_value` 降到约 `-3.5`。
+  - 环境 score 约 `740-770`，平均延误约 `55-58`，等待约 `27-30`，排队约 `9-10`，与 E02 基本同级；PPO-style 标量超参调整增加了 learner step，但没有带来平台 score 提升。
+  - 修正 E02 后续判断：平台平均信号变化惩罚为 `0` 只能说明没有过快切灯惩罚，不能单独证明策略完全不切相，因为当前 action duration 已限制最短 8 秒。
+  - 更新 `EXPERIMENTS.md`、`REPORT_DRAFT.md` 和 `AGENTS.md`，将该结果记为 E03，并保留 `dqn3/` 截图作为证据。
+- 验证：
+  - 已人工查看 `dqn3/截屏2026-06-09 09.58.49.png`、`dqn3/截屏2026-06-09 09.58.55.png`、`dqn3/截屏2026-06-09 09.58.57.png`。
+- 下一步：
+  - 不建议继续只调学习率、折扣或 epsilon；优先在 workflow 监控中加入 `phase_0_cnt` 到 `phase_3_cnt`、`avg_duration`、`phase_switch_cnt`、`same_phase_ratio`，再决定修改 reward 还是动作策略。

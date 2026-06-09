@@ -123,6 +123,7 @@ def main():
         _safe_frame_no,
         _safe_legal_action,
         _safe_observation,
+        _safe_phase_legal_action,
         _save_latest_model,
         _send_sample_data,
         _shape_reward,
@@ -1409,6 +1410,14 @@ def main():
     assert _safe_legal_action({"phaseLegalAction": [0, 0, 1, 0]}) == [0, 0, 1, 0]
     assert _safe_legal_action({"actionMask": [0, 0, 0, 1]}) == [0, 0, 0, 1]
     assert _safe_legal_action(None) is None
+    assert _safe_phase_legal_action({"legal_action": [1, 0, 0, 0]}) == [1, 1, 1, 1]
+    assert _safe_phase_legal_action({"legalAction": [0, 1, 0, 0]}) == [1, 1, 1, 1]
+    assert _safe_phase_legal_action({"actionMask": [0, 0, 0, 1]}) == [1, 1, 1, 1]
+    assert _safe_phase_legal_action({"legal_action": [0, 0, 0, 0]}) == [0, 0, 0, 0]
+    assert _safe_phase_legal_action({"legal_action": 1}) == [1, 1, 1, 1]
+    assert _safe_phase_legal_action({"legal_action": 0}) == [0, 0, 0, 0]
+    assert _safe_phase_legal_action({"phaseLegalAction": [0, 0, 1, 0]}) == [0, 0, 1, 0]
+    assert _safe_phase_legal_action({"phaseMask": [0, 0, 0, 1]}) == [0, 0, 0, 1]
 
     class FailingEnvObs(dict):
         def get(self, key, default=None):
@@ -1424,6 +1433,8 @@ def main():
     assert _need_to_predict({"legal_action": 0}) is False
     assert _need_to_predict({"legalAction": 0}) is False
     assert _need_to_predict({"legal_action": [0, 1, 0, 0]}) is True
+    assert _need_to_predict({"legal_action": [1, 0, 0, 0]}) is True
+    assert _need_to_predict({"legal_action": [0, 0, 0, 0]}) is False
     assert _need_to_predict({"phaseMask": [0, 0, 1, 0]}) is True
     assert _need_to_predict({"legal_action": FailingLegalAction()}) is True
     assert _should_log_progress(0, False, False) is False

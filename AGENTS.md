@@ -147,9 +147,9 @@ PPO 备选线关键文件：
 - workflow 读取平台训练指标时会隔离异常，`get_training_metrics()` 临时失败只记录错误并返回空指标。
 - workflow 发送训练样本时会隔离 `send_sample_data()` 异常，样本通道临时失败只记录错误并继续后续训练循环。
 - workflow 进行终局或容灾样本转换时会隔离 `sample_process()` 异常，转换失败只丢弃当前 collector，不再中断后续 episode。
-- Target-DQN 已将 `legal_action` / `legalAction` / `phaseLegalAction` / `actionMask` / `phaseMask` 等字段归一化为 4 维相位 mask，用于贪心预测、随机探索和规则兜底选相位。
+- Target-DQN 已区分决策门控和相位 mask：通用 `legal_action` / `legalAction` / `actionMask` 只判断当前帧是否需要预测，只要任一值非零就放开四个相位；只有显式 `phase_legal_action` / `phaseLegalAction` / `phase_mask` / `phaseMask` 才会被当成相位级合法动作 mask。
 - Agent 推理侧对全零相位 mask 会回退为四个相位都可选，joint action mask 的空行也会回退为全动作可选，避免直接调用 `predict()` / `exploit()` 时无可采样动作导致崩溃。
-- 训练 workflow 已用同一归一化逻辑判断是否需要决策，兼容平台文档中的 `int32` 标量门控和 4 维相位 mask。
+- 训练 workflow 已将 `_need_to_predict()` 与 `_safe_phase_legal_action()` 分离，避免把平台门控向量误解释为只能选 phase 0。
 - 训练 workflow 会归一化 `env.reset()` 的对象式返回、二元 tuple 返回和 `env.step()` 的对象式返回、dict/object step envelope、二元、Gym 四元、Gymnasium 五元、作业文档六元 tuple 返回，兼容当前封装、常见环境封装与作业文档形式。
 - 训练 workflow 会隔离 `env.reset()` 和 `env.step()` 抛出的平台异常；reset 失败跳过当前 episode，step 失败中止当前 episode。
 - 训练 workflow 对 reset/step 返回的 `observation` / `obs` / `_obs`、`extra_info` / `extraInfo` / `_state` / `state` / `info`、顶层或嵌套的 `frame_no` / `frameNo`、结束标记和采样帧 `legal_action` / `legalAction` / `phaseLegalAction` / `actionMask` / `phaseMask` 会安全读取；如果平台直接返回带 `frame_state` / `frameState` 和合法动作别名的裸 observation dict 或对象，也会按原始 observation 处理，避免被误归一化为空观测。
@@ -192,12 +192,13 @@ PPO 备选线关键文件：
 - E03 参数基线已参考常见 PPO 稳定配置调整：Target-DQN 使用 `GAMMA=0.99`、`LR=3e-4`、`EPSILON_DECAY=0.97`、`END_EPSILON_GREEDY=0.1`、`TARGET_UPDATE_FREQ=20`；PPO 备选线使用 `lr=3e-4`、`gamma=0.99`、`lambda=0.95`、`clip=0.2`、`entropy=0.01`、`grad_clip=0.5`。
 - E03 平台结果位于 `dqn3/`：任务 ID `206775`，2026-06-09 00:51:34 到 02:52:14 跑满 2h，`train_global_step` 约 `130`，score 约 `740-770`，平均延误约 `55-58`，等待约 `27-30`，排队约 `9-10`；超参调整增加了 learner step，但没有改善成绩。
 - E04 诊断基线已加入动作分布监控：workflow 会上报 `phase_0_cnt` 到 `phase_3_cnt`、`action_count`、`avg_duration`、`min_duration`、`max_duration`、`phase_switch_cnt`、`phase_switch_rate` 和 `same_phase_ratio`，`agent_target_dqn/conf/monitor_builder.py` 也新增了对应监控面板。
+- E04 平台短跑结果位于 `dqn4/`：任务 ID `207146`，截图时任务运行约 3min，`train_global_step=0`，`phase_0_cnt≈30`、其他相位约 0、`phase_switch_cnt=0`，确认此前相位塌缩主要来自通用 `legal_action` 被误当相位 mask。
 
 仍需关注的问题：
 
-- E02/E03 训练 score 均只有约 `740-780`，平均延误约 `55-58`、等待约 `26-30`；后续优先检查动作分布、phase switch 次数和 duration 分布，不要继续只做标量超参搜索。
+- E02/E03/E04 训练 score 均只有约 `740-780`，平均延误约 `55-58`、等待约 `26-30`；下一轮优先验证 legal_action 门控修复后动作分布是否恢复，不要继续只做标量超参搜索。
 - 平台的平均信号变化惩罚为 `0` 不能单独证明策略完全不切相，因为当前动作最短 duration 已限制为 8 秒；必须结合 `phase_switch_cnt`、`phase_switch_rate` 和 `same_phase_ratio` 判断真实切相行为。
-- 平台文档中 `legal_action` 更像是否需要决策的标量门控；当前 Target-DQN 已保守兼容标量门控、4 维相位 mask 和常见合法动作字段别名，但仍需在真实平台 observation 上确认是否存在相位级 mask 语义。
+- 平台文档中 `legal_action` 更像是否需要决策的标量门控；当前代码已按该语义处理通用 `legal_action`，但仍需在真实 observation 上确认是否存在显式相位级 mask 字段。
 - `agent_dqn`、`agent_diy` 仍基本保留模板状态，不是当前主线；`agent_ppo` 已补成可训练备选，但尚未平台短训验证，切换前应先跑 10-30 分钟 smoke。
 - 当前状态特征包含占用/速度网格、当前相位、相位服务年龄、持续时间、剩余时间、相位压力、全局等待/延误统计、一帧交通趋势、4 帧滚动交通历史和逐车道车辆/排队/等待统计。
 - 作业文档定义了 `frame_state.lanes` 的 `lane_id`、`v_count`、`congestion`、`queue_length` 字段；当前已接入 lanes fallback，并兼容常见驼峰/别名字段，但仍需在真实 observation 上确认字段单位和是否存在 protobuf repeated wrapper 等特殊容器形态。
@@ -281,8 +282,9 @@ coding agent 无法单独保证：
 - 当前使用 80 维联合动作 Q 头：`action_id = phase_idx * 20 + duration_idx`。
 - `phase_idx` 必须落在 `0-3`。
 - `duration_idx` 必须通过 `Config.duration_index_to_seconds()` 映射为环境接受的秒数；当前 20 个 duration 桶覆盖 `MIN_GREEN_DURATION=8` 到 `MAX_GREEN_DURATION=40`。
-- `legal_action` / `legalAction` / `phaseLegalAction` / `actionMask` / `phaseMask` 需要先通过 `normalize_phase_legal_action()` 转为 4 维相位 mask；如果真实平台只给标量门控，则非零表示四个相位都可选。
-- 训练 workflow 判断是否调用 `predict()` 时也必须走 `normalize_phase_legal_action()`，不要直接写 `legal_action[0]`。
+- `legal_action` / `legalAction` / `actionMask` 是平台通用决策门控：非零表示当前帧需要决策，并且四个相位都可选；不要把 `[1,0,0,0]` 当成只允许 phase 0。
+- `phase_legal_action` / `phaseLegalAction` / `phase_mask` / `phaseMask` 才是显式相位级 mask，需要通过 `normalize_phase_legal_action()` 转为 4 维相位 mask。
+- 训练 workflow 判断是否调用 `predict()` 必须走 `_need_to_predict()`，训练样本里的相位合法性必须走 `_safe_phase_legal_action()`，不要直接写 `legal_action[0]`。
 - 训练样本里的 `legal_action` 代表 `_obs` 对应的下一状态相位 mask，不是当前已执行动作的 mask。
 - 相位级 mask 会展开成 80 维 joint mask，训练和预测都只在合法相位对应的动作组合中选动作。
 - 全零 `legal_action` 在 workflow 中仍表示当前帧不需要决策；如果外部直接调用 `Agent.predict()` / `Agent.exploit()` 绕过 workflow，Agent 内部会把空 mask 兜底为可选全集，避免随机探索的空集合采样或贪心推理的无效 mask。

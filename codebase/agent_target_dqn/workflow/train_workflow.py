@@ -11,6 +11,7 @@ Author: Tencent AI Arena Authors
 import os
 import time
 import math
+import numpy as np
 from agent_target_dqn.conf.conf import Config
 from agent_target_dqn.feature.definition import *
 from agent_target_dqn.feature.traffic_utils import normalize_phase_legal_action
@@ -132,6 +133,20 @@ LEGAL_ACTION_KEYS = (
     "actionMask",
     "phase_mask",
     "phaseMask",
+)
+PHASE_LEGAL_ACTION_KEYS = (
+    "phase_legal_action",
+    "phaseLegalAction",
+    "phase_mask",
+    "phaseMask",
+)
+DECISION_LEGAL_ACTION_KEYS = (
+    "legal_action",
+    "legalAction",
+    "legal_actions",
+    "legalActions",
+    "action_mask",
+    "actionMask",
 )
 
 FRAME_STATE_KEYS = ("frame_state", "frameState")
@@ -335,7 +350,7 @@ def run_episodes(n_episode, env, agent, usr_conf, logger, env_metric_snapshot=No
                         act=act,
                         rew=None,
                         done=0,
-                        legal_action=_safe_legal_action(obs),
+                        legal_action=_safe_phase_legal_action(obs),
                     )
 
                     collector.append(frame)
@@ -867,10 +882,33 @@ def _safe_legal_action(obs):
     return _first_env_value(obs, LEGAL_ACTION_KEYS, None)
 
 
+def _safe_phase_legal_action(obs):
+    explicit_phase_mask = _first_env_value(obs, PHASE_LEGAL_ACTION_KEYS, None)
+    if explicit_phase_mask is not None:
+        return normalize_phase_legal_action(explicit_phase_mask, Config.DIM_OF_ACTION_PHASE)
+
+    decision_gate = _first_env_value(obs, DECISION_LEGAL_ACTION_KEYS, None)
+    if _decision_gate_open(decision_gate):
+        return [1] * Config.DIM_OF_ACTION_PHASE
+    return [0] * Config.DIM_OF_ACTION_PHASE
+
+
 def _need_to_predict(obs):
     legal_action = _safe_legal_action(obs)
-    phase_mask = normalize_phase_legal_action(legal_action, Config.DIM_OF_ACTION_PHASE)
-    return any(phase_mask)
+    return _decision_gate_open(legal_action)
+
+
+def _decision_gate_open(legal_action):
+    if legal_action is None:
+        return True
+    try:
+        values = np.asarray(legal_action, dtype=np.float32).flatten()
+    except Exception:
+        return True
+    if values.size == 0:
+        return True
+    values = np.nan_to_num(values, nan=0.0, posinf=0.0, neginf=0.0)
+    return bool(np.any(values > 0.0))
 
 
 def _should_log_progress(predict_cnt, done, need_to_predict):

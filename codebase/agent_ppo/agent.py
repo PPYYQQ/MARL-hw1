@@ -369,6 +369,7 @@ class Agent(BaseAgent):
 
     _sanitize_observation = TargetFeatureAgent._sanitize_observation
     rule_based_action = TargetFeatureAgent.rule_based_action
+    _phase_legal_action = TargetFeatureAgent._phase_legal_action
     _phase_feature = TargetFeatureAgent._phase_feature
     _phase_age_feature = TargetFeatureAgent._phase_age_feature
     _current_phase_info = TargetFeatureAgent._current_phase_info

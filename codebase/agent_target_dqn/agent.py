@@ -107,6 +107,20 @@ LEGAL_ACTION_KEYS = (
     "phase_mask",
     "phaseMask",
 )
+PHASE_LEGAL_ACTION_KEYS = (
+    "phase_legal_action",
+    "phaseLegalAction",
+    "phase_mask",
+    "phaseMask",
+)
+DECISION_LEGAL_ACTION_KEYS = (
+    "legal_action",
+    "legalAction",
+    "legal_actions",
+    "legalActions",
+    "action_mask",
+    "actionMask",
+)
 
 FRAME_STATE_KEYS = ("frame_state", "frameState")
 FRAME_NO_KEYS = ("frame_no", "frameNo")
@@ -120,6 +134,19 @@ def _first_mapping_value(mapping, keys, default=None):
         if value is not None:
             return value
     return default
+
+
+def _has_positive_action_value(value):
+    if value is None:
+        return True
+    try:
+        values = np.asarray(value, dtype=np.float32).flatten()
+    except Exception:
+        return True
+    if values.size == 0:
+        return True
+    values = np.nan_to_num(values, nan=0.0, posinf=0.0, neginf=0.0)
+    return bool(np.any(values > 0.0))
 
 
 def _is_record(value):
@@ -602,10 +629,7 @@ class Agent(BaseAgent):
 
         return ObsData(
             feature=observation,
-            legal_action=normalize_phase_legal_action(
-                _first_mapping_value(raw_obs, LEGAL_ACTION_KEYS),
-                Config.DIM_OF_ACTION_PHASE,
-            ),
+            legal_action=self._phase_legal_action(raw_obs),
         )
 
     def _sanitize_observation(self, observation):
@@ -662,7 +686,7 @@ class Agent(BaseAgent):
             )
         phase_age_feature = np.asarray(self._phase_age_feature(frame_state), dtype=np.float32)
         fair_pressure = phase_pressure * (1.0 + Config.FAIRNESS_BONUS_SCALE * phase_age_feature)
-        legal_mask = self._phase_action_mask(_first_mapping_value(raw_obs, LEGAL_ACTION_KEYS))
+        legal_mask = self._phase_action_mask(self._phase_legal_action(raw_obs))
         masked_pressure = np.where(legal_mask, fair_pressure, -1.0)
         phase_index = int(np.argmax(masked_pressure))
         duration_index = int(np.clip(round(float(phase_pressure[phase_index])), 0, Config.DIM_OF_ACTION_DURATION - 1))
@@ -854,6 +878,16 @@ class Agent(BaseAgent):
         if not mask.any():
             mask[:] = True
         return mask
+
+    def _phase_legal_action(self, raw_obs):
+        explicit_phase_mask = _first_mapping_value(raw_obs, PHASE_LEGAL_ACTION_KEYS)
+        if explicit_phase_mask is not None:
+            return normalize_phase_legal_action(explicit_phase_mask, Config.DIM_OF_ACTION_PHASE)
+
+        decision_gate = _first_mapping_value(raw_obs, DECISION_LEGAL_ACTION_KEYS)
+        if _has_positive_action_value(decision_gate):
+            return [1] * Config.DIM_OF_ACTION_PHASE
+        return [0] * Config.DIM_OF_ACTION_PHASE
 
     def _joint_action_mask(self, phase_masks):
         phase_masks = np.asarray(phase_masks, dtype=bool)

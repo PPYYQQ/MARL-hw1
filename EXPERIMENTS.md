@@ -17,6 +17,7 @@
 | E01 | 2026-06-01 | 平台包为旧模板，非当前 `main` | 平台默认/未记录 | 1h | 任务 ID `194038` | 约 `1200` 训练 score 快照，非正式评估 | 训练链路跑通，但旧包 reward 固定为 0，不能代表当前代码效果 |
 | E02 | 2026-06-08 | 上传包未随结果提供；按当前 `main` `dd1fbcc` 记录 | 平台默认/未记录 | 1h | 任务 ID `206699` | 约 `750-780` 训练 score 快照，非正式评估 | 最新包训练链路跑通且 reward 非零，但 score 明显偏低，平均信号变化惩罚为 0，疑似策略过少切相或过度保守 |
 | E03 | 2026-06-09 | E03 调参包；按当前 `main` `7d10a9a` 记录 | 平台默认/未记录 | 2h | 任务 ID `206775` | 约 `740-770` 训练 score 快照，非正式评估 | PPO-style 参数调优让 learner step 增加，但 score、延误、等待和排队基本未改善，下一步应看真实动作分布而不是继续只调标量超参 |
+| E04 | 2026-06-09 | E04 动作监控包；按修复前 `main` `de6a2b4` 记录 | 平台默认/未记录 | 截图时约 3min | 任务 ID `207146` | 约 `750-770` 训练 score 快照，非正式评估 | 动作监控确认相位塌缩：`phase_0_cnt≈30`、其他相位约 0、`phase_switch_cnt=0`；根因是通用 `legal_action` 被误当相位 mask |
 
 ## 实验记录
 
@@ -168,6 +169,46 @@
   - 在 workflow 监控中加入 `phase_0_cnt` 到 `phase_3_cnt`、`avg_duration`、`min_duration`、`max_duration`、`phase_switch_cnt` 和 `same_phase_ratio`。
   - 如果相位分布塌缩，优先修 reward 的相位公平性/压力项；如果 duration 长期偏大或偏小，再调 duration reward。
   - 如果动作分布正常但平台指标仍差，优先调整 reward 权重，让平均延误和等待惩罚更贴近平台 score。
+
+### E04 - 动作分布监控短跑
+
+- 状态：截图时任务仍在进行中，已足够定位动作塌缩问题。
+- 平台任务：
+  - 任务名：`targetdqn4`
+  - 任务 ID：`207146`
+  - 实验版本：`V73.1.1`
+  - 算法：`Target DQN`
+  - 训练模式：分布式
+- Commit：E04 动作监控包，按修复前 `main` `de6a2b4` 记录。
+- 环境配置：平台默认/未记录。
+- 截图时间窗：2026-06-09 11:29:42 到 2026-06-09 11:40:37；页面显示任务运行约 3min。
+- 截图证据：
+  - `dqn4/截屏2026-06-09 11.41.11.png`
+  - `dqn4/截屏2026-06-09 11.41.17.png`
+  - `dqn4/截屏2026-06-09 11.41.21.png`
+- 关键监控：
+  - `train_global_step` 仍为 0，说明截图时 learner 尚未完成一次参数更新。
+  - `predict_succ_cnt` 约 `300+`，`episode_cnt` / `load_model_succ_cnt` 约 `8`，`sample_receive_cnt` 约 `250`。
+  - `reward` 约 `-2.9`，`value_loss` 和 `q_value` 暂无数据，符合训练尚未更新的状态。
+- 平台评分：
+  - score 约 `750-770`。
+  - 平均车辆延误约 `55-58`。
+  - 平均车辆等待时间约 `27-28`。
+  - 平均排队长度约 `9.5-10`。
+  - 平均信号变化惩罚约 `0`。
+- 动作分布：
+  - `phase_0_cnt` 约 `30-32`。
+  - `phase_1_cnt`、`phase_2_cnt`、`phase_3_cnt` 基本为 `0`。
+  - `avg_duration` 约 `20-23` 秒。
+  - `phase_switch_cnt` 为 `0`。
+- 结论：
+  - 用户判断正确，当前动作几乎一直是同一个相位，且没有真实切相。
+  - 这不是训练收敛到 phase 0；截图时 `train_global_step=0`，模型还没开始学习。
+  - 根因更可能是平台通用 `legal_action` / `legalAction` 是“是否需要决策”的门控向量，例如 `[1,0,0,0]`，而修复前代码把它误当成相位级 mask，只允许 phase 0。
+- 后续修复：
+  - 通用 `legal_action`、`legalAction`、`actionMask` 改为只判断是否需要预测；只要其中任一值非零，就对四个相位全部放开。
+  - 只有显式 `phase_legal_action`、`phaseLegalAction`、`phase_mask`、`phaseMask` 才作为相位级合法动作 mask。
+  - 下一轮应上传该修复后包，若动作正常，`phase_1_cnt/phase_2_cnt/phase_3_cnt` 应不再长期为 0，`phase_switch_cnt` 应明显大于 0。
 
 ## 实验模板
 

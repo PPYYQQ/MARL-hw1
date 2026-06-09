@@ -181,10 +181,12 @@ Target-DQN 关键文件：
 - Target-DQN 已从 phase/duration 双头改为 80 维联合动作 Q 头，可表达相位和时长组合价值。
 - E02 平台短训结果位于 `dqn2/`：任务 ID `206699`，2026-06-08 21:41:46 到 22:42:25 跑满 1h，reward 约 `-2.8` 到 `-3.0`，`value_loss` 从约 `2.1` 降到 `0.3`，说明最新包的非零 reward 和 learner 更新链路已跑通。
 - E03 参数基线已参考常见 PPO 稳定配置调整：Target-DQN 使用 `GAMMA=0.99`、`LR=3e-4`、`EPSILON_DECAY=0.97`、`END_EPSILON_GREEDY=0.1`、`TARGET_UPDATE_FREQ=20`，PPO 模板使用 `lr=3e-4`、`gamma=0.99`、`lambda=0.95`、`clip=0.2`、`entropy=0.01`、`grad_clip=0.5`。
+- E03 平台结果位于 `dqn3/`：任务 ID `206775`，2026-06-09 00:51:34 到 02:52:14 跑满 2h，`train_global_step` 约 `130`，score 约 `740-770`，平均延误约 `55-58`，等待约 `27-30`，排队约 `9-10`；超参调整增加了 learner step，但没有改善成绩。
 
 仍需关注的问题：
 
-- E02 训练 score 仅约 `750-780`，平均延误约 `55-58`、等待约 `26-28`，平均信号变化惩罚全程接近 `0`；后续优先检查动作分布、phase switch 次数和 duration 是否过度保守，不要直接盲目长训。
+- E02/E03 训练 score 均只有约 `740-780`，平均延误约 `55-58`、等待约 `26-30`；后续优先检查动作分布、phase switch 次数和 duration 分布，不要继续只做标量超参搜索。
+- 平台的平均信号变化惩罚为 `0` 不能单独证明策略完全不切相，因为当前动作最短 duration 已限制为 8 秒；必须额外上报真实 `phase_switch_cnt` 和 `same_phase_ratio`。
 - 平台文档中 `legal_action` 更像是否需要决策的标量门控；当前 Target-DQN 已保守兼容标量门控、4 维相位 mask 和常见合法动作字段别名，但仍需在真实平台 observation 上确认是否存在相位级 mask 语义。
 - `agent_dqn`、`agent_ppo`、`agent_diy` 仍基本保留模板状态，不是当前主线；`agent_ppo` 虽已调参并切到 Adam，但 reward、policy loss 和 entropy loss 仍未完整实现。
 - 当前状态特征包含占用/速度网格、当前相位、相位服务年龄、持续时间、剩余时间、相位压力、全局等待/延误统计、一帧交通趋势、4 帧滚动交通历史和逐车道车辆/排队/等待统计。

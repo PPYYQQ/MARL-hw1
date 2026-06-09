@@ -1906,3 +1906,26 @@
   - 已运行 `zipinfo -1 dist/marl_hw1_codebase.zip | rg '^tests/' || true`，无输出，确认提交包不含 `tests/`。
 - 下一步：
   - 上传当前 `dist/marl_hw1_codebase.zip` 重新跑一轮 E05 短训；优先看 `phase_1_cnt`、`phase_2_cnt`、`phase_3_cnt` 是否不再长期为 0，以及 `phase_switch_cnt` 是否明显大于 0。
+
+### Step 124 - 回填 E05 并调整 phase 2 偏置参数
+
+- 状态：完成
+- Commit：`e8371b5`
+- 内容：
+  - 读取 `dqn5/` 四张平台监控截图，确认任务 `207778` 在 2026-06-09 15:33:54 到 16:34:33 跑满 1h。
+  - E05 关键指标：`train_global_step≈19`、`predict_succ_cnt≈1000`、`sample_receive_cnt≈950`、`episode_cnt≈45`。
+  - E05 平台 score 末段约 `760-820`，平均延误约 `44-49`、等待约 `21-24`、排队约 `11-12`。
+  - 确认 legal_action 门控修复有效：动作不再 phase 0 锁死，`phase_switch_cnt` 末段约 `3-5`，平均信号变化惩罚约 `1`。
+  - 新问题是 phase 2 偏置：后半段 `phase_2_cnt≈17-20`，其他相位多在 `0-2`，`avg_duration≈30-33`，`same_phase_ratio≈0.75-0.85`。
+  - 将 Target-DQN `EPSILON_DECAY` 从 `0.97` 放慢到 `0.995`，`END_EPSILON_GREEDY` 从 `0.1` 提到 `0.2`，避免短训早期过快固定到单一相位。
+  - 将 `TARGET_UPDATE_FREQ` 从 `20` 降到 `10`，并将平台 `train_batch_size` 从 `256` 降到 `128`、`preload_ratio` 从 `0.0625` 降到 `0.03125`，提高 1h 短训内 learner 更新和 target 同步次数。
+  - 将 `PHASE_AGE_SCALE` 从 `120.0` 降到 `90.0`，`FAIRNESS_BONUS_SCALE` 从 `0.2` 提到 `0.5`，增强长期未服务相位奖励。
+  - 更新 `EXPERIMENTS.md`、`RUNBOOK.md`、`REPORT_DRAFT.md` 和 `AGENTS.md`，将 E05 记为 gate 修复有效但 phase 2 偏置仍需处理。
+  - 将 `dqn5/` 四张截图纳入仓库，作为 E05 实验证据。
+- 验证：
+  - 已运行 `python -m compileall agent_target_dqn agent_ppo tests/test_target_dqn_features.py tests/test_target_dqn_static.py tests/test_hyperparams_static.py`，通过。
+  - 已运行 `python tests/test_target_dqn_features.py`、`python tests/test_target_dqn_static.py` 和 `python tests/test_hyperparams_static.py`，均通过。
+  - 已运行 `./scripts/check_offline.sh`，通过；其中 `tests/test_target_dqn_smoke.py` 因本地缺少 `torch` 明确 skip。
+  - 已运行 `git diff --check`，未发现空白错误。
+- 下一步：
+  - 重新打包上传 E06；优先看 `phase_2_cnt` 是否下降、`same_phase_ratio` 是否低于 `0.7`，以及平均延误是否保持在 `45` 以下。

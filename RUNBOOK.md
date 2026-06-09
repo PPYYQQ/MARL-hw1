@@ -13,13 +13,14 @@
 
 ## 当前调参基线
 
-E02 一小时训练显示 reward 已非零，但 40 次左右 learner step 后训练策略仍偏随机，且 target network 没有同步。当前 E03 基线按 PPO 常用稳定参数思路做了保守调整：
+E05 一小时训练确认 legal_action 门控修复有效，但后半段策略偏向 phase 2，`same_phase_ratio` 约 `0.75-0.85`，且 `train_global_step≈19` 偏少。当前 E06 基线在保留 E03 稳定学习率和折扣的基础上，提高短训更新效率并增强相位公平性：
 
-- `agent_target_dqn/conf/conf.py`：`GAMMA = 0.99`、`LR = 3e-4`、`EPSILON_DECAY = 0.97`、`END_EPSILON_GREEDY = 0.1`、`TARGET_UPDATE_FREQ = 20`。
+- `agent_target_dqn/conf/conf.py`：`GAMMA = 0.99`、`LR = 3e-4`、`EPSILON_DECAY = 0.995`、`END_EPSILON_GREEDY = 0.2`、`TARGET_UPDATE_FREQ = 10`、`PHASE_AGE_SCALE = 90.0`、`FAIRNESS_BONUS_SCALE = 0.5`。
+- `codebase/conf/configure_app.toml`：`preload_ratio = 0.03125`、`train_batch_size = 128`。
 - `agent_ppo/conf/conf.py`：同步到常见 PPO 基线 `lr = 3e-4`、`gamma = 0.99`、`lambda = 0.95`、`clip = 0.2`、`entropy = 0.01`、`grad_clip = 0.5`。
 - `agent_ppo` 已补齐 clipped PPO loss、entropy、GAE、非零交通 reward、638 维特征、20 桶 duration 和 workflow 容错，可作为备选短训实验；默认平台主线仍是 `target_dqn`。
 
-E04 动作监控短跑确认修复前存在相位塌缩：平台 `legal_action` 被误当成相位级 mask，导致 `phase_0_cnt≈30`、其他相位约 0、`phase_switch_cnt=0`。当前版本已将通用 `legal_action` / `legalAction` / `actionMask` 只作为“是否需要预测”的门控；只有显式 `phase_legal_action` / `phaseLegalAction` / `phase_mask` / `phaseMask` 才限制相位。下一轮应先看 `phase_1_cnt`、`phase_2_cnt`、`phase_3_cnt` 是否不再长期为 0。
+E04 动作监控短跑确认修复前存在相位塌缩：平台 `legal_action` 被误当成相位级 mask，导致 `phase_0_cnt≈30`、其他相位约 0、`phase_switch_cnt=0`。E05 已验证当前版本不再 phase 0 锁死，但仍需继续压低 phase 2 偏置；下一轮应先看 `phase_2_cnt` 是否回落、`same_phase_ratio` 是否低于 `0.7`、平均延误是否继续低于 `45`。
 
 ## 本地可运行检查
 
@@ -41,7 +42,7 @@ python tests/test_target_dqn_smoke.py
 说明：
 
 - `test_target_dqn_static.py` 不依赖 `torch` 和 `kaiwudrl`，用于检查关键源码约束。
-- `test_hyperparams_static.py` 不依赖 `torch` 和 `kaiwudrl`，用于检查 E03 调参基线没有被误改回模板值。
+- `test_hyperparams_static.py` 不依赖 `torch` 和 `kaiwudrl`，用于检查当前 Target-DQN/PPO 调参基线没有被误改回模板值。
 - `test_target_dqn_smoke.py` 需要 `torch`；当前本地未安装时会输出 skip。
 - `check_offline.sh` 会同时运行编译、静态检查、smoke、空白检查和提交包内容检查。
 - `python train_test.py` 需要 KaiwuDRL 平台依赖，当前本地会因缺少 `kaiwudrl` 失败。
@@ -86,7 +87,7 @@ python tests/test_target_dqn_smoke.py
 - `model_grad_norm`：梯度范数，频繁过大说明奖励或学习率可能不稳。
 - `train_global_step`：如果 1h 仍只有几十次更新，需要继续按短训步数调 target sync 和 epsilon 衰减。
 - 动作分布：当前 workflow 已上报 `phase_0_cnt` 到 `phase_3_cnt`、`action_count`、`avg_duration`、`min_duration`、`max_duration`、`phase_switch_cnt`、`phase_switch_rate` 和 `same_phase_ratio`，用于验证是否存在相位塌缩、duration 偏置或过少切相。
-- E04 修复验证：若上传当前版本后 `phase_0_cnt` 仍独大且 `phase_switch_cnt=0`，优先下载真实 observation 样例确认合法动作字段；若四个相位开始都有计数，再继续看 score 和 reward 权重。
+- E06 修复验证：若 `phase_2_cnt` 仍长期占绝对多数且 `same_phase_ratio>0.8`，优先下载真实 observation 样例确认四个相位压力字段；若相位分布改善，再继续看 score、平均延误和 reward 权重。
 - 平台评分项：若平台监控字段为空，以评估任务页面中的平均延误、平均排队长度、平均等待时间、信号切换惩罚为准。
 
 ## 每次实验回填格式

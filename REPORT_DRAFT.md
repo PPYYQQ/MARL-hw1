@@ -278,6 +278,7 @@ python tests/test_target_dqn_smoke.py
 | E02 | 上传包未随结果提供；按当前 `main` `dd1fbcc` 记录 | 平台默认/未记录 | 1h | 任务 ID `206699` | 训练 score 约 `750-780`，非正式评估 | reward 已非零且 loss 下降，但平均延误约 `55-58`、信号变化惩罚为 0，疑似策略过少切相或过度保守 |
 | E03 | E03 调参包；按当前 `main` `7d10a9a` 记录 | 平台默认/未记录 | 2h | 任务 ID `206775` | 训练 score 约 `740-770`，非正式评估 | learner step 增至约 `130`，但平均延误、等待和排队基本未改善，单纯标量超参调优无效 |
 | E04 | E04 动作监控包；按修复前 `main` `de6a2b4` 记录 | 平台默认/未记录 | 截图时约 3min | 任务 ID `207146` | 训练 score 约 `750-770`，非正式评估 | 动作监控确认 `phase_0_cnt≈30`、其他相位约 0、`phase_switch_cnt=0`，根因是通用 `legal_action` 被误当相位 mask |
+| E05 | E05 legal_action 修复包；按当前 `main` `1607528` 记录 | 平台默认/未记录 | 1h | 任务 ID `207778` | 训练 score 约 `760-820`，非正式评估 | gate 修复有效，平均延误降到约 `44-49`，但后半段 phase 2 明显偏置且 `same_phase_ratio` 约 `0.75-0.85` |
 
 E02 相比 E01 的关键进展是 `reward` 不再固定为 0，说明当前 reward 链路已进入 learner；但训练 score 明显偏低，平均延误和等待时间偏高。下一轮应先增加动作分布监控，确认四个相位选择次数、平均 duration 和实际切相次数，再决定是否调 reward 权重或训练更久。
 
@@ -286,6 +287,8 @@ E02 相比 E01 的关键进展是 `reward` 不再固定为 0，说明当前 rewa
 E03 两小时结果显示，上述超参调整提高了 learner 更新次数，但没有改善平台 score。下一步应补充动作分布监控，直接判断相位选择、duration 和真实切相行为，再改 reward 或动作策略。PPO 备选线已具备短训条件，若后续需要算法对比，可将平台入口切到 `ppo` 跑 10-30 分钟 smoke，再比较 score、loss、entropy 和动作分布。
 
 为定位 E02/E03 的成绩瓶颈，workflow 已补充动作分布监控：每个上报周期统计四个相位选择次数、动作总数、平均/最小/最大 duration、切相次数、切相率和连续同相位比例。E04 短跑确认动作塌缩在 phase 0，且截图时 `train_global_step=0`，因此这不是训练收敛结果，而是合法动作语义处理错误。当前修复将通用 `legal_action` 只作为决策门控，只有显式 `phaseMask` / `phaseLegalAction` 才限制相位；下一轮应先验证四个 phase 计数是否恢复，再继续调 reward。
+
+E05 一小时结果显示 legal_action 修复有效：动作不再固定 phase 0，`phase_switch_cnt` 末段约 `3-5`，平均车辆延误从 E02/E03/E04 的约 `55-58` 降到约 `44-49`。但策略后半段明显偏向 phase 2，`phase_2_cnt` 约 `17-20`，其他 phase 多在 `0-2`，`avg_duration` 约 `30-33`，`same_phase_ratio` 升到约 `0.75-0.85`。由于本次 1h 只有约 `19` 次 learner 更新，后续 E06 基线将 batch 从 `256` 降到 `128`、target 同步间隔从 `20` 降到 `10`，同时放慢 epsilon 衰减并增强相位服务年龄奖励，用于验证 phase 2 偏置能否降低。
 
 建议先使用简单环境：
 

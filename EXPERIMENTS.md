@@ -18,6 +18,7 @@
 | E02 | 2026-06-08 | 上传包未随结果提供；按当前 `main` `dd1fbcc` 记录 | 平台默认/未记录 | 1h | 任务 ID `206699` | 约 `750-780` 训练 score 快照，非正式评估 | 最新包训练链路跑通且 reward 非零，但 score 明显偏低，平均信号变化惩罚为 0，疑似策略过少切相或过度保守 |
 | E03 | 2026-06-09 | E03 调参包；按当前 `main` `7d10a9a` 记录 | 平台默认/未记录 | 2h | 任务 ID `206775` | 约 `740-770` 训练 score 快照，非正式评估 | PPO-style 参数调优让 learner step 增加，但 score、延误、等待和排队基本未改善，下一步应看真实动作分布而不是继续只调标量超参 |
 | E04 | 2026-06-09 | E04 动作监控包；按修复前 `main` `de6a2b4` 记录 | 平台默认/未记录 | 截图时约 3min | 任务 ID `207146` | 约 `750-770` 训练 score 快照，非正式评估 | 动作监控确认相位塌缩：`phase_0_cnt≈30`、其他相位约 0、`phase_switch_cnt=0`；根因是通用 `legal_action` 被误当相位 mask |
+| E05 | 2026-06-09 | E05 legal_action 修复包；按当前 `main` `1607528` 记录 | 平台默认/未记录 | 1h | 任务 ID `207778` | 约 `760-820` 训练 score 快照，非正式评估 | gate 修复有效：已不再 phase 0 锁死，但后半段转为 phase 2 偏置，`same_phase_ratio` 约 `0.75-0.85`，需要增强公平性和短训更新效率 |
 
 ## 实验记录
 
@@ -209,6 +210,57 @@
   - 通用 `legal_action`、`legalAction`、`actionMask` 改为只判断是否需要预测；只要其中任一值非零，就对四个相位全部放开。
   - 只有显式 `phase_legal_action`、`phaseLegalAction`、`phase_mask`、`phaseMask` 才作为相位级合法动作 mask。
   - 下一轮应上传该修复后包，若动作正常，`phase_1_cnt/phase_2_cnt/phase_3_cnt` 应不再长期为 0，`phase_switch_cnt` 应明显大于 0。
+
+### E05 - legal_action 修复后一小时平台训练
+
+- 状态：已完成，平台任务自动释放。
+- 平台任务：
+  - 任务名：`target_dqn5`
+  - 任务 ID：`207778`
+  - 实验版本：`V73.1.1`
+  - 算法：`Target DQN`
+  - 训练模式：分布式
+- Commit：E05 legal_action 修复包，按上传前仓库最新 `main` `1607528` 记录；`dqn5/` 只包含监控截图，没有平台下载代码包。
+- 环境配置：平台默认/未记录。
+- 训练时间：2026-06-09 15:33:54 到 2026-06-09 16:34:33。
+- 训练时长：1h。
+- 模型 ID：截图未显示模型 ID；平台任务 ID 为 `207778`。
+- 截图证据：
+  - `dqn5/截屏2026-06-09 16.37.27.png`
+  - `dqn5/截屏2026-06-09 16.37.31.png`
+  - `dqn5/截屏2026-06-09 16.37.34.png`
+  - `dqn5/截屏2026-06-09 16.37.35.png`
+- 关键监控：
+  - `train_global_step`：约 `19`。
+  - `predict_succ_cnt`：约 `1000`。
+  - `episode_cnt` / `load_model_succ_cnt`：约 `45`。
+  - `sample_receive_cnt`：约 `950`。
+  - `sample_production_and_consumption_ratio`：末段约 `5.1`。
+  - `reward`：约从 `-2.0` 降到 `-3.0` 到 `-3.3` 后基本稳定。
+  - `value_loss`：约从 `1.8` 降到 `0.9`。
+  - `q_value`：约从 `0.3` 降到 `-1.8`。
+- 平台评分：
+  - 总分/score：初期约 `1280`，随后降到约 `760-820` 并基本横盘。
+  - 平均车辆延误：约 `44-49`，优于 E02/E03/E04 的约 `55-58`。
+  - 平均车辆等待时间：约 `21-24`，优于 E02/E03/E04 的约 `27-30`。
+  - 平均排队长度：约 `11-12`，略高于 E02/E03/E04 的约 `9-10`。
+  - 平均信号变化惩罚：末段约 `1`，说明真实切相已出现。
+- 动作分布：
+  - `phase_2_cnt` 后半段约 `17-20`，成为明显主导相位。
+  - `phase_0_cnt`、`phase_1_cnt`、`phase_3_cnt` 后半段多在 `0-2` 附近。
+  - `avg_duration` 后半段约 `30-33` 秒。
+  - `phase_switch_cnt` 从初期约 `19` 降到末段约 `3-5`。
+  - `same_phase_ratio` 从约 `0.3` 升到约 `0.75-0.85`。
+- 结论：
+  - E04 的 legal_action 门控修复有效：本次已不再出现 phase 0 全锁死，`phase_switch_cnt` 也不再为 0。
+  - 新瓶颈是修复后策略快速偏向 phase 2，且绿灯 duration 偏长，连续同相位比例偏高。
+  - 一小时内 `train_global_step≈19`，旧 `TARGET_UPDATE_FREQ=20` 基本等于短训末段才首次同步，短训学习效率偏低。
+- 后续修复：
+  - 将 `train_batch_size` 从 `256` 降到 `128`，`preload_ratio` 从 `0.0625` 降到 `0.03125`，提高一小时短训内 learner 更新次数。
+  - 将 `TARGET_UPDATE_FREQ` 从 `20` 降到 `10`，保证短训期间多次同步 target network。
+  - 将 `EPSILON_DECAY` 从 `0.97` 放慢到 `0.995`，`END_EPSILON_GREEDY` 从 `0.1` 提到 `0.2`，避免前几百次预测后过早固定到单一相位。
+  - 将 `PHASE_AGE_SCALE` 从 `120` 降到 `90`，`FAIRNESS_BONUS_SCALE` 从 `0.2` 提到 `0.5`，增强长期未服务相位的奖励信号。
+  - 下一轮 E06 重点看 phase 2 占比是否下降、`same_phase_ratio` 是否低于 `0.7`、平均延误是否继续低于 `45`。
 
 ## 实验模板
 

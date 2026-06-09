@@ -17,6 +17,7 @@ def require(condition, message):
 
 def main():
     target_conf = read("agent_target_dqn/conf/conf.py")
+    configure_app = read("conf/configure_app.toml")
     ppo_conf = read("agent_ppo/conf/conf.py")
     ppo_agent = read("agent_ppo/agent.py")
     ppo_algorithm = read("agent_ppo/algorithm/algorithm.py")
@@ -27,9 +28,13 @@ def main():
 
     require("GAMMA = 0.99" in target_conf, "Target-DQN should use a long-horizon discount")
     require("LR = 3e-4" in target_conf, "Target-DQN learning rate should match stable PPO-style baselines")
-    require("EPSILON_DECAY = 0.97" in target_conf, "Target-DQN epsilon should decay within short platform runs")
-    require("END_EPSILON_GREEDY = 0.1" in target_conf, "Target-DQN should keep moderate exploration")
-    require("TARGET_UPDATE_FREQ = 20" in target_conf, "Target-DQN target network should sync during 1h smoke runs")
+    require("EPSILON_DECAY = 0.995" in target_conf, "Target-DQN epsilon should not collapse early in 1h runs")
+    require("END_EPSILON_GREEDY = 0.2" in target_conf, "Target-DQN should keep enough exploration after E05")
+    require("TARGET_UPDATE_FREQ = 10" in target_conf, "Target-DQN target network should sync during 1h smoke runs")
+    require("PHASE_AGE_SCALE = 90.0" in target_conf, "Target-DQN should make unserved phase age visible sooner")
+    require("FAIRNESS_BONUS_SCALE = 0.5" in target_conf, "Target-DQN should reward serving starved phases after E05")
+    require("preload_ratio = 0.03125" in configure_app, "Replay should start learner updates earlier after E05")
+    require("train_batch_size = 128" in configure_app, "Replay batch size should fit short 1h platform runs")
 
     require("INIT_LEARNING_RATE_START = 3e-4" in ppo_conf, "PPO should use Adam-friendly baseline learning rate")
     require("BETA_START = 0.01" in ppo_conf, "PPO entropy coefficient should stay near common baseline")

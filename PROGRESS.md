@@ -1861,3 +1861,26 @@
   - 已运行 `./scripts/check_offline.sh`，通过；其中 `tests/test_target_dqn_smoke.py` 因本地缺少 `torch` 明确 skip。
 - 下一步：
   - 上传当前 `dist/marl_hw1_codebase.zip` 跑 E04；如果相位计数集中在单一 phase，优先修改相位公平性/压力 reward；如果 duration 分布异常，再调 duration reward。
+
+### Step 122 - 补齐 PPO 可训练备选线
+
+- 状态：完成
+- Commit：`e3c3e81`
+- 内容：
+  - 将 `agent_ppo` 从平台模板推进到可训练备选线：观测维度对齐 Target-DQN 的 638 维交通特征，duration 从 4 桶扩展为 20 桶，并通过 `duration_index_to_seconds()` 输出 8-40 秒实际绿灯时长。
+  - `agent_ppo/model/model.py` 改为共享 MLP backbone，输出 phase logits、duration logits 和 value，并补齐输入补零/截断/NaN 清洗。
+  - `agent_ppo/algorithm/algorithm.py` 实现 clipped PPO policy loss、value loss、entropy regularization、advantage 标准化、合法动作 mask、样本字段定宽归一化和非有限 loss/梯度跳步。
+  - `agent_ppo/feature/definition.py` 复用当前非零交通 reward，输出 PPO 标量 reward，并用 GAE 计算 `advantage` 和 `reward_sum`。
+  - `agent_ppo/agent.py` 复用 Target-DQN 稳定特征处理管线，补齐合法动作 mask、评估确定性动作、规则兜底、`agent_ppo/ckpt` 默认 checkpoint、latest 加载缺失/坏文件容错和原子保存。
+  - `agent_ppo/workflow/train_workflow.py` 重写为 PPO 专用稳健 workflow，保留旧策略概率和值函数估计，兼容平台 reset/step 多种返回形态，并上报环境指标和动作分布。
+  - `agent_ppo/conf/monitor_builder.py` 增加 `model_grad_norm`、`env_score`、`avg_delay`、`action_count`、`avg_duration` 和 `phase_switch_rate` 面板。
+  - `scripts/package_submission.sh` 明确排除本地 `tests/`，`scripts/check_offline.sh` 增加提交包内 `tests/` 检查，防止本地回归测试目录混进平台上传包。
+  - 更新 `AGENTS.md`、`RUNBOOK.md` 和 `REPORT_DRAFT.md`，说明 PPO 已可作为手动切换的短训备选，但默认平台主线仍是 `target_dqn`。
+- 验证：
+  - 已运行 `python -m compileall agent_ppo tests/test_hyperparams_static.py`，通过。
+  - 已运行 `python tests/test_hyperparams_static.py`，通过。
+  - 已运行 `python tests/test_target_dqn_static.py` 和 `python tests/test_target_dqn_features.py`，通过。
+  - 已运行 `./scripts/check_offline.sh`，通过；其中 `tests/test_target_dqn_smoke.py` 因本地缺少 `torch` 明确 skip。
+  - 已运行 `zipinfo -1 dist/marl_hw1_codebase.zip | rg '^tests/' || true`，无输出，确认提交包不含 `tests/`。
+- 下一步：
+  - 默认继续上传 `target_dqn` 跑 E04 动作分布诊断；如需 PPO 对比，将 `codebase/conf/app_conf_intelligent_traffic_lights.toml` 的 `algo` 改为 `ppo`，先跑 10-30 分钟 smoke，再比较 `reward`、`policy_loss`、`entropy_loss`、动作分布和平台 score。

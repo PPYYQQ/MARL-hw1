@@ -1843,3 +1843,21 @@
   - 已人工查看 `dqn3/截屏2026-06-09 09.58.49.png`、`dqn3/截屏2026-06-09 09.58.55.png`、`dqn3/截屏2026-06-09 09.58.57.png`。
 - 下一步：
   - 不建议继续只调学习率、折扣或 epsilon；优先在 workflow 监控中加入 `phase_0_cnt` 到 `phase_3_cnt`、`avg_duration`、`phase_switch_cnt`、`same_phase_ratio`，再决定修改 reward 还是动作策略。
+
+### Step 121 - 增加动作分布监控
+
+- 状态：完成
+- Commit：`10aaa0a`
+- 内容：
+  - workflow 新增 `_new_action_stats()`、`_update_action_stats()`、`_action_metric_snapshot()` 和 `_default_action_metric_snapshot()`，每个决策动作经过 `_safe_action()` 清洗后都会统计。
+  - 新增监控指标：`action_count`、`phase_0_cnt` 到 `phase_3_cnt`、`avg_duration`、`min_duration`、`max_duration`、`phase_switch_cnt`、`phase_switch_rate` 和 `same_phase_ratio`。
+  - 训练日志增加动作数、平均 duration、切相次数和连续同相位比例，帮助判断 E02/E03 低分是否来自相位塌缩、duration 偏置或过少切相。
+  - `agent_target_dqn/conf/monitor_builder.py` 新增动作指标面板，平台自定义监控页可以展示相位计数、平均时长、切相次数和同相位比例。
+  - 无平台依赖测试增加动作统计 helper 覆盖，静态测试增加动作监控锚点。
+  - 更新 `AGENTS.md`、`RUNBOOK.md` 和 `REPORT_DRAFT.md`，记录 E04 应优先看动作分布，而不是继续只调标量超参。
+- 验证：
+  - 已运行 `python -m compileall agent_target_dqn tests/test_target_dqn_features.py tests/test_target_dqn_static.py`，通过。
+  - 已运行 `python tests/test_target_dqn_features.py` 和 `python tests/test_target_dqn_static.py`，均通过。
+  - 已运行 `./scripts/check_offline.sh`，通过；其中 `tests/test_target_dqn_smoke.py` 因本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 上传当前 `dist/marl_hw1_codebase.zip` 跑 E04；如果相位计数集中在单一 phase，优先修改相位公平性/压力 reward；如果 duration 分布异常，再调 duration reward。

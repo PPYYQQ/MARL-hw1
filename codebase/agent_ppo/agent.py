@@ -8,6 +8,7 @@ Author: Tencent AI Arena Authors
 """
 
 
+import os
 import torch
 
 
@@ -29,8 +30,10 @@ from agent_ppo.model.model import Model
 from agent_ppo.feature.definition import *
 from agent_ppo.conf.conf import Config
 from agent_ppo.algorithm.algorithm import Algorithm
-from agent_ppo.feature.preprocessor import FeatureProcess
-from torch.distributions import Categorical
+from agent_target_dqn.agent import Agent as TargetFeatureAgent
+from agent_target_dqn.agent import EXTRA_INFO_KEYS, _first_record_field
+from agent_target_dqn.feature.preprocessor import FeatureProcess
+from agent_target_dqn.feature.traffic_utils import normalize_phase_legal_action
 
 
 class Agent(BaseAgent):
@@ -41,11 +44,6 @@ class Agent(BaseAgent):
         initial_lr = Config.INIT_LEARNING_RATE_START
         parameters = self.model.parameters()
 
-        # ========== TODO 17 ==========
-        # Compare and choose a suitable PPO optimizer.
-        # Hint: Try RMSprop, Adam, or SGD together with INIT_LEARNING_RATE_START tuning.
-        # 比较并选择合适的 PPO 优化器。
-        # 提示：可尝试 RMSprop、Adam 或 SGD，并结合 INIT_LEARNING_RATE_START 调整。
         self.optimizer = torch.optim.Adam(params=parameters, lr=initial_lr)
         self.label_size_list = Config.LABEL_SIZE_LIST
         self.legal_action_size = Config.LEGAL_ACTION_SIZE_LIST
@@ -59,62 +57,173 @@ class Agent(BaseAgent):
         self.preprocess.reset()
 
     def __predict_detail(self, list_obs_data, exploit_flag=False):
-        feature = [obs_data.feature for obs_data in list_obs_data]
-        legal_action = [obs_data.legal_action for obs_data in list_obs_data]
+        list_obs_data = self._obs_batch(list_obs_data)
+        list_obs_data = [
+            obs_data for obs_data in list_obs_data if self._obs_data_field(obs_data, "feature") is not None
+        ]
+        if not list_obs_data:
+            return []
+
+        feature = [self._obs_data_field(obs_data, "feature") for obs_data in list_obs_data]
+        legal_action = [
+            self._full_action_mask(self._obs_data_field(obs_data, "legal_action")) for obs_data in list_obs_data
+        ]
         self.model.set_eval_mode()
 
-        s = torch.tensor(feature).view(1, Config.DIM_OF_OBSERVATION).float().to(self.device)
         with torch.no_grad():
-            output_list = self.model(s, inference=True)
+            output_list = self.model(feature, inference=True)
 
         np_output = []
         for output in output_list:
-            np_output.append(output.numpy())
+            np_output.append(output.detach().cpu().numpy())
 
         logits, value = np_output[:2]
 
         list_act_data = list()
         for i in range(len(legal_action)):
-            prob, action, d_action = self._sample_masked_action(logits[i], np.array(legal_action[i], dtype=np.float32))
-            list_act_data.append(ActData(junction_id=0, action=action, d_action=d_action, prob=prob, value=value))
+            prob, action, d_action = self._sample_masked_action(
+                logits[i],
+                np.array(legal_action[i], dtype=np.float32),
+                use_stochastic=not exploit_flag,
+            )
+            list_act_data.append(
+                ActData(
+                    junction_id=0,
+                    action=action,
+                    d_action=d_action,
+                    prob=prob,
+                    value=np.array([value[i].reshape(-1)[0]], dtype=np.float32),
+                )
+            )
         return list_act_data
 
     def predict(self, list_obs_data):
         return self.__predict_detail(list_obs_data, exploit_flag=False)
 
     def exploit(self, observation):
-        obs_data = self.observation_process(observation["obs"], observation["extra_info"])
-        if not obs_data:
-            return [[None, None, None]]
-        act_data = self.__predict_detail([obs_data], exploit_flag=True)
-        act = self.action_process(act_data[0], False)
-        return act
+        raw_obs = _first_record_field(observation, ("obs", "observation", "_obs"), observation)
+        extra_info = _first_record_field(observation, EXTRA_INFO_KEYS, None)
+        if raw_obs is None:
+            raw_obs = {}
+        try:
+            obs_data = self.observation_process(raw_obs, extra_info)
+            if not obs_data:
+                return self._safe_rule_based_action(raw_obs)
+            act_data = self.__predict_detail([obs_data], exploit_flag=True)
+            if not act_data:
+                return self._safe_rule_based_action(raw_obs)
+            return self.action_process(act_data[0], False)
+        except Exception as err:
+            self._log_error(f"exploit fallback to rule_based_action: {err}")
+            return self._safe_rule_based_action(raw_obs)
+
+    def _safe_rule_based_action(self, raw_obs):
+        try:
+            return self.rule_based_action(raw_obs)
+        except Exception as err:
+            self._log_error(f"rule_based_action failed, use default action: {err}")
+            return [0, 0, Config.MIN_GREEN_DURATION]
+
+    def _obs_batch(self, list_obs_data):
+        if list_obs_data is None:
+            return []
+        try:
+            return list(list_obs_data)
+        except Exception as err:
+            self._log_error(f"predict observation batch failed: {err}")
+            return []
+
+    def _obs_data_field(self, obs_data, name, default=None):
+        try:
+            return getattr(obs_data, name, default)
+        except Exception:
+            return default
 
     def learn(self, list_sample_data):
-        return self.algorithm.learn(list_sample_data)
+        try:
+            return self.algorithm.learn(list_sample_data)
+        except Exception as err:
+            self._log_error(f"learn failed: {err}")
+            return None
 
     def save_model(self, path=None, id="1"):
         # To save the model, it can consist of multiple files,
         # and it is important to ensure that each filename includes the "model.ckpt-id" field.
         # 保存模型, 可以是多个文件, 需要确保每个文件名里包括了model.ckpt-id字段
+        if path is None:
+            path = "agent_ppo/ckpt"
+        os.makedirs(path, exist_ok=True)
         model_file_path = f"{path}/model.ckpt-{str(id)}.pkl"
+        model_tmp_path = f"{model_file_path}.tmp"
 
         # Copy the model's state dictionary to the CPU
         # 将模型的状态字典拷贝到CPU
-        model_state_dict = self.model.state_dict()
         model_state_dict_cpu = {k: v.clone().cpu() for k, v in self.model.state_dict().items()}
-        torch.save(model_state_dict_cpu, model_file_path)
+        try:
+            torch.save(model_state_dict_cpu, model_tmp_path)
+            os.replace(model_tmp_path, model_file_path)
+        except Exception:
+            if os.path.exists(model_tmp_path):
+                try:
+                    os.remove(model_tmp_path)
+                except OSError:
+                    pass
+            raise
 
-        self.logger.info(f"save model {model_file_path} successfully")
+        self._log_info(f"save model {model_file_path} successfully")
 
     def load_model(self, path=None, id="1"):
         # When loading the model, you can load multiple files,
         # and it is important to ensure that each filename matches the one used during the save_model process.
         # 加载模型, 可以加载多个文件, 注意每个文件名需要和save_model时保持一致
+        if path is None:
+            path = "agent_ppo/ckpt"
         model_file_path = f"{path}/model.ckpt-{str(id)}.pkl"
-        self.model.load_state_dict(torch.load(model_file_path, map_location=self.model.device))
+        if not os.path.exists(model_file_path):
+            if str(id) == "latest":
+                self._log_info(f"skip load model, {model_file_path} does not exist yet")
+                return
+            raise FileNotFoundError(model_file_path)
+        try:
+            model_state = torch.load(model_file_path, map_location=self.model.device)
+        except Exception as err:
+            if str(id) == "latest":
+                self._log_info(f"skip load model, unreadable checkpoint {model_file_path}: {err}")
+                return
+            raise
+        if isinstance(model_state, dict) and "state_dict" in model_state:
+            model_state = model_state["state_dict"]
+        if not isinstance(model_state, dict):
+            err = TypeError(f"checkpoint payload should be dict, got {type(model_state).__name__}")
+            if str(id) == "latest":
+                self._log_info(f"skip load model, invalid checkpoint {model_file_path}: {err}")
+                return
+            raise err
+        try:
+            self.model.load_state_dict(model_state)
+        except (RuntimeError, TypeError, ValueError) as err:
+            if str(id) == "latest":
+                self._log_info(f"skip load model, incompatible checkpoint {model_file_path}: {err}")
+                return
+            raise
 
-        self.logger.info(f"load model {model_file_path} successfully")
+        self._log_info(f"load model {model_file_path} successfully")
+
+    def _log_info(self, message):
+        if not self.logger:
+            return
+        try:
+            self.logger.info(message)
+        except Exception:
+            pass
+
+    def _log_error(self, message):
+        if not self.logger:
+            return
+        try:
+            self.logger.error(message)
+        except Exception:
+            pass
 
     def observation_process(self, raw_obs, extra_info=None):
         """
@@ -144,92 +253,37 @@ class Agent(BaseAgent):
                 - ObsData: 包含 observation, legal_action 与 sub_action_mask 的变量
         """
 
-        # User-defined section, can record or update traffic information per frame.
-        # 用户自定义部分, 可每帧对交通信息进行记录或更新
-        self.preprocess.update_traffic_info(raw_obs, extra_info)
-
-        # Note: The unpacking of the following raw data is for example purposes only,
-        # please modify according to the actual situation
-        # 注意: 以下原始数据的解包为示例, 请根据实际情况修改
-        frame_state = raw_obs["frame_state"]
-
-        # Parse frame_state
-        # 解析 frame_state
-        _, _, vehicles = (
-            frame_state["frame_no"],
-            frame_state["frame_time"],
-            frame_state["vehicles"],
-        )
-
-        # Divide the lane into several grids along the lane direction and the vehicle driving direction
-        # 沿车道方向和车辆行驶方向将车道划分为数个栅格
-        speed_dict = {}
-        position_dict = {}
-        for junction_id in self.preprocess.junction_dict.keys():
-            speed_dict[junction_id] = np.zeros((Config.GRID_WIDTH, Config.GRID_NUM))
-            position_dict[junction_id] = np.zeros((Config.GRID_WIDTH, Config.GRID_NUM))
-
-        # The default value of junction_id in a single intersection scenario is 0
-        # 单交叉口场景junction_id默认为0
-        junction_id = 0
-
-        # Initialize state-related variables to prevent errors when there are no vehicles in the traffic scenario
-        # 初始化状态相关变量, 防止交通场景内车辆为空时报错
-        position = list(position_dict[junction_id].astype(int).flatten())
-        speed = list(speed_dict[junction_id].flatten())
-
-        for vehicle in vehicles:
-            # Only count vehicles on the enter lane
-            # 仅统计位于进口车道上的车辆信息
-            if on_enter_lane(vehicle):
-                # Convert the vehicle x,y coordinates to grid coordinates. Here,
-                # get_lane_code maps the lane number to integers 0-13, corresponding to 14 import lanes
-                # 将车辆x,y坐标转化为栅格坐标, 此处get_lane_code将车道编号映射至整数0-13, 对应14条进口车道
-                x_pos = get_lane_code(vehicle)
-                y_pos = int((vehicle["position_in_lane"]["y"] / 1) // Config.GRID_LENGTH)
-
-                if y_pos >= Config.GRID_NUM:
-                    continue
-
-                speed_dict[vehicle["target_junction"]][x_pos, y_pos] = float(
-                    vehicle["speed"] / self.preprocess.vehicle_configs_dict[vehicle["v_config_id"]]["max_speed"]
-                )
-                position_dict[vehicle["target_junction"]][x_pos, y_pos] = 1
-            else:
-                continue
-
-        position = list(position_dict[junction_id].astype(int).flatten())
-        speed = list(speed_dict[junction_id].flatten())
-
-        # Integrate all state quantities into the observation
-        # 将所有状态量整合在observation中
-        observation = position + speed
-
+        target_obs_data = TargetFeatureAgent.observation_process(self, raw_obs, extra_info)
         return ObsData(
-            feature=observation,
-            legal_action=[
-                1,
-            ]
-            * (Config.DIM_OF_ACTION_PHASE_1 + Config.DIM_OF_ACTION_DURATION_1),
-            sub_action_mask=[
-                1,
-            ]
-            * Config.NUMB_HEAD,
+            feature=getattr(target_obs_data, "feature", [0.0] * Config.DIM_OF_OBSERVATION),
+            legal_action=self._full_action_mask(getattr(target_obs_data, "legal_action", None)),
+            sub_action_mask=[1] * Config.NUMB_HEAD,
         )
 
     def action_process(self, act_data, is_stochastic=True):
-        junction_id = act_data.junction_id
+        junction_id = 0
         if is_stochastic:
             action = act_data.action
         else:
             action = act_data.d_action
 
-        action_p = action[0]
-        action_d = (action[1] + 1) * 5
+        action_p = self._safe_action_index(action[0], Config.DIM_OF_ACTION_PHASE_1)
+        action_d = Config.duration_index_to_seconds(
+            self._safe_action_index(action[1], Config.DIM_OF_ACTION_DURATION_1)
+        )
 
         return [junction_id, action_p, action_d]
 
-    def _sample_masked_action(self, logits, legal_action):
+    def _safe_action_index(self, value, action_dim):
+        try:
+            value = float(value)
+        except (TypeError, ValueError, OverflowError):
+            value = 0.0
+        if not np.isfinite(value):
+            value = 0.0
+        return int(np.clip(round(value), 0, action_dim - 1))
+
+    def _sample_masked_action(self, logits, legal_action, use_stochastic=True):
         """
         Sample actions from predicted logits and legal actions
         return: probability, stochastic and deterministic actions with additional []
@@ -254,7 +308,7 @@ class Agent(BaseAgent):
                 d_action = 0
             else:
                 probs = self._legal_soft_max(logits_split[index], legal_actions[index])
-                sample_action = self._legal_sample(probs, use_max=False)
+                sample_action = self._legal_sample(probs, use_max=not use_stochastic)
                 d_action = self._legal_sample(probs, use_max=True)
             action_list.append(sample_action)
             d_action_list.append(d_action)
@@ -268,13 +322,21 @@ class Agent(BaseAgent):
         _lsm_const_w, _lsm_const_e = 1e20, 1e-5
         _lsm_const_e = 0.00001
 
+        input_hidden = np.nan_to_num(input_hidden, nan=0.0, posinf=0.0, neginf=0.0)
+        legal_action = np.nan_to_num(legal_action, nan=0.0, posinf=0.0, neginf=0.0)
         tmp = input_hidden - _lsm_const_w * (1.0 - legal_action)
         tmp_max = np.max(tmp, keepdims=True)
         # Not necessary max clip 1
         # 最大值裁剪1不是必需的
         tmp = np.clip(tmp - tmp_max, -_lsm_const_w, 1)
         tmp = (np.exp(tmp) + _lsm_const_e) * legal_action
-        probs = tmp / np.sum(tmp, keepdims=True)
+        prob_sum = np.sum(tmp, keepdims=True)
+        if not np.all(np.isfinite(prob_sum)) or np.any(prob_sum <= 0.0):
+            legal_count = max(int(np.count_nonzero(legal_action)), 1)
+            probs = legal_action / legal_count
+        else:
+            probs = tmp / prob_sum
+        probs = np.nan_to_num(probs, nan=0.0, posinf=0.0, neginf=0.0)
         return probs
 
     def _legal_sample(self, probs, legal_action=None, use_max=False):
@@ -287,3 +349,31 @@ class Agent(BaseAgent):
             return np.argmax(probs)
 
         return np.argmax(np.random.multinomial(1, probs, size=1))
+
+    def _full_action_mask(self, legal_action):
+        try:
+            values = np.asarray(legal_action if legal_action is not None else [], dtype=np.float32).flatten()
+        except Exception:
+            values = np.asarray([], dtype=np.float32)
+        if values.size == Config.DIM_OF_ACTION_PHASE_1 + Config.DIM_OF_ACTION_DURATION_1:
+            values = np.nan_to_num(values, nan=0.0, posinf=0.0, neginf=0.0)
+            phase_mask = [1 if value > 0 else 0 for value in values[: Config.DIM_OF_ACTION_PHASE_1]]
+        else:
+            phase_mask = normalize_phase_legal_action(legal_action, Config.DIM_OF_ACTION_PHASE_1)
+        if not any(phase_mask):
+            phase_mask = [1] * Config.DIM_OF_ACTION_PHASE_1
+        return phase_mask + [1] * Config.DIM_OF_ACTION_DURATION_1
+
+    def _phase_action_mask(self, legal_action):
+        return np.asarray(self._full_action_mask(legal_action)[: Config.DIM_OF_ACTION_PHASE_1], dtype=bool)
+
+    _sanitize_observation = TargetFeatureAgent._sanitize_observation
+    rule_based_action = TargetFeatureAgent.rule_based_action
+    _phase_feature = TargetFeatureAgent._phase_feature
+    _phase_age_feature = TargetFeatureAgent._phase_age_feature
+    _current_phase_info = TargetFeatureAgent._current_phase_info
+    _phase_record_value = TargetFeatureAgent._phase_record_value
+    _traffic_feature = TargetFeatureAgent._traffic_feature
+    _traffic_trend_feature = TargetFeatureAgent._traffic_trend_feature
+    _traffic_history_feature = TargetFeatureAgent._traffic_history_feature
+    _lane_stat_feature = TargetFeatureAgent._lane_stat_feature

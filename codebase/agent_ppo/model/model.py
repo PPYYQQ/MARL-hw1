@@ -30,13 +30,8 @@ class Model(nn.Module):
         self.device = device
         self.label_size_list = Config.LABEL_SIZE_LIST
 
-        # ========== TODO 5 ==========
-        # Improve the PPO shared feature layer and Actor/Critic network structure.
-        # Hint: Add suitable hidden layers and keep self.unit_size aligned with the backbone output.
-        # 完善 PPO 共享特征层与 Actor/Critic 网络结构。
-        # 提示：可补充隐藏层设计，并保持 self.unit_size 与主干网络输出一致。
-        self.unit_size = Config.DIM_OF_OBSERVATION
-        all_dims = [Config.DIM_OF_OBSERVATION]
+        self.unit_size = 64
+        all_dims = [Config.DIM_OF_OBSERVATION, 256, 128, self.unit_size]
         self.main_mlp = MLP(all_dims, "main_mlp")
 
         # Output label
@@ -54,15 +49,7 @@ class Model(nn.Module):
         self.value_mlp = MLP([self.unit_size, 64, 1], "value_mlp")
 
     def forward(self, s, inference=False):
-        if not isinstance(s, torch.Tensor):
-            s = torch.tensor(
-                np.array(s, dtype=np.float32),
-                device=self.device,
-                dtype=torch.float32,
-            )
-        else:
-            s = s.to(torch.float32)
-
+        s = self._prepare_input(s)
         main_nn = self.main_mlp(s)
 
         result_list = []
@@ -85,6 +72,56 @@ class Model(nn.Module):
             return [logits, value]
         else:
             return result_list
+
+    def _prepare_input(self, s):
+        if not isinstance(s, torch.Tensor):
+            s = torch.tensor(
+                self._as_numpy_array(s),
+                device=self.device,
+                dtype=torch.float32,
+            )
+        elif self.device is None:
+            s = s.to(dtype=torch.float32)
+        else:
+            s = s.to(device=self.device, dtype=torch.float32)
+
+        if s.dim() == 0:
+            s = s.reshape(1, 1)
+        elif s.dim() == 1:
+            s = s.unsqueeze(0)
+        elif s.dim() > 2:
+            s = s.reshape(s.shape[0], -1)
+
+        feature_dim = s.shape[-1]
+        if feature_dim < Config.DIM_OF_OBSERVATION:
+            s = F.pad(s, (0, Config.DIM_OF_OBSERVATION - feature_dim))
+        elif feature_dim > Config.DIM_OF_OBSERVATION:
+            s = s[:, : Config.DIM_OF_OBSERVATION]
+        return torch.nan_to_num(s, nan=0.0, posinf=0.0, neginf=0.0)
+
+    def _as_numpy_array(self, s):
+        try:
+            return np.asarray(s, dtype=np.float32)
+        except Exception:
+            if not isinstance(s, (list, tuple)):
+                return np.zeros((1, 0), dtype=np.float32)
+            rows = []
+            for item in s:
+                try:
+                    row = np.asarray(item, dtype=np.float32).reshape(-1)
+                except Exception:
+                    row = np.zeros(0, dtype=np.float32)
+                rows.append(self._fit_numpy_width(row))
+            if not rows:
+                return np.zeros((1, 0), dtype=np.float32)
+            return np.stack(rows)
+
+    def _fit_numpy_width(self, row):
+        if row.size < Config.DIM_OF_OBSERVATION:
+            return np.pad(row, (0, Config.DIM_OF_OBSERVATION - row.size))
+        if row.size > Config.DIM_OF_OBSERVATION:
+            return row[: Config.DIM_OF_OBSERVATION]
+        return row
 
     def set_train_mode(self):
         self.train()

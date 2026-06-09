@@ -13,7 +13,7 @@ python tests/test_target_dqn_smoke.py
 cd "$ROOT_DIR"
 git diff --check
 ./scripts/package_submission.sh
-zipinfo -1 dist/marl_hw1_codebase.zip | grep -E '(^log/|__pycache__|\.pyc$|ckpt/|\.pkl$|screenshot|REPORT|RUNBOOK|PROGRESS|AGENTS|icml)' && {
+zipinfo -1 dist/marl_hw1_codebase.zip | grep -E '(^tests/|^log/|__pycache__|\.pyc$|ckpt/|\.pkl$|screenshot|REPORT|RUNBOOK|PROGRESS|AGENTS|icml)' && {
   echo "unexpected file found in submission package" >&2
   exit 1
 } || true

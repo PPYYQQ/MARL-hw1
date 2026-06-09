@@ -11,6 +11,8 @@ rm -f "$PACKAGE_PATH"
 
 cd "$ROOT_DIR/codebase"
 zip -r "$PACKAGE_PATH" . \
+  -x "tests/*" \
+  -x "tests/**/*" \
   -x "log/*" \
   -x "*/__pycache__/*" \
   -x "*.pyc" \

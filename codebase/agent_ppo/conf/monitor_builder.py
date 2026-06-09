@@ -74,6 +74,66 @@ def build_monitor():
             expr="avg(entropy_loss{})",
         )
         .end_panel()
+        .add_panel(
+            name="梯度范数",
+            name_en="model_grad_norm",
+            type="line",
+        )
+        .add_metric(
+            metrics_name="model_grad_norm",
+            expr="avg(model_grad_norm{})",
+        )
+        .end_panel()
+        .add_panel(
+            name="环境得分",
+            name_en="env_score",
+            type="line",
+        )
+        .add_metric(
+            metrics_name="env_score",
+            expr="avg(env_score{})",
+        )
+        .end_panel()
+        .add_panel(
+            name="平均延误",
+            name_en="avg_delay",
+            type="line",
+        )
+        .add_metric(
+            metrics_name="avg_delay",
+            expr="avg(avg_delay{})",
+        )
+        .end_panel()
+        .add_panel(
+            name="动作数量",
+            name_en="action_count",
+            type="line",
+        )
+        .add_metric(
+            metrics_name="action_count",
+            expr="avg(action_count{})",
+        )
+        .end_panel()
+        .add_panel(
+            name="平均持续时间",
+            name_en="avg_duration",
+            type="line",
+        )
+        .add_metric(
+            metrics_name="avg_duration",
+            expr="avg(avg_duration{})",
+        )
+        .end_panel()
+        .add_panel(
+            name="相位切换率",
+            name_en="phase_switch_rate",
+            type="line",
+        )
+        .add_metric(
+            metrics_name="phase_switch_rate",
+            expr="avg(phase_switch_rate{})",
+        )
+        .end_panel()
         .end_group()
         .build()
     )

@@ -28,7 +28,7 @@ github 目录：https://github.com/PPYYQQ/MARL-hw1.git
 - 优化平均车辆延误、平均排队长度、平均等待时间，并减少过于频繁的信号切换。
 - 完成 `observation_process()`、`action_process()`、`reward_shaping()`、`sample_process()`、模型、算法、训练 workflow、模型保存与评估逻辑。
 
-当前代码包提供四套 agent：`agent_target_dqn`、`agent_dqn`、`agent_ppo`、`agent_diy`。默认配置选择 `target_dqn`，建议优先完成 `agent_target_dqn`，除非用户明确要求切换算法。
+当前代码包提供四套 agent：`agent_target_dqn`、`agent_dqn`、`agent_ppo`、`agent_diy`。默认配置选择 `target_dqn`；`agent_ppo` 已补成可训练备选线，但尚未做平台成绩验证，除非用户明确要求切换算法，平台主线仍优先使用 `target_dqn`。
 
 ## 当前代码包结构
 
@@ -58,7 +58,7 @@ github 目录：https://github.com/PPYYQQ/MARL-hw1.git
 辅助资产：
 
 - `scripts/check_offline.sh`：根目录一键离线检查脚本，会进入 `codebase/` 编译、运行无平台依赖测试、运行 smoke、检查空白并打包。
-- `scripts/package_submission.sh`：根目录打包脚本，输出 `dist/marl_hw1_codebase.zip`，只打包 `codebase/`，排除日志、`__pycache__`、checkpoint 和模型 pkl。
+- `scripts/package_submission.sh`：根目录打包脚本，输出 `dist/marl_hw1_codebase.zip`，只打包 `codebase/`，排除本地 `tests/`、日志、`__pycache__`、checkpoint 和模型 pkl。
 - `codebase/tests/test_target_dqn_features.py`：无 `torch` / KaiwuDRL 依赖的功能边界测试。
 - `codebase/tests/test_target_dqn_static.py`：无 `torch` / KaiwuDRL 依赖的源码锚点测试。
 - `codebase/tests/test_target_dqn_smoke.py`：需要 `torch` 的模型和 Agent smoke 测试；当前普通本地环境缺少 `torch` 时会明确 skip。
@@ -84,6 +84,15 @@ Target-DQN 关键文件：
 - `codebase/agent_target_dqn/feature/traffic_utils.py`：进口车道、出口车道、相位车道组工具。
 - `codebase/agent_target_dqn/workflow/train_workflow.py`：episode 循环、样本发送、监控、模型保存。
 
+PPO 备选线关键文件：
+
+- `codebase/agent_ppo/agent.py`：复用 Target-DQN 稳定特征管线，PPO 双头动作采样、评估确定性动作、保存加载。
+- `codebase/agent_ppo/algorithm/algorithm.py`：clipped PPO policy loss、value loss、entropy regularization 和梯度裁剪。
+- `codebase/agent_ppo/model/model.py`：638 维输入共享 MLP，输出 phase logits、duration logits 和 value。
+- `codebase/agent_ppo/feature/definition.py`：PPO `SampleData`、标量 reward、GAE advantage 和样本归一化。
+- `codebase/agent_ppo/workflow/train_workflow.py`：PPO episode 循环，保留旧策略概率和值函数估计，兼容平台 reset/step 返回。
+- `codebase/agent_ppo/conf/monitor_builder.py`：PPO loss、梯度、环境指标和动作分布监控面板。
+
 ## 代码审阅结论
 
 当前代码包来自官方教学模板。主线已集中在 `agent_target_dqn`，并完成了一批从模板到可训练闭环所需的基础修复。后续仍应优先维护 `agent_target_dqn`，除非用户明确要求切换算法。
@@ -92,10 +101,10 @@ Target-DQN 关键文件：
 
 - 仓库现在包含平台完整 `codebase/`、本地 `tests/`、打包/检查脚本和文档台账；`codebase/log/` 是运行产物，不应纳入开发修改范围。
 - `codebase/conf/app_conf_intelligent_traffic_lights.toml` 和 `codebase/train_test.py` 都默认选择 `target_dqn`，当前平台入口与主线一致。
-- `agent_target_dqn` 是唯一被系统性修复和测试覆盖的算法包；`agent_dqn`、`agent_ppo`、`agent_diy` 仍应视为平台模板/备选代码，除非用户明确切换算法，不要把后续改动扩散过去。
+- `agent_target_dqn` 是已平台短训验证的主线算法包；`agent_ppo` 已补齐 PPO loss、entropy、GAE、非零 reward、638 维特征、20 桶 duration、checkpoint 容错和 workflow 容错，但仍未平台训练验证；`agent_dqn`、`agent_diy` 仍应视为平台模板/备选代码。
 - `tests/test_target_dqn_features.py` 和 `tests/test_target_dqn_static.py` 是当前普通本地环境最可靠的回归检查；`tests/test_target_dqn_smoke.py` 依赖 `torch`，平台或安装 PyTorch 后再补跑。
-- `tests/test_hyperparams_static.py` 用于锁定 E03 调参基线，防止 Target-DQN 和 PPO 参数退回平台模板值。
-- `scripts/package_submission.sh` 当前只打包 `codebase/`；根目录文档、截图、日志、checkpoint、模型 pkl 和 `icml2022.zip` 不会进入提交包。
+- `tests/test_hyperparams_static.py` 用于锁定 E03 调参基线和 PPO 可训练实现锚点，防止 PPO 退回 reward/loss 空模板。
+- `scripts/package_submission.sh` 当前只打包 `codebase/` 的平台运行内容；本地 `tests/`、根目录文档、截图、日志、checkpoint、模型 pkl 和 `icml2022.zip` 不会进入提交包。
 - `.gitignore` 已忽略 `__pycache__`、`.pyc`、`dist/`、`codebase/log/` 和 checkpoint；如果本地看到缓存文件，不要手动纳入提交。
 - 普通本地环境仍无法运行真实 `python train_test.py`，因为缺少 `kaiwudrl`、`common_python` 和 `torch`；真实 reset/step、样本池、模型池和评分必须在腾讯开悟/KaiwuDRL 环境确认。
 
@@ -180,7 +189,7 @@ Target-DQN 关键文件：
 - 观测和 reward 已加入相位服务年龄，用于降低高压相位长期不被服务的风险。
 - Target-DQN 已从 phase/duration 双头改为 80 维联合动作 Q 头，可表达相位和时长组合价值。
 - E02 平台短训结果位于 `dqn2/`：任务 ID `206699`，2026-06-08 21:41:46 到 22:42:25 跑满 1h，reward 约 `-2.8` 到 `-3.0`，`value_loss` 从约 `2.1` 降到 `0.3`，说明最新包的非零 reward 和 learner 更新链路已跑通。
-- E03 参数基线已参考常见 PPO 稳定配置调整：Target-DQN 使用 `GAMMA=0.99`、`LR=3e-4`、`EPSILON_DECAY=0.97`、`END_EPSILON_GREEDY=0.1`、`TARGET_UPDATE_FREQ=20`，PPO 模板使用 `lr=3e-4`、`gamma=0.99`、`lambda=0.95`、`clip=0.2`、`entropy=0.01`、`grad_clip=0.5`。
+- E03 参数基线已参考常见 PPO 稳定配置调整：Target-DQN 使用 `GAMMA=0.99`、`LR=3e-4`、`EPSILON_DECAY=0.97`、`END_EPSILON_GREEDY=0.1`、`TARGET_UPDATE_FREQ=20`；PPO 备选线使用 `lr=3e-4`、`gamma=0.99`、`lambda=0.95`、`clip=0.2`、`entropy=0.01`、`grad_clip=0.5`。
 - E03 平台结果位于 `dqn3/`：任务 ID `206775`，2026-06-09 00:51:34 到 02:52:14 跑满 2h，`train_global_step` 约 `130`，score 约 `740-770`，平均延误约 `55-58`，等待约 `27-30`，排队约 `9-10`；超参调整增加了 learner step，但没有改善成绩。
 - E04 诊断基线已加入动作分布监控：workflow 会上报 `phase_0_cnt` 到 `phase_3_cnt`、`action_count`、`avg_duration`、`min_duration`、`max_duration`、`phase_switch_cnt`、`phase_switch_rate` 和 `same_phase_ratio`，`agent_target_dqn/conf/monitor_builder.py` 也新增了对应监控面板。
 
@@ -189,7 +198,7 @@ Target-DQN 关键文件：
 - E02/E03 训练 score 均只有约 `740-780`，平均延误约 `55-58`、等待约 `26-30`；后续优先检查动作分布、phase switch 次数和 duration 分布，不要继续只做标量超参搜索。
 - 平台的平均信号变化惩罚为 `0` 不能单独证明策略完全不切相，因为当前动作最短 duration 已限制为 8 秒；必须结合 `phase_switch_cnt`、`phase_switch_rate` 和 `same_phase_ratio` 判断真实切相行为。
 - 平台文档中 `legal_action` 更像是否需要决策的标量门控；当前 Target-DQN 已保守兼容标量门控、4 维相位 mask 和常见合法动作字段别名，但仍需在真实平台 observation 上确认是否存在相位级 mask 语义。
-- `agent_dqn`、`agent_ppo`、`agent_diy` 仍基本保留模板状态，不是当前主线；`agent_ppo` 虽已调参并切到 Adam，但 reward、policy loss 和 entropy loss 仍未完整实现。
+- `agent_dqn`、`agent_diy` 仍基本保留模板状态，不是当前主线；`agent_ppo` 已补成可训练备选，但尚未平台短训验证，切换前应先跑 10-30 分钟 smoke。
 - 当前状态特征包含占用/速度网格、当前相位、相位服务年龄、持续时间、剩余时间、相位压力、全局等待/延误统计、一帧交通趋势、4 帧滚动交通历史和逐车道车辆/排队/等待统计。
 - 作业文档定义了 `frame_state.lanes` 的 `lane_id`、`v_count`、`congestion`、`queue_length` 字段；当前已接入 lanes fallback，并兼容常见驼峰/别名字段，但仍需在真实 observation 上确认字段单位和是否存在 protobuf repeated wrapper 等特殊容器形态。
 - 当前列表字段解析支持 list、tuple、iterable、单条 dict 记录、dict-of-records 和单个非 dict 协议对象；dict 解析只在出现已知协议字段或值明显是记录/列表时展开，避免盲目把任意 dict 当作有效车辆。
@@ -307,9 +316,9 @@ coding agent 无法单独保证：
 ## 实施计划
 
 1. 每次修改前确认 `codebase/conf/app_conf_intelligent_traffic_lights.toml` 和 `codebase/train_test.py` 仍指向 `target_dqn`。
-2. 在 `codebase/` 运行局部检查：`python -m compileall agent_target_dqn tests`、`python tests/test_target_dqn_features.py`、`python tests/test_target_dqn_static.py`。
+2. 在 `codebase/` 运行局部检查：`python -m compileall agent_target_dqn agent_ppo tests`、`python tests/test_target_dqn_features.py`、`python tests/test_target_dqn_static.py`、`python tests/test_hyperparams_static.py`。
 3. 在根目录运行 `./scripts/check_offline.sh`，确认编译、静态/功能测试、smoke skip、空白检查和打包内容检查通过。
-4. 有 `torch` 时补跑 `cd codebase && python tests/test_target_dqn_smoke.py`。
+4. 有 `torch` 时补跑 `cd codebase && python tests/test_target_dqn_smoke.py`，并在平台环境短跑 `ppo` 验证 PPO 备选线。
 5. 在腾讯开悟/KaiwuDRL 环境运行 `cd codebase && python train_test.py`。
 6. 通过 `./scripts/package_submission.sh` 生成平台上传包，并确认压缩包里只有平台需要的 `codebase/` 内容。
 7. 使用平台监控调参，记录每次配置、模型 ID、训练时长和评估得分。

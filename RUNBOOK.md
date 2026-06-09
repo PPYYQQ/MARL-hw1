@@ -74,7 +74,7 @@ python tests/test_target_dqn_smoke.py
 - `q_value` / `target_q_value`：观察 Q 值是否数值稳定。
 - `model_grad_norm`：梯度范数，频繁过大说明奖励或学习率可能不稳。
 - `train_global_step`：如果 1h 仍只有几十次更新，需要继续按短训步数调 target sync 和 epsilon 衰减。
-- 动作分布：下一轮建议额外记录四个 phase 的选择次数、平均 duration 和实际 phase switch 次数，验证是否过少切相。
+- 动作分布：当前 workflow 已上报 `phase_0_cnt` 到 `phase_3_cnt`、`action_count`、`avg_duration`、`min_duration`、`max_duration`、`phase_switch_cnt`、`phase_switch_rate` 和 `same_phase_ratio`，用于验证是否存在相位塌缩、duration 偏置或过少切相。
 - 平台评分项：若平台监控字段为空，以评估任务页面中的平均延误、平均排队长度、平均等待时间、信号切换惩罚为准。
 
 ## 每次实验回填格式

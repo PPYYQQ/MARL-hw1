@@ -92,6 +92,8 @@ def main():
         on_enter_lane,
     )
     from agent_target_dqn.workflow.train_workflow import (
+        _action_metric_snapshot,
+        _default_action_metric_snapshot,
         _default_env_metric_snapshot,
         _env_score_metrics,
         _log_error,
@@ -102,6 +104,7 @@ def main():
         _looks_like_observation,
         _looks_like_step_envelope,
         _need_to_predict,
+        _new_action_stats,
         _normalize_reset_result,
         _normalize_step_result,
         _obs_feature,
@@ -125,6 +128,7 @@ def main():
         _shape_reward,
         _should_log_progress,
         _step_env,
+        _update_action_stats,
         _update_traffic_info,
         _update_env_metric_snapshot,
     )
@@ -1121,6 +1125,36 @@ def main():
             raise RuntimeError("length failed")
 
     assert _sample_batch_stats(FailingLengthBatch(), None) == (0, 0.0, 0.0)
+
+    default_action_metrics = _default_action_metric_snapshot()
+    assert default_action_metrics["action_count"] == 0
+    assert default_action_metrics["phase_0_cnt"] == 0
+    assert default_action_metrics["phase_3_cnt"] == 0
+    assert default_action_metrics["avg_duration"] == 0.0
+    assert default_action_metrics["phase_switch_cnt"] == 0
+    assert default_action_metrics["same_phase_ratio"] == 0.0
+
+    action_stats = _new_action_stats()
+    _update_action_stats(action_stats, [0, 1, Config.MIN_GREEN_DURATION + 4])
+    _update_action_stats(action_stats, [0, 1, Config.MIN_GREEN_DURATION + 6])
+    _update_action_stats(action_stats, [0, 3, Config.MAX_GREEN_DURATION + 5])
+    _update_action_stats(action_stats, [None, None, None])
+    _update_action_stats(action_stats, [0, "bad", Config.MIN_GREEN_DURATION])
+    action_metrics = _action_metric_snapshot(action_stats)
+    assert action_metrics["action_count"] == 3
+    assert action_metrics["phase_0_cnt"] == 0
+    assert action_metrics["phase_1_cnt"] == 2
+    assert action_metrics["phase_2_cnt"] == 0
+    assert action_metrics["phase_3_cnt"] == 1
+    assert action_metrics["avg_duration"] == round(
+        (Config.MIN_GREEN_DURATION + 4 + Config.MIN_GREEN_DURATION + 6 + Config.MAX_GREEN_DURATION) / 3,
+        4,
+    )
+    assert action_metrics["min_duration"] == Config.MIN_GREEN_DURATION + 4
+    assert action_metrics["max_duration"] == Config.MAX_GREEN_DURATION
+    assert action_metrics["phase_switch_cnt"] == 1
+    assert action_metrics["phase_switch_rate"] == 0.5
+    assert action_metrics["same_phase_ratio"] == 0.5
 
     import agent_target_dqn.workflow.train_workflow as train_workflow
 

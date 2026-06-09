@@ -154,6 +154,7 @@ def workflow(envs, agents, logger=None, monitor=None, *args, **kwargs):
         "data_length": 0,
     }
     monitor_data.update(_default_env_metric_snapshot())
+    monitor_data.update(_default_action_metric_snapshot())
     last_report_monitor_time = time.time()
 
     # Read and validate configuration file
@@ -168,9 +169,18 @@ def workflow(envs, agents, logger=None, monitor=None, *args, **kwargs):
         epoch_phase_rew = 0
         epoch_duration_rew = 0
         env_metric_snapshot = _default_env_metric_snapshot()
+        action_stats = _new_action_stats()
 
         data_length = 0
-        for g_data in run_episodes(episode_num_every_epoch, env, agent, usr_conf, logger, env_metric_snapshot):
+        for g_data in run_episodes(
+            episode_num_every_epoch,
+            env,
+            agent,
+            usr_conf,
+            logger,
+            env_metric_snapshot,
+            action_stats,
+        ):
             batch_length, batch_phase_rew, batch_duration_rew = _sample_batch_stats(g_data, logger)
             data_length += batch_length
             epoch_phase_rew += batch_phase_rew
@@ -203,9 +213,11 @@ def workflow(envs, agents, logger=None, monitor=None, *args, **kwargs):
             monitor_data["duration_reward"] = avg_duration_reward
             monitor_data["data_length"] = data_length
             monitor_data.update(env_metric_snapshot)
+            monitor_data.update(_action_metric_snapshot(action_stats))
             if _put_monitor_data(monitor, monitor_data, logger):
                 last_report_monitor_time = now
 
+        action_metric_snapshot = _action_metric_snapshot(action_stats)
         _log_info(
             logger,
             f"Avg Step Reward: {avg_step_reward}, Avg Phase Reward: {avg_phase_reward}, "
@@ -213,11 +225,14 @@ def workflow(envs, agents, logger=None, monitor=None, *args, **kwargs):
             f"Avg Delay: {env_metric_snapshot['avg_delay']}, Avg Queue Length: "
             f"{env_metric_snapshot['avg_queue_length']}, Avg Waiting Time: "
             f"{env_metric_snapshot['avg_waiting_time']}, Switch Penalty: "
-            f"{env_metric_snapshot['switch_penalty']}, Epoch: {epoch}, Data Length: {data_length}",
+            f"{env_metric_snapshot['switch_penalty']}, Action Count: {action_metric_snapshot['action_count']}, "
+            f"Avg Duration: {action_metric_snapshot['avg_duration']}, Phase Switch Count: "
+            f"{action_metric_snapshot['phase_switch_cnt']}, Same Phase Ratio: "
+            f"{action_metric_snapshot['same_phase_ratio']}, Epoch: {epoch}, Data Length: {data_length}",
         )
 
 
-def run_episodes(n_episode, env, agent, usr_conf, logger, env_metric_snapshot=None):
+def run_episodes(n_episode, env, agent, usr_conf, logger, env_metric_snapshot=None, action_stats=None):
     try:
         train_test_quick_stop = os.environ.get("is_train_test", "False").lower() == "true"
         for _ in range(n_episode):
@@ -276,6 +291,8 @@ def run_episodes(n_episode, env, agent, usr_conf, logger, env_metric_snapshot=No
                     _update_traffic_info(agent, obs, extra_info, logger)
                     act = [None, None, None]
                 act = _safe_action(act, need_to_predict, logger)
+                if need_to_predict:
+                    _update_action_stats(action_stats, act)
 
                 # Interact with the environment, execute actions, get the next extra_info
                 # 与环境交互, 执行动作, 获取下一步的状态, 如果遇到不需要预测的帧，则env.step直到得到需要预测的帧
@@ -456,6 +473,101 @@ def _sample_batch_stats(sample_data, logger):
     except Exception as err:
         _log_error(logger, f"sample batch iteration failed: {err}")
     return data_length, phase_rew, duration_rew
+
+
+def _new_action_stats():
+    return {
+        "action_count": 0,
+        "phase_counts": [0] * Config.DIM_OF_ACTION_PHASE,
+        "duration_sum": 0.0,
+        "duration_min": None,
+        "duration_max": None,
+        "phase_switch_count": 0,
+        "same_phase_count": 0,
+        "last_phase": None,
+    }
+
+
+def _default_action_metric_snapshot():
+    snapshot = {
+        "action_count": 0,
+        "avg_duration": 0.0,
+        "min_duration": 0.0,
+        "max_duration": 0.0,
+        "phase_switch_cnt": 0,
+        "phase_switch_rate": 0.0,
+        "same_phase_ratio": 0.0,
+    }
+    for phase_index in range(Config.DIM_OF_ACTION_PHASE):
+        snapshot[f"phase_{phase_index}_cnt"] = 0
+    return snapshot
+
+
+def _update_action_stats(action_stats, act):
+    if action_stats is None:
+        return _default_action_metric_snapshot()
+    try:
+        if len(act) < 3 or act[1] is None or act[2] is None:
+            return _action_metric_snapshot(action_stats)
+        phase_index = int(_action_scalar(act[1]))
+        duration = int(_action_scalar(act[2]))
+    except Exception:
+        return _action_metric_snapshot(action_stats)
+
+    phase_index = max(0, min(phase_index, Config.DIM_OF_ACTION_PHASE - 1))
+    duration = max(Config.MIN_GREEN_DURATION, min(duration, Config.max_action_duration()))
+
+    action_count = int(action_stats.get("action_count", 0))
+    phase_counts = action_stats.get("phase_counts")
+    if not isinstance(phase_counts, list) or len(phase_counts) != Config.DIM_OF_ACTION_PHASE:
+        phase_counts = [0] * Config.DIM_OF_ACTION_PHASE
+        action_stats["phase_counts"] = phase_counts
+    phase_counts[phase_index] += 1
+
+    last_phase = action_stats.get("last_phase")
+    if last_phase is not None:
+        if phase_index == last_phase:
+            action_stats["same_phase_count"] = int(action_stats.get("same_phase_count", 0)) + 1
+        else:
+            action_stats["phase_switch_count"] = int(action_stats.get("phase_switch_count", 0)) + 1
+    action_stats["last_phase"] = phase_index
+    action_stats["action_count"] = action_count + 1
+    action_stats["duration_sum"] = float(action_stats.get("duration_sum", 0.0)) + float(duration)
+
+    duration_min = action_stats.get("duration_min")
+    duration_max = action_stats.get("duration_max")
+    action_stats["duration_min"] = duration if duration_min is None else min(duration_min, duration)
+    action_stats["duration_max"] = duration if duration_max is None else max(duration_max, duration)
+    return _action_metric_snapshot(action_stats)
+
+
+def _action_metric_snapshot(action_stats):
+    snapshot = _default_action_metric_snapshot()
+    if action_stats is None:
+        return snapshot
+
+    action_count = int(max(0.0, _finite_float(action_stats.get("action_count", 0))))
+    snapshot["action_count"] = action_count
+    phase_counts = action_stats.get("phase_counts")
+    if not isinstance(phase_counts, list):
+        phase_counts = []
+    for phase_index in range(Config.DIM_OF_ACTION_PHASE):
+        value = phase_counts[phase_index] if phase_index < len(phase_counts) else 0
+        snapshot[f"phase_{phase_index}_cnt"] = int(max(0.0, _finite_float(value)))
+
+    if action_count > 0:
+        snapshot["avg_duration"] = round(_finite_float(action_stats.get("duration_sum", 0.0)) / action_count, 4)
+        snapshot["min_duration"] = _finite_float(action_stats.get("duration_min", 0.0))
+        snapshot["max_duration"] = _finite_float(action_stats.get("duration_max", 0.0))
+
+    transition_count = max(action_count - 1, 0)
+    phase_switch_count = int(max(0.0, _finite_float(action_stats.get("phase_switch_count", 0))))
+    same_phase_count = int(max(0.0, _finite_float(action_stats.get("same_phase_count", 0))))
+    snapshot["phase_switch_cnt"] = phase_switch_count
+    if transition_count:
+        snapshot["phase_switch_rate"] = round(phase_switch_count / transition_count, 4)
+        snapshot["same_phase_ratio"] = round(same_phase_count / transition_count, 4)
+    return snapshot
 
 
 def _shape_reward(obs, act, agent, logger):

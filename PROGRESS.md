@@ -1884,3 +1884,25 @@
   - 已运行 `zipinfo -1 dist/marl_hw1_codebase.zip | rg '^tests/' || true`，无输出，确认提交包不含 `tests/`。
 - 下一步：
   - 默认继续上传 `target_dqn` 跑 E04 动作分布诊断；如需 PPO 对比，将 `codebase/conf/app_conf_intelligent_traffic_lights.toml` 的 `algo` 改为 `ppo`，先跑 10-30 分钟 smoke，再比较 `reward`、`policy_loss`、`entropy_loss`、动作分布和平台 score。
+
+### Step 123 - 修复 legal_action 门控导致的 phase 0 塌缩
+
+- 状态：完成
+- Commit：`9c12553`
+- 内容：
+  - 读取 `dqn4/` 三张平台监控截图，确认任务 `207146` 在截图时运行约 3min，`train_global_step=0`、`phase_0_cnt≈30`、`phase_1_cnt/phase_2_cnt/phase_3_cnt≈0`、`phase_switch_cnt=0`。
+  - 判断用户“几乎一直用同一个 action”的观察成立；由于 learner 尚未更新，这不是模型训练收敛，而是动作合法性解释错误。
+  - 将通用 `legal_action` / `legalAction` / `actionMask` 从“相位 mask”改为“是否需要预测”的门控；只要任一值非零，就放开四个相位。
+  - 只有显式 `phase_legal_action` / `phaseLegalAction` / `phase_mask` / `phaseMask` 才继续作为相位级合法动作 mask。
+  - workflow 新增 `_safe_phase_legal_action()` 和 `_decision_gate_open()`，训练样本里的下一状态合法相位改走 `_safe_phase_legal_action()`，避免 `[1,0,0,0]` 被写成只允许 phase 0。
+  - `agent_target_dqn/agent.py` 新增 `_phase_legal_action()`，`observation_process()` 和规则兜底都复用相同语义。
+  - `agent_ppo/agent.py` 绑定新的 `_phase_legal_action()`，保持 PPO 备选线可用。
+  - 更新 `EXPERIMENTS.md`、`RUNBOOK.md`、`REPORT_DRAFT.md` 和 `AGENTS.md`，记录 E04 结论和下一轮验证重点。
+  - 将 `dqn4/` 三张截图纳入仓库，作为 E04 实验证据。
+- 验证：
+  - 已运行 `python -m compileall agent_target_dqn agent_ppo tests/test_target_dqn_features.py tests/test_target_dqn_static.py`，通过。
+  - 已运行 `python tests/test_target_dqn_features.py`、`python tests/test_target_dqn_static.py` 和 `python tests/test_hyperparams_static.py`，均通过。
+  - 已运行 `./scripts/check_offline.sh`，通过；其中 `tests/test_target_dqn_smoke.py` 因本地缺少 `torch` 明确 skip。
+  - 已运行 `zipinfo -1 dist/marl_hw1_codebase.zip | rg '^tests/' || true`，无输出，确认提交包不含 `tests/`。
+- 下一步：
+  - 上传当前 `dist/marl_hw1_codebase.zip` 重新跑一轮 E05 短训；优先看 `phase_1_cnt`、`phase_2_cnt`、`phase_3_cnt` 是否不再长期为 0，以及 `phase_switch_cnt` 是否明显大于 0。

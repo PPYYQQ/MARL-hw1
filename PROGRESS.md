@@ -1933,7 +1933,7 @@
 ### Step 125 - 回填 E06 最佳短训基线
 
 - 状态：完成
-- Commit：`待提交`
+- Commit：`46dec0d`
 - 内容：
   - 读取 `dqn6/` 三张平台监控截图，确认任务 `208300` 在 2026-06-09 20:56:44 到 21:57:24 跑满 1h。
   - E06 关键指标：`train_global_step≈87`、`predict_succ_cnt≈1600`、`sample_receive_cnt≈1550`、`episode_cnt≈58`，短训 learner 更新次数相比 E05 的约 `19` 大幅提升。

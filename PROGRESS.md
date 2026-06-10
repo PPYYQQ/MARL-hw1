@@ -1970,3 +1970,27 @@
   - 已运行 `./scripts/check_offline.sh`，通过；其中 `tests/test_target_dqn_smoke.py` 因本地缺少 `torch` 明确 skip。
 - 下一步：
   - 重跑 PPO 前同步整个 `agent_ppo/` 目录，尤其是 `agent_ppo/model/model.py` 和 `agent_ppo/agent.py`；平台只改 `algo = "ppo"` 不足以验证最新 PPO 代码。
+
+### Step 127 - 处理 PPO2 十五分钟失败
+
+- 状态：完成
+- Commit：待提交
+- 内容：
+  - 读取 `ppo2/` 四张平台日志截图，确认任务 `209365` 使用 PPO，约 15min 后失败。
+  - P02 已越过 P01 的空参数错误；可见 learner 日志显示 trainer 子进程启动约 5 秒后 `signal_killed`，`exit_code=-6`。
+  - aisrv 日志显示 `learner_proxy send sample stat, succ_cnt is 0, error_cnt is 0`，说明 15 分钟内没有成功发送训练样本。
+  - 当前截图没有 trainer Python traceback，暂不能确认 trainer 被杀的精确根因；但 PPO workflow 原先只在 episode 结束后发送样本，长局或异常局会让 learner 长时间拿不到 on-policy batch。
+  - 在 `agent_ppo/conf/conf.py` 增加 `PPO_FRAGMENT_SIZE = 32`。
+  - 在 `agent_ppo/workflow/train_workflow.py` 中每累计超过 32 个决策 transition 就先处理并发送 `collector[:-1]`，保留最后一个 transition 继续接后续 reward，并用保留 transition 的 value 为片段末尾 bootstrap。
+  - 在 `agent_ppo/feature/definition.py` 中保留非终局片段末尾已有的 `next_value`，避免片段 GAE 被错误截断为 0。
+  - 更新 `tests/test_hyperparams_static.py`，锁定 PPO 周期性片段样本发送和片段 bootstrap 逻辑。
+  - 更新 `EXPERIMENTS.md`、`RUNBOOK.md`、`REPORT_DRAFT.md` 和 `AGENTS.md`，记录 P02 失败现象和下一轮 P03 观察点。
+  - 将 `ppo2/` 四张截图纳入仓库，作为 P02 失败证据。
+- 验证：
+  - 已运行 `python -m compileall agent_ppo agent_target_dqn tests/test_hyperparams_static.py tests/test_target_dqn_static.py tests/test_target_dqn_features.py`，通过。
+  - 已运行 `python tests/test_hyperparams_static.py`、`python tests/test_target_dqn_static.py` 和 `python tests/test_target_dqn_features.py`，均通过。
+  - 已运行 `./scripts/check_offline.sh`，通过；其中 `tests/test_target_dqn_smoke.py` 因本地缺少 `torch` 明确 skip。
+  - 已运行 `git diff --check`，未发现空白错误。
+- 下一步：
+  - 平台重跑 PPO 前同步整个 `agent_ppo/` 目录；P03 重点看 `learner_proxy send sample stat` 的 `succ_cnt` 是否大于 0。
+  - 如果 P03 仍出现 trainer `signal_killed`，需要下载或截图平台 `trainer` 文件的 ERROR 日志，因为当前 ppo2 截图只显示进程退出，不显示 Python  traceback。

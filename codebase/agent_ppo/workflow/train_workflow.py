@@ -186,6 +186,13 @@ def run_episodes(n_episode, env, agent, usr_conf, logger, env_metric_snapshot=No
 
                 if need_to_predict:
                     collector.append(_build_sample(obs_data, act_data))
+                    if len(collector) > Config.PPO_FRAGMENT_SIZE:
+                        fragment = collector[:-1]
+                        fragment[-1].next_value = collector[-1].value
+                        samples = _process_samples(fragment, logger)
+                        if samples:
+                            yield samples
+                        collector = collector[-1:]
 
                 obs = _obs
                 if need_to_predict:

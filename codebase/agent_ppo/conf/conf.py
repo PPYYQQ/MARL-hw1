@@ -67,6 +67,7 @@ class Config:
     ] * NUMB_HEAD
 
     EVAL_FREQ = 5
+    PPO_FRAGMENT_SIZE = 32
     GAMMA = 0.99
     LAMDA = 0.95
 

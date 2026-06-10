@@ -70,7 +70,8 @@ def sample_process(list_sample_data):
 
     for i in range(len(samples) - 1):
         samples[i].next_value = 0.0 if samples[i].done else samples[i + 1].value
-    samples[-1].next_value = 0.0
+    if samples[-1].done:
+        samples[-1].next_value = 0.0
 
     _calc_reward(samples)
 

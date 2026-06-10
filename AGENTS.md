@@ -101,7 +101,7 @@ PPO 备选线关键文件：
 
 - 仓库现在包含平台完整 `codebase/`、本地 `tests/`、打包/检查脚本和文档台账；`codebase/log/` 是运行产物，不应纳入开发修改范围。
 - `codebase/conf/app_conf_intelligent_traffic_lights.toml` 和 `codebase/train_test.py` 都默认选择 `target_dqn`，当前平台入口与主线一致。
-- `agent_target_dqn` 是已平台短训验证的主线算法包；`agent_ppo` 已补齐 PPO loss、entropy、GAE、非零 reward、638 维特征、20 桶 duration、checkpoint 容错和 workflow 容错，但仍未平台训练验证；`agent_dqn`、`agent_diy` 仍应视为平台模板/备选代码。
+- `agent_target_dqn` 是已平台短训验证的主线算法包；`agent_ppo` 已补齐 PPO loss、entropy、GAE、非零 reward、638 维特征、20 桶 duration、checkpoint 容错、workflow 容错、周期性片段样本发送和片段末尾 value bootstrap，但仍未平台训练验证；`agent_dqn`、`agent_diy` 仍应视为平台模板/备选代码。
 - `tests/test_target_dqn_features.py` 和 `tests/test_target_dqn_static.py` 是当前普通本地环境最可靠的回归检查；`tests/test_target_dqn_smoke.py` 依赖 `torch`，平台或安装 PyTorch 后再补跑。
 - `tests/test_hyperparams_static.py` 用于锁定 E03 调参基线和 PPO 可训练实现锚点，防止 PPO 退回 reward/loss 空模板。
 - `scripts/package_submission.sh` 当前只打包 `codebase/` 的平台运行内容；本地 `tests/`、根目录文档、截图、日志、checkpoint、模型 pkl 和 `icml2022.zip` 不会进入提交包。
@@ -196,13 +196,14 @@ PPO 备选线关键文件：
 - E05 平台一小时结果位于 `dqn5/`：任务 ID `207778`，2026-06-09 15:33:54 到 16:34:33 跑满 1h，`train_global_step≈19`，score 约 `760-820`，平均延误约 `44-49`、等待约 `21-24`；legal_action 修复有效，不再 phase 0 锁死，但后半段 `phase_2_cnt≈17-20`、其他相位多为 `0-2`、`same_phase_ratio≈0.75-0.85`，下一轮重点降低 phase 2 偏置。
 - E06 平台一小时结果位于 `dqn6/`：任务 ID `208300`，2026-06-09 20:56:44 到 21:57:24 跑满 1h，`train_global_step≈87`，score 末段约 `1100`，平均延误末段约 `20`、等待约 `10`、排队约 `9`；这是当前最佳 Target-DQN 基线，phase 2 仍偏高但 phase 0/1/3 已恢复参与，下一步优先同包长训或正式评估。
 - P01 平台 PPO 首次切换结果位于 `ppo1/`：任务 ID `209360`，约 3min 后失败，首错为 learner `optimizer got an empty parameter list`，aisrv `list index out of range` 是连带异常；当前已将 PPO MLP 改成显式注册层，并让 optimizer 使用 materialized 参数列表和空参数断言。
+- P02 平台 PPO 重跑结果位于 `ppo2/`：任务 ID `209365`，约 15min 后失败；已越过 P01 的空参数错误，但 trainer 启动约 5 秒后 `signal_killed`，且 aisrv 15 分钟内样本发送 `succ_cnt=0`；当前已加入 `PPO_FRAGMENT_SIZE=32`、周期性片段样本发送和片段末尾 value bootstrap，P03 应重点确认 `succ_cnt` 是否大于 0。
 
 仍需关注的问题：
 
 - E06 已验证 phase-bias 调参有效，短训指标明显改善；当前不建议立刻改代码，优先用同一 E06 包跑 2-3h 长训或正式评估，确认 score 是否稳定在 `1100+`、平均延误是否维持在 `20-25`。
 - 平台的平均信号变化惩罚为 `0` 不能单独证明策略完全不切相，因为当前动作最短 duration 已限制为 8 秒；必须结合 `phase_switch_cnt`、`phase_switch_rate` 和 `same_phase_ratio` 判断真实切相行为。
 - 平台文档中 `legal_action` 更像是否需要决策的标量门控；当前代码已按该语义处理通用 `legal_action`，但仍需在真实 observation 上确认是否存在显式相位级 mask 字段。
-- `agent_dqn`、`agent_diy` 仍基本保留模板状态，不是当前主线；`agent_ppo` 是备选线，P01 已暴露平台同步/模型参数注册问题，重跑前必须同步整个 `agent_ppo/` 目录，尤其是 `agent_ppo/model/model.py` 和 `agent_ppo/agent.py`。
+- `agent_dqn`、`agent_diy` 仍基本保留模板状态，不是当前主线；`agent_ppo` 是备选线，P01 已暴露平台同步/模型参数注册问题，P02 暴露 trainer 早退和样本未发送问题，重跑前必须同步整个 `agent_ppo/` 目录。
 - 当前状态特征包含占用/速度网格、当前相位、相位服务年龄、持续时间、剩余时间、相位压力、全局等待/延误统计、一帧交通趋势、4 帧滚动交通历史和逐车道车辆/排队/等待统计。
 - 作业文档定义了 `frame_state.lanes` 的 `lane_id`、`v_count`、`congestion`、`queue_length` 字段；当前已接入 lanes fallback，并兼容常见驼峰/别名字段，但仍需在真实 observation 上确认字段单位和是否存在 protobuf repeated wrapper 等特殊容器形态。
 - 当前列表字段解析支持 list、tuple、iterable、单条 dict 记录、dict-of-records 和单个非 dict 协议对象；dict 解析只在出现已知协议字段或值明显是记录/列表时展开，避免盲目把任意 dict 当作有效车辆。

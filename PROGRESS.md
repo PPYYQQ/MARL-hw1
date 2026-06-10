@@ -2040,7 +2040,7 @@
 ### Step 130 - 增加 PPO 启动诊断日志
 
 - 状态：完成
-- Commit：待提交
+- Commit：`944178d`
 - 内容：
   - 用户确认平台日志筛选只有 `aisrv`、`learner` 和 `env`，没有独立 `trainer` 文件，因此 P03 的 `signal_killed` 暂时无法通过平台页面直接看到 trainer traceback。
   - 在 `agent_ppo/agent.py` 模块导入早期启用 `faulthandler.enable(file=sys.stderr, all_threads=True)`，用于捕捉 `SIGABRT` 等 native 崩溃时的 Python 栈。

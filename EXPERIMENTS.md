@@ -20,6 +20,7 @@
 | E04 | 2026-06-09 | E04 动作监控包；按修复前 `main` `de6a2b4` 记录 | 平台默认/未记录 | 截图时约 3min | 任务 ID `207146` | 约 `750-770` 训练 score 快照，非正式评估 | 动作监控确认相位塌缩：`phase_0_cnt≈30`、其他相位约 0、`phase_switch_cnt=0`；根因是通用 `legal_action` 被误当相位 mask |
 | E05 | 2026-06-09 | E05 legal_action 修复包；按当前 `main` `1607528` 记录 | 平台默认/未记录 | 1h | 任务 ID `207778` | 约 `760-820` 训练 score 快照，非正式评估 | gate 修复有效：已不再 phase 0 锁死，但后半段转为 phase 2 偏置，`same_phase_ratio` 约 `0.75-0.85`，需要增强公平性和短训更新效率 |
 | E06 | 2026-06-09 | E06 phase-bias 调参包；按当前 `main` `a0d8efe` 记录 | 平台默认/未记录 | 1h | 任务 ID `208300` | 末段约 `1100` 训练 score 快照，非正式评估 | E06 是当前最佳基线：`train_global_step≈87`，平均延误末段约 `20`、等待约 `10`，phase 2 仍偏高但其他相位恢复参与；建议先同包长训或评估 |
+| P01 | 2026-06-10 | PPO 首次平台切换；按用户平台操作记录 | 平台默认/未记录 | 约 3min 后失败 | 任务 ID `209360` | 训练未启动 | learner 创建 agent 失败：`optimizer got an empty parameter list`；已修复 PPO MLP 显式注册和 optimizer 参数检查 |
 
 ## 实验记录
 
@@ -309,6 +310,32 @@
   - 用同一 E06 代码包跑 2-3h 长训或正式评估，确认末段 score 是否稳定在 `1100+`，平均延误是否能维持在 `20-25`。
   - 若长训后 phase 2 仍长期高于其他相位 2 倍以上，再考虑下载真实 observation 样例，检查四个相位压力字段和车道映射。
   - 若长训稳定但评估分不足，再做小步 reward 调整；优先调排队/等待权重，不再先改 legal_action 或 replay 结构。
+
+### P01 - PPO 首次平台切换失败
+
+- 状态：失败，平台任务已停止。
+- 平台任务：
+  - 任务名：`ppo1`
+  - 任务 ID：`209360`
+  - 实验版本：`V73.1.1`
+  - 算法：`PPO`
+  - 训练模式：分布式
+- Commit：按用户平台切换操作记录；平台截图未包含上传代码包，无法逐文件复核。
+- 环境配置：平台默认/未记录。
+- 训练时间：2026-06-10 12:56:35 到 12:59:16 附近。
+- 训练时长：页面显示约 3min 后失败。
+- 截图证据：
+  - `ppo1/截屏2026-06-10 13.02.19.png`
+  - `ppo1/截屏2026-06-10 13.03.19.png`
+- 错误日志：
+  - learner：`failed to run create_standard_agent_wrapper. exit. Error is: optimizer got an empty parameter list`
+  - aisrv：`kaiwu_rl_helper workflow() Exception list index out of range`
+- 结论：
+  - 首个错误是 learner 创建 PPO agent 时 optimizer 拿到空参数列表；aisrv 的 `list index out of range` 是 agent wrapper 创建失败后的连带异常。
+  - 当前本地代码已将 PPO MLP 改为显式 `OrderedDict -> nn.Sequential` 注册层，并让 optimizer 使用 `list(self.model.parameters())`，同时增加空参数断言，便于平台确认是否同步了 `agent_ppo/model/model.py`。
+- 下一步：
+  - 平台重新试 PPO 时必须同步整个 `agent_ppo/` 目录，尤其是 `agent_ppo/model/model.py` 和 `agent_ppo/agent.py`，并确认 `conf/app_conf_intelligent_traffic_lights.toml` 中 `algo = "ppo"`。
+  - 如果仍报同一错误，说明平台包仍未使用最新 PPO model 文件，应下载平台代码包复核。
 
 ## 实验模板
 

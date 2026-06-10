@@ -194,14 +194,15 @@ class MLP(nn.Module):
                 是否在最后添加激活函数。默认为 False。
         """
         super(MLP, self).__init__()
-        self.fc_layers = nn.Sequential()
+        layers = OrderedDict()
         for i in range(len(fc_feat_dim_list) - 1):
             fc_layer = make_fc_layer(fc_feat_dim_list[i], fc_feat_dim_list[i + 1])
-            self.fc_layers.add_module("{0}_fc{1}".format(name, i + 1), fc_layer)
+            layers["{0}_fc{1}".format(name, i + 1)] = fc_layer
             # No relu for the last fc layer of the mlp unless required
             # 除非需要，否则mlp的最后一个全连接层不使用relu
             if i + 1 < len(fc_feat_dim_list) - 1 or non_linearity_last:
-                self.fc_layers.add_module("{0}_non_linear{1}".format(name, i + 1), non_linearity())
+                layers["{0}_non_linear{1}".format(name, i + 1)] = non_linearity()
+        self.fc_layers = nn.Sequential(layers)
 
     def forward(self, data):
         return self.fc_layers(data)

@@ -42,7 +42,9 @@ class Agent(BaseAgent):
         self.device = device
         self.model = Model(device).to(self.device)
         initial_lr = Config.INIT_LEARNING_RATE_START
-        parameters = self.model.parameters()
+        parameters = list(self.model.parameters())
+        if not parameters:
+            raise RuntimeError("PPO model has no registered parameters; check agent_ppo/model/model.py was uploaded")
 
         self.optimizer = torch.optim.Adam(params=parameters, lr=initial_lr)
         self.label_size_list = Config.LABEL_SIZE_LIST

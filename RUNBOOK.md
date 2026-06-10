@@ -70,7 +70,7 @@ python tests/test_target_dqn_smoke.py
 如需试跑 PPO，对平台包只需要额外确认：
 
 1. 将 `codebase/conf/app_conf_intelligent_traffic_lights.toml` 中 `algo = "target_dqn"` 改为 `algo = "ppo"`。
-2. 确认 `codebase/agent_ppo/` 已同步最新代码，尤其是 `agent.py`、`algorithm/algorithm.py`、`feature/definition.py`、`model/model.py`、`workflow/train_workflow.py`、`conf/conf.py` 和 `conf/monitor_builder.py`。
+2. 确认 `codebase/agent_ppo/` 已同步最新代码，尤其是 `agent.py`、`model/model.py`、`algorithm/algorithm.py`、`feature/definition.py`、`workflow/train_workflow.py`、`conf/conf.py` 和 `conf/monitor_builder.py`。P01 的平台错误 `optimizer got an empty parameter list` 优先说明 `agent_ppo/model/model.py` 或 `agent_ppo/agent.py` 没有同步到平台。
 3. 先跑 10-30 分钟短训，重点看 `reward`、`policy_loss`、`value_loss`、`entropy_loss`、`model_grad_norm`、动作分布和平台 score。
 4. PPO 是 on-policy，平台分布式样本延迟可能影响效果；如果短训 loss 有限但 score 不升，先记录为对比实验，不要直接替换 Target-DQN 主线。
 

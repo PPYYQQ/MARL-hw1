@@ -1950,3 +1950,23 @@
   - 已运行 `./scripts/check_offline.sh`，通过；其中 `tests/test_target_dqn_smoke.py` 因本地缺少 `torch` 明确 skip。
 - 下一步：
   - 继续使用 E06 代码包跑 2-3h 长训或正式评估；若 score 稳定在 `1100+` 且平均延误维持 `20-25`，优先进入报告整理。
+
+### Step 126 - 修复 PPO 首次平台启动空参数错误
+
+- 状态：完成
+- Commit：`待提交`
+- 内容：
+  - 读取 `ppo1/` 两张平台日志截图，确认任务 `209360` 使用 PPO，约 3min 后失败。
+  - learner 首错为 `failed to run create_standard_agent_wrapper. exit. Error is: optimizer got an empty parameter list`。
+  - aisrv 侧 `kaiwu_rl_helper workflow() Exception list index out of range` 是 agent wrapper 创建失败后的连带异常，不是 PPO 策略训练阶段错误。
+  - 将 `agent_ppo/model/model.py` 的 MLP 层构造改为先填充 `OrderedDict`，再传入 `nn.Sequential(layers)`，让子层注册更显式。
+  - 将 `agent_ppo/agent.py` 中 optimizer 参数改为 `list(self.model.parameters())`，并在空参数时抛出清晰错误，方便平台判断是否同步了最新 PPO model 文件。
+  - 更新 `tests/test_hyperparams_static.py`，锁定 PPO 显式参数注册和空参数检查。
+  - 更新 `EXPERIMENTS.md`、`RUNBOOK.md`、`REPORT_DRAFT.md` 和 `AGENTS.md`，记录 P01 失败原因和重跑 PPO 需要同步的文件。
+  - 将 `ppo1/` 两张截图纳入仓库，作为 P01 失败证据。
+- 验证：
+  - 已运行 `python -m compileall agent_ppo agent_target_dqn tests/test_hyperparams_static.py tests/test_target_dqn_static.py tests/test_target_dqn_features.py`，通过。
+  - 已运行 `python tests/test_hyperparams_static.py`、`python tests/test_target_dqn_static.py` 和 `python tests/test_target_dqn_features.py`，均通过。
+  - 已运行 `./scripts/check_offline.sh`，通过；其中 `tests/test_target_dqn_smoke.py` 因本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 重跑 PPO 前同步整个 `agent_ppo/` 目录，尤其是 `agent_ppo/model/model.py` 和 `agent_ppo/agent.py`；平台只改 `algo = "ppo"` 不足以验证最新 PPO 代码。

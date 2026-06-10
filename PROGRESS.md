@@ -1998,7 +1998,7 @@
 ### Step 128 - 复核 P02 平台代码包
 
 - 状态：完成
-- Commit：`7787882`
+- Commit：`ad64f2e`
 - 内容：
   - 用户补充 `ppo2/code.zip`，该压缩包包含 71 个平台代码文件。
   - `conf/app_conf_intelligent_traffic_lights.toml` 中 `algo = "ppo"`，确认 P02 平台入口已切到 PPO。

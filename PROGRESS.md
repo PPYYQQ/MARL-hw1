@@ -1929,3 +1929,24 @@
   - 已运行 `git diff --check`，未发现空白错误。
 - 下一步：
   - 重新打包上传 E06；优先看 `phase_2_cnt` 是否下降、`same_phase_ratio` 是否低于 `0.7`，以及平均延误是否保持在 `45` 以下。
+
+### Step 125 - 回填 E06 最佳短训基线
+
+- 状态：完成
+- Commit：`待提交`
+- 内容：
+  - 读取 `dqn6/` 三张平台监控截图，确认任务 `208300` 在 2026-06-09 20:56:44 到 21:57:24 跑满 1h。
+  - E06 关键指标：`train_global_step≈87`、`predict_succ_cnt≈1600`、`sample_receive_cnt≈1550`、`episode_cnt≈58`，短训 learner 更新次数相比 E05 的约 `19` 大幅提升。
+  - E06 平台 score 最高约 `1300`，末段约 `1100`；平均延误末段约 `20`，等待约 `10`，排队约 `9`，明显优于 E05。
+  - 动作分布仍由 phase 2 主导，但 phase 0/1/3 已恢复参与：末段 `phase_2_cnt≈14-16`、`phase_0_cnt≈6-7`、`phase_1_cnt≈2-4`、`phase_3_cnt≈3-4`。
+  - `avg_duration` 降到约 `22-25`，`phase_switch_cnt` 末段约 `15`，说明 E06 不再是 E05 的长 duration、高同相位偏置状态。
+  - 判断 E06 是当前最佳 Target-DQN 基线；暂不继续改代码，避免破坏已有效的参数组合和归因。
+  - 更新 `EXPERIMENTS.md`、`RUNBOOK.md`、`REPORT_DRAFT.md` 和 `AGENTS.md`，将下一步改为同包 2-3h 长训或正式评估。
+  - 将 `dqn6/` 三张截图纳入仓库，作为 E06 实验证据。
+- 验证：
+  - 已运行 `git diff --check`，未发现空白错误。
+  - 已运行 `python -m compileall agent_target_dqn agent_ppo tests/test_target_dqn_features.py tests/test_target_dqn_static.py tests/test_hyperparams_static.py`，通过。
+  - 已运行 `python tests/test_target_dqn_features.py`、`python tests/test_target_dqn_static.py` 和 `python tests/test_hyperparams_static.py`，均通过。
+  - 已运行 `./scripts/check_offline.sh`，通过；其中 `tests/test_target_dqn_smoke.py` 因本地缺少 `torch` 明确 skip。
+- 下一步：
+  - 继续使用 E06 代码包跑 2-3h 长训或正式评估；若 score 稳定在 `1100+` 且平均延误维持 `20-25`，优先进入报告整理。

@@ -194,10 +194,11 @@ PPO 备选线关键文件：
 - E04 诊断基线已加入动作分布监控：workflow 会上报 `phase_0_cnt` 到 `phase_3_cnt`、`action_count`、`avg_duration`、`min_duration`、`max_duration`、`phase_switch_cnt`、`phase_switch_rate` 和 `same_phase_ratio`，`agent_target_dqn/conf/monitor_builder.py` 也新增了对应监控面板。
 - E04 平台短跑结果位于 `dqn4/`：任务 ID `207146`，截图时任务运行约 3min，`train_global_step=0`，`phase_0_cnt≈30`、其他相位约 0、`phase_switch_cnt=0`，确认此前相位塌缩主要来自通用 `legal_action` 被误当相位 mask。
 - E05 平台一小时结果位于 `dqn5/`：任务 ID `207778`，2026-06-09 15:33:54 到 16:34:33 跑满 1h，`train_global_step≈19`，score 约 `760-820`，平均延误约 `44-49`、等待约 `21-24`；legal_action 修复有效，不再 phase 0 锁死，但后半段 `phase_2_cnt≈17-20`、其他相位多为 `0-2`、`same_phase_ratio≈0.75-0.85`，下一轮重点降低 phase 2 偏置。
+- E06 平台一小时结果位于 `dqn6/`：任务 ID `208300`，2026-06-09 20:56:44 到 21:57:24 跑满 1h，`train_global_step≈87`，score 末段约 `1100`，平均延误末段约 `20`、等待约 `10`、排队约 `9`；这是当前最佳 Target-DQN 基线，phase 2 仍偏高但 phase 0/1/3 已恢复参与，下一步优先同包长训或正式评估。
 
 仍需关注的问题：
 
-- E05 已验证 legal_action 门控修复生效，平均延误降到约 `44-49`；当前主要问题从 phase 0 锁死转为 phase 2 偏置和连续同相位比例过高，下一轮优先看 E06 参数是否让 `same_phase_ratio<0.7` 且不抬高延误。
+- E06 已验证 phase-bias 调参有效，短训指标明显改善；当前不建议立刻改代码，优先用同一 E06 包跑 2-3h 长训或正式评估，确认 score 是否稳定在 `1100+`、平均延误是否维持在 `20-25`。
 - 平台的平均信号变化惩罚为 `0` 不能单独证明策略完全不切相，因为当前动作最短 duration 已限制为 8 秒；必须结合 `phase_switch_cnt`、`phase_switch_rate` 和 `same_phase_ratio` 判断真实切相行为。
 - 平台文档中 `legal_action` 更像是否需要决策的标量门控；当前代码已按该语义处理通用 `legal_action`，但仍需在真实 observation 上确认是否存在显式相位级 mask 字段。
 - `agent_dqn`、`agent_diy` 仍基本保留模板状态，不是当前主线；`agent_ppo` 已补成可训练备选，但尚未平台短训验证，切换前应先跑 10-30 分钟 smoke。
@@ -326,7 +327,7 @@ coding agent 无法单独保证：
 6. 通过 `./scripts/package_submission.sh` 生成平台上传包，并确认压缩包里只有平台需要的 `codebase/` 内容。
 7. 使用平台监控调参，记录每次配置、模型 ID、训练时长和评估得分。
 8. 将真实实验结果回填到 `EXPERIMENTS.md`、`PROGRESS.md` 和 `REPORT_DRAFT.md`。
-9. 如 E06 仍 phase 2 偏置明显，再优先下载真实 observation 样例核对四相位压力字段；确认字段无误后再考虑加入更强的规则先验或相位轮转约束。
+9. 如 E06 长训/评估仍 phase 2 偏置明显且成绩不稳，再优先下载真实 observation 样例核对四相位压力字段；确认字段无误后再考虑加入更强的规则先验或相位轮转约束。
 
 ## 测试计划
 

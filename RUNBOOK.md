@@ -13,14 +13,14 @@
 
 ## 当前调参基线
 
-E05 一小时训练确认 legal_action 门控修复有效，但后半段策略偏向 phase 2，`same_phase_ratio` 约 `0.75-0.85`，且 `train_global_step≈19` 偏少。当前 E06 基线在保留 E03 稳定学习率和折扣的基础上，提高短训更新效率并增强相位公平性：
+E06 一小时训练是当前最佳 Target-DQN 基线：`train_global_step≈87`，score 末段约 `1100`，平均延误末段约 `20`，等待约 `10`，排队约 `9`。phase 2 仍偏高，但 phase 0/1/3 已恢复参与，`phase_switch_cnt` 末段约 `15`。当前不建议立即改代码，优先用同一包跑 2-3h 长训或正式评估。
 
 - `agent_target_dqn/conf/conf.py`：`GAMMA = 0.99`、`LR = 3e-4`、`EPSILON_DECAY = 0.995`、`END_EPSILON_GREEDY = 0.2`、`TARGET_UPDATE_FREQ = 10`、`PHASE_AGE_SCALE = 90.0`、`FAIRNESS_BONUS_SCALE = 0.5`。
 - `codebase/conf/configure_app.toml`：`preload_ratio = 0.03125`、`train_batch_size = 128`。
 - `agent_ppo/conf/conf.py`：同步到常见 PPO 基线 `lr = 3e-4`、`gamma = 0.99`、`lambda = 0.95`、`clip = 0.2`、`entropy = 0.01`、`grad_clip = 0.5`。
 - `agent_ppo` 已补齐 clipped PPO loss、entropy、GAE、非零交通 reward、638 维特征、20 桶 duration 和 workflow 容错，可作为备选短训实验；默认平台主线仍是 `target_dqn`。
 
-E04 动作监控短跑确认修复前存在相位塌缩：平台 `legal_action` 被误当成相位级 mask，导致 `phase_0_cnt≈30`、其他相位约 0、`phase_switch_cnt=0`。E05 已验证当前版本不再 phase 0 锁死，但仍需继续压低 phase 2 偏置；下一轮应先看 `phase_2_cnt` 是否回落、`same_phase_ratio` 是否低于 `0.7`、平均延误是否继续低于 `45`。
+E04 动作监控短跑确认修复前存在相位塌缩：平台 `legal_action` 被误当成相位级 mask，导致 `phase_0_cnt≈30`、其他相位约 0、`phase_switch_cnt=0`。E05 已验证当前版本不再 phase 0 锁死。E06 又验证 phase-bias 调参有效，下一轮优先看长训稳定性，而不是继续短跑改参。
 
 ## 本地可运行检查
 
@@ -87,7 +87,7 @@ python tests/test_target_dqn_smoke.py
 - `model_grad_norm`：梯度范数，频繁过大说明奖励或学习率可能不稳。
 - `train_global_step`：如果 1h 仍只有几十次更新，需要继续按短训步数调 target sync 和 epsilon 衰减。
 - 动作分布：当前 workflow 已上报 `phase_0_cnt` 到 `phase_3_cnt`、`action_count`、`avg_duration`、`min_duration`、`max_duration`、`phase_switch_cnt`、`phase_switch_rate` 和 `same_phase_ratio`，用于验证是否存在相位塌缩、duration 偏置或过少切相。
-- E06 修复验证：若 `phase_2_cnt` 仍长期占绝对多数且 `same_phase_ratio>0.8`，优先下载真实 observation 样例确认四个相位压力字段；若相位分布改善，再继续看 score、平均延误和 reward 权重。
+- E06 长训验证：若 2-3h 后 score 稳定在 `1100+` 且平均延误维持 `20-25`，优先进入正式评估；若 `phase_2_cnt` 仍长期高于其他相位 2 倍以上，再下载真实 observation 样例确认四个相位压力字段。
 - 平台评分项：若平台监控字段为空，以评估任务页面中的平均延误、平均排队长度、平均等待时间、信号切换惩罚为准。
 
 ## 每次实验回填格式

@@ -1954,7 +1954,7 @@
 ### Step 126 - 修复 PPO 首次平台启动空参数错误
 
 - 状态：完成
-- Commit：`待提交`
+- Commit：`f4bed08`
 - 内容：
   - 读取 `ppo1/` 两张平台日志截图，确认任务 `209360` 使用 PPO，约 3min 后失败。
   - learner 首错为 `failed to run create_standard_agent_wrapper. exit. Error is: optimizer got an empty parameter list`。

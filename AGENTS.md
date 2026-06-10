@@ -196,7 +196,7 @@ PPO 备选线关键文件：
 - E05 平台一小时结果位于 `dqn5/`：任务 ID `207778`，2026-06-09 15:33:54 到 16:34:33 跑满 1h，`train_global_step≈19`，score 约 `760-820`，平均延误约 `44-49`、等待约 `21-24`；legal_action 修复有效，不再 phase 0 锁死，但后半段 `phase_2_cnt≈17-20`、其他相位多为 `0-2`、`same_phase_ratio≈0.75-0.85`，下一轮重点降低 phase 2 偏置。
 - E06 平台一小时结果位于 `dqn6/`：任务 ID `208300`，2026-06-09 20:56:44 到 21:57:24 跑满 1h，`train_global_step≈87`，score 末段约 `1100`，平均延误末段约 `20`、等待约 `10`、排队约 `9`；这是当前最佳 Target-DQN 基线，phase 2 仍偏高但 phase 0/1/3 已恢复参与，下一步优先同包长训或正式评估。
 - P01 平台 PPO 首次切换结果位于 `ppo1/`：任务 ID `209360`，约 3min 后失败，首错为 learner `optimizer got an empty parameter list`，aisrv `list index out of range` 是连带异常；当前已将 PPO MLP 改成显式注册层，并让 optimizer 使用 materialized 参数列表和空参数断言。
-- P02 平台 PPO 重跑结果位于 `ppo2/`：任务 ID `209365`，约 15min 后失败；已越过 P01 的空参数错误，但 trainer 启动约 5 秒后 `signal_killed`，且 aisrv 15 分钟内样本发送 `succ_cnt=0`；当前已加入 `PPO_FRAGMENT_SIZE=32`、周期性片段样本发送和片段末尾 value bootstrap，P03 应重点确认 `succ_cnt` 是否大于 0。
+- P02 平台 PPO 重跑结果位于 `ppo2/`：任务 ID `209365`，约 15min 后失败；后补 `ppo2/code.zip` 确认平台包 `agent_ppo/` 与 `ecc03cf` 一致，已包含 P01 空参数修复但不包含 P02 片段样本发送修复；当前已加入 `PPO_FRAGMENT_SIZE=32`、周期性片段样本发送和片段末尾 value bootstrap，P03 应重点确认 `succ_cnt` 是否大于 0。
 
 仍需关注的问题：
 

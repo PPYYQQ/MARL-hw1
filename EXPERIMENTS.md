@@ -21,7 +21,7 @@
 | E05 | 2026-06-09 | E05 legal_action 修复包；按当前 `main` `1607528` 记录 | 平台默认/未记录 | 1h | 任务 ID `207778` | 约 `760-820` 训练 score 快照，非正式评估 | gate 修复有效：已不再 phase 0 锁死，但后半段转为 phase 2 偏置，`same_phase_ratio` 约 `0.75-0.85`，需要增强公平性和短训更新效率 |
 | E06 | 2026-06-09 | E06 phase-bias 调参包；按当前 `main` `a0d8efe` 记录 | 平台默认/未记录 | 1h | 任务 ID `208300` | 末段约 `1100` 训练 score 快照，非正式评估 | E06 是当前最佳基线：`train_global_step≈87`，平均延误末段约 `20`、等待约 `10`，phase 2 仍偏高但其他相位恢复参与；建议先同包长训或评估 |
 | P01 | 2026-06-10 | PPO 首次平台切换；按用户平台操作记录 | 平台默认/未记录 | 约 3min 后失败 | 任务 ID `209360` | 训练未启动 | learner 创建 agent 失败：`optimizer got an empty parameter list`；已修复 PPO MLP 显式注册和 optimizer 参数检查 |
-| P02 | 2026-06-10 | PPO 空参数修复后重跑；按当前 `main` `ecc03cf` 记录 | 平台默认/未记录 | 约 15min 后失败 | 任务 ID `209365` | 训练未启动 | 已越过空参数错误，但 trainer 5 秒后 `signal_killed`，15 分钟内样本发送 `succ_cnt=0`；已加入 PPO 周期性片段样本发送 |
+| P02 | 2026-06-10 | PPO 空参数修复后重跑；`ppo2/code.zip` 确认为 `ecc03cf` 代码包 | 平台默认/未记录 | 约 15min 后失败 | 任务 ID `209365` | 训练未启动 | 已越过空参数错误，但 trainer 5 秒后 `signal_killed`，15 分钟内样本发送 `succ_cnt=0`；已加入 PPO 周期性片段样本发送 |
 
 ## 实验记录
 
@@ -347,7 +347,7 @@
   - 实验版本：`V73.1.1`
   - 算法：`PPO`
   - 训练模式：分布式
-- Commit：P01 修复后重跑，按上传前仓库 `main` `ecc03cf` 记录；`ppo2/` 只包含监控截图，没有平台下载代码包。
+- Commit：P01 修复后重跑；用户后补 `ppo2/code.zip`，确认平台上传包的 `agent_ppo/` 与仓库 `ecc03cf` 完全一致。
 - 环境配置：平台默认/未记录。
 - 训练时间：2026-06-10 13:11:23 到 13:26:37。
 - 训练时长：页面显示约 15min 后失败。
@@ -356,6 +356,11 @@
   - `ppo2/截屏2026-06-10 13.30.51.png`
   - `ppo2/截屏2026-06-10 13.30.55.png`
   - `ppo2/截屏2026-06-10 13.30.59.png`
+- 代码包证据：
+  - `ppo2/code.zip`
+  - `conf/app_conf_intelligent_traffic_lights.toml` 中 `algo = "ppo"`，说明平台入口已正确切到 PPO。
+  - `agent_ppo/model/model.py` 已包含 `nn.Sequential(layers)`，`agent_ppo/agent.py` 已包含 `parameters = list(self.model.parameters())`，说明 P01 空参数修复确实已上传。
+  - 相对当前 `main` `99401cb`，该平台包缺少 `agent_ppo/conf/conf.py`、`agent_ppo/workflow/train_workflow.py` 和 `agent_ppo/feature/definition.py` 中的 P02 片段样本发送修复。
 - 错误日志：
   - learner：`ProcessHealthMonitor detected process exit: name=trainer, pid=338, type=trainer, exit_reason=signal_killed, exit_code=-6, runtime=5.0s`
   - learner：`learner_init subprocess exited: name=trainer, pid=338, reason=signal_killed`
@@ -364,6 +369,7 @@
 - 结论：
   - P02 已越过 P01 的空参数错误，但 learner trainer 仍在启动后 5 秒退出；平台截图未提供 trainer Python traceback。
   - 可观测的后续问题是 15 分钟内没有成功发送样本，`succ_cnt` 一直为 0，PPO workflow 原先只在 episode 结束时发送样本，遇到长局或异常局会让 learner 长时间拿不到数据。
+  - 后补代码包确认 P02 跑的不是旧模板，也不是漏传 P01；失败发生在 P01 修复后的 PPO workflow 版本上。
 - 后续修复：
   - 增加 `Config.PPO_FRAGMENT_SIZE = 32`。
   - PPO workflow 每累计超过 32 个决策 transition 就先处理并发送 `collector[:-1]`，保留最后一个 transition 继续接后续 reward，并用保留 transition 的 value 为片段末尾 bootstrap。

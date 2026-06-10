@@ -1994,3 +1994,24 @@
 - 下一步：
   - 平台重跑 PPO 前同步整个 `agent_ppo/` 目录；P03 重点看 `learner_proxy send sample stat` 的 `succ_cnt` 是否大于 0。
   - 如果 P03 仍出现 trainer `signal_killed`，需要下载或截图平台 `trainer` 文件的 ERROR 日志，因为当前 ppo2 截图只显示进程退出，不显示 Python  traceback。
+
+### Step 128 - 复核 P02 平台代码包
+
+- 状态：完成
+- Commit：待提交
+- 内容：
+  - 用户补充 `ppo2/code.zip`，该压缩包包含 71 个平台代码文件。
+  - `conf/app_conf_intelligent_traffic_lights.toml` 中 `algo = "ppo"`，确认 P02 平台入口已切到 PPO。
+  - `agent_ppo/` 与仓库 commit `ecc03cf` 完全一致，说明 P02 使用的是 P01 空参数修复后的代码包。
+  - `agent_ppo/model/model.py` 已包含 `nn.Sequential(layers)`，`agent_ppo/agent.py` 已包含 `parameters = list(self.model.parameters())`，所以 P01 的空参数修复确实上传到了平台。
+  - 相对当前 `main` `99401cb`，P02 平台包缺少三处新修复：`agent_ppo/conf/conf.py` 的 `PPO_FRAGMENT_SIZE = 32`、`agent_ppo/workflow/train_workflow.py` 的片段样本发送和 bootstrap、`agent_ppo/feature/definition.py` 的非终局片段 `next_value` 保留。
+  - `conf/configure_app.toml`、`conf/algo_conf_intelligent_traffic_lights.toml` 和 `kaiwu.json` 与当前仓库一致；`conf/app_conf_intelligent_traffic_lights.toml` 只因平台手动切 PPO 而不同。
+  - `agent_dqn/agent.py` 和 `agent_diy/agent.py` 相对当前仓库少了 Torch 线程设置容错，但 P02 运行 PPO 主线，优先级低于同步整个最新代码包。
+  - 将 `ppo2/code.zip` 纳入仓库，作为 P02 平台代码包证据。
+- 验证：
+  - 已运行 `unzip -l ppo2/code.zip`，确认包内包含完整平台代码结构。
+  - 已运行 `diff -qr` 对比 `ppo2/code.zip` 展开目录和当前 `codebase/`，确认 PPO 差异只集中在 P02 修复的三处文件。
+  - 已运行 `git archive ecc03cf:codebase` 并与 `ppo2/code.zip` 的 `agent_ppo/` 对比，确认无差异。
+- 下一步：
+  - P03 平台更新时同步最新 `main` 的整个 `codebase/agent_ppo/`，并保持平台入口 `algo = "ppo"`。
+  - 如果 P03 仍失败，优先补充 trainer ERROR 日志，而不是继续只看 aisrv/learner 汇总日志。

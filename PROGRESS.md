@@ -2015,3 +2015,24 @@
 - 下一步：
   - P03 平台更新时同步最新 `main` 的整个 `codebase/agent_ppo/`，并保持平台入口 `algo = "ppo"`。
   - 如果 P03 仍失败，优先补充 trainer ERROR 日志，而不是继续只看 aisrv/learner 汇总日志。
+
+### Step 129 - 复核 P03 平台失败
+
+- 状态：完成
+- Commit：待提交
+- 内容：
+  - 用户补充 `ppo3/`，包含两张平台截图和一个平台代码包。
+  - 截图确认任务 `ppo3`，任务 ID `210257`，实验版本 `V73.1.1`，算法 `PPO`，分布式训练，约 15min 后失败。
+  - learner 日志显示 trainer 子进程 `pid=339` 在启动约 5 秒后 `signal_killed`，`exit_code=-6`。
+  - aisrv 日志显示四个 workflow 进程随后在约 3.4 到 3.9 秒后 `exit_reason=unknown` 退出。
+  - 平台卡片提示 `learner exited, please check the log for details`。
+  - 解压并检查 `ppo3/code-intelligent_traffic_lights-IDE-73.1.1 (3).zip`，确认 `conf/app_conf_intelligent_traffic_lights.toml` 已设置 `algo = "ppo"`。
+  - 包内 `agent_ppo/conf/conf.py` 已包含 `PPO_FRAGMENT_SIZE = 32`，`agent_ppo/workflow/train_workflow.py` 已包含片段发送和 value bootstrap，`agent_ppo/feature/definition.py` 已包含非终局片段 `next_value` 保留。
+  - 展开包内 `agent_ppo/` 与当前 `codebase/agent_ppo/` 无差异，确认 P03 不是 PPO 主线漏传。
+  - 将 `ppo3/` 证据纳入仓库，并更新 `EXPERIMENTS.md`、`RUNBOOK.md`、`REPORT_DRAFT.md` 和 `AGENTS.md`。
+- 验证：
+  - 已运行 `unzip -l`，确认 P03 代码包包含完整平台代码结构。
+  - 已运行 `diff -qr` 对比 P03 展开包和当前 `codebase/`，PPO 主线无差异；主要差异仅为平台包 `algo = "ppo"`、本地默认 `algo = "target_dqn"`，以及非 PPO 主线的 DQN/DIY 线程容错差异。
+- 下一步：
+  - 暂停盲目重跑 PPO；必须在平台日志页选择 `trainer` 文件并导出或截图 ERROR/ALL 日志。
+  - 如果拿不到 trainer 细日志，优先回到 E06 Target-DQN 做长训或正式评估，因为 PPO 当前仍停在 learner 启动阶段。

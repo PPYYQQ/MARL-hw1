@@ -22,6 +22,7 @@
 | E06 | 2026-06-09 | E06 phase-bias 调参包；按当前 `main` `a0d8efe` 记录 | 平台默认/未记录 | 1h | 任务 ID `208300` | 末段约 `1100` 训练 score 快照，非正式评估 | E06 是当前最佳基线：`train_global_step≈87`，平均延误末段约 `20`、等待约 `10`，phase 2 仍偏高但其他相位恢复参与；建议先同包长训或评估 |
 | P01 | 2026-06-10 | PPO 首次平台切换；按用户平台操作记录 | 平台默认/未记录 | 约 3min 后失败 | 任务 ID `209360` | 训练未启动 | learner 创建 agent 失败：`optimizer got an empty parameter list`；已修复 PPO MLP 显式注册和 optimizer 参数检查 |
 | P02 | 2026-06-10 | PPO 空参数修复后重跑；`ppo2/code.zip` 确认为 `ecc03cf` 代码包 | 平台默认/未记录 | 约 15min 后失败 | 任务 ID `209365` | 训练未启动 | 已越过空参数错误，但 trainer 5 秒后 `signal_killed`，15 分钟内样本发送 `succ_cnt=0`；已加入 PPO 周期性片段样本发送 |
+| P03 | 2026-06-10 | PPO 片段样本修复后重跑；`ppo3` 代码包与当前 `agent_ppo/` 一致 | 平台默认/未记录 | 约 15min 后失败 | 任务 ID `210257` | 训练未启动 | 最新 PPO 包仍在 learner trainer 启动约 5 秒后 `signal_killed`，随后 aisrv workflow 退出；需要 trainer ERROR 日志定位 |
 
 ## 实验记录
 
@@ -374,6 +375,40 @@
   - 增加 `Config.PPO_FRAGMENT_SIZE = 32`。
   - PPO workflow 每累计超过 32 个决策 transition 就先处理并发送 `collector[:-1]`，保留最后一个 transition 继续接后续 reward，并用保留 transition 的 value 为片段末尾 bootstrap。
   - 下一轮 P03 重点看 `learner_proxy send sample stat` 的 `succ_cnt` 是否大于 0；若 trainer 仍 `signal_killed`，需要补充平台 `trainer` 文件的 ERROR 日志。
+
+### P03 - PPO 最新包仍 trainer 早退
+
+- 状态：失败，平台任务已停止。
+- 平台任务：
+  - 任务名：`ppo3`
+  - 任务 ID：`210257`
+  - 实验版本：`V73.1.1`
+  - 算法：`PPO`
+  - 训练模式：分布式
+- 代码包：`ppo3/code-intelligent_traffic_lights-IDE-73.1.1 (3).zip`。
+- 环境配置：平台默认/未记录。
+- 提交时间：2026-06-10 20:51:47。
+- 训练时间：2026-06-10 20:51:47 到 21:07:00。
+- 训练时长：页面显示约 15min 后失败。
+- 截图证据：
+  - `ppo3/截屏2026-06-10 21.14.02.png`
+  - `ppo3/截屏2026-06-10 21.14.43.png`
+- 代码包证据：
+  - `conf/app_conf_intelligent_traffic_lights.toml` 中 `algo = "ppo"`，说明平台入口已正确切到 PPO。
+  - `agent_ppo/conf/conf.py` 已包含 `PPO_FRAGMENT_SIZE = 32`。
+  - `agent_ppo/workflow/train_workflow.py` 已包含片段样本发送和末尾 value bootstrap。
+  - `agent_ppo/feature/definition.py` 已保留非终局片段末尾已有 `next_value`。
+  - 展开包内 `agent_ppo/` 与当前本地 `codebase/agent_ppo/` 无差异，排除 PPO 主线漏传。
+- 错误日志：
+  - learner：`learner_init subprocess exited: name=trainer, pid=339, reason=signal_killed`
+  - learner：`ProcessHealthMonitor detected process exit: name=trainer, pid=339, type=trainer, exit_reason=signal_killed, exit_code=-6, runtime=5.0s`
+  - aisrv：`ProcessHealthMonitor detected process exit: name=workflow_0, pid=290, type=workflow, exit_reason=unknown, exit_code=None, runtime=3.4s`
+  - aisrv：`workflow_1`、`workflow_2`、`workflow_3` 也在约 3.6 到 3.9 秒后 `exit_reason=unknown`。
+  - 平台卡片提示：`learner exited, please check the log for details`。
+- 结论：
+  - P03 已确认不是 P01 空参数问题，也不是 P02 漏传片段样本修复。
+  - trainer 在样本产生前已退出，因此继续调 PPO workflow 的样本发送节奏无法解释当前首个失败点。
+  - 当前截图仍没有 trainer Python traceback；下一步必须获取平台 `trainer` 文件的 ERROR/ALL 日志，否则只能看到进程被杀，无法确认是平台资源、Reverb/replay 初始化、Torch 运行时还是 PPO agent 初始化中的具体异常。
 
 ## 实验模板
 

@@ -282,6 +282,7 @@ python tests/test_target_dqn_smoke.py
 | E06 | E06 phase-bias 调参包；按当前 `main` `a0d8efe` 记录 | 平台默认/未记录 | 1h | 任务 ID `208300` | 训练 score 末段约 `1100`，非正式评估 | 当前最佳 Target-DQN 基线，`train_global_step≈87`，平均延误末段约 `20`、等待约 `10`，建议先同包长训或评估 |
 | P01 | PPO 首次切换；按平台操作记录 | 平台默认/未记录 | 约 3min | 任务 ID `209360` | 训练未启动 | learner 创建 agent 失败，首错为 `optimizer got an empty parameter list`，已补 PPO model 显式参数注册和参数检查 |
 | P02 | PPO 空参数修复后重跑；按 `main` `ecc03cf` 记录 | 平台默认/未记录 | 约 15min | 任务 ID `209365` | 训练未启动 | 已越过空参数错误，但 trainer 5 秒后 `signal_killed`，15 分钟内样本发送 `succ_cnt=0`；已补 PPO 周期性片段样本发送和片段 bootstrap |
+| P03 | PPO 片段样本修复后重跑；代码包与当前 `agent_ppo/` 一致 | 平台默认/未记录 | 约 15min | 任务 ID `210257` | 训练未启动 | 最新 PPO 包仍在 trainer 启动约 5 秒后 `signal_killed`；必须获取 trainer ERROR/ALL 日志 |
 
 E02 相比 E01 的关键进展是 `reward` 不再固定为 0，说明当前 reward 链路已进入 learner；但训练 score 明显偏低，平均延误和等待时间偏高。下一轮应先增加动作分布监控，确认四个相位选择次数、平均 duration 和实际切相次数，再决定是否调 reward 权重或训练更久。
 
@@ -298,6 +299,8 @@ E06 一小时结果显示上述调参有效：`train_global_step` 提升到约 `
 PPO 首次平台切换 P01 未进入训练，learner 在创建 agent wrapper 时提示 optimizer 参数列表为空。该问题属于启动阶段错误，不代表 PPO 策略效果。当前已将 PPO MLP 层改为显式注册，并让 optimizer 使用 materialized 参数列表；重跑 PPO 前需要确认平台同步了完整 `agent_ppo/` 目录。
 
 PPO 第二次平台重跑 P02 已越过空参数错误，但 learner trainer 子进程在启动约 5 秒后 `signal_killed`，aisrv 在 15 分钟内没有成功发送样本。后补代码包确认 P02 的 `agent_ppo/` 与 `ecc03cf` 一致，已包含 P01 空参数修复，但尚未包含 P02 之后的片段发送修复。由于截图没有 trainer Python traceback，当前只能先修复可观测的样本饥饿风险：PPO workflow 改为每 32 个决策 transition 发送一次片段样本，并用保留 transition 的 value 为片段末尾 bootstrap。下一轮 P03 应重点确认 `succ_cnt` 是否变为正数；若 trainer 仍被杀，需要补充平台 trainer ERROR 日志。
+
+PPO 第三次平台重跑 P03 已使用最新 `agent_ppo/`，代码包包含片段发送和 bootstrap 修复，但 trainer 仍在启动约 5 秒后 `signal_killed`，随后 aisrv workflow 退出。这说明当前失败点已经早于样本发送和策略训练，不能再靠调 workflow 片段长度判断。下一步必须获取平台 trainer ERROR/ALL 日志；若无法获取，应先回到 E06 Target-DQN 长训或正式评估。
 
 建议先使用简单环境：
 

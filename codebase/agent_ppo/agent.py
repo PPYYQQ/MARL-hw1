@@ -8,22 +8,51 @@ Author: Tencent AI Arena Authors
 """
 
 
+import faulthandler
 import os
+import sys
+import traceback
+
+try:
+    faulthandler.enable(file=sys.stderr, all_threads=True)
+except Exception:
+    pass
+
 import torch
+
+
+PPO_DIAG_PREFIX = "[PPO_DIAG]"
+
+
+def _diag_log(logger, message):
+    text = f"{PPO_DIAG_PREFIX} {message}"
+    try:
+        print(text, file=sys.stderr, flush=True)
+    except Exception:
+        pass
+    if logger is None:
+        return
+    try:
+        logger.info(text)
+    except Exception:
+        pass
 
 
 def _configure_torch_threads():
     try:
         torch.set_num_threads(1)
+        _diag_log(None, "torch.set_num_threads ok")
     except RuntimeError:
-        pass
+        _diag_log(None, "torch.set_num_threads skipped")
     try:
         torch.set_num_interop_threads(1)
+        _diag_log(None, "torch.set_num_interop_threads ok")
     except RuntimeError:
-        pass
+        _diag_log(None, "torch.set_num_interop_threads skipped")
 
 
 _configure_torch_threads()
+_diag_log(None, "agent_ppo.agent module imported")
 
 from kaiwudrl.interface.agent import BaseAgent
 from agent_ppo.model.model import Model
@@ -38,22 +67,43 @@ from agent_target_dqn.feature.traffic_utils import normalize_phase_legal_action
 
 class Agent(BaseAgent):
     def __init__(self, agent_type="player", device=None, logger=None, monitor=None):
-        torch.manual_seed(0)
-        self.device = device
-        self.model = Model(device).to(self.device)
-        initial_lr = Config.INIT_LEARNING_RATE_START
-        parameters = list(self.model.parameters())
-        if not parameters:
-            raise RuntimeError("PPO model has no registered parameters; check agent_ppo/model/model.py was uploaded")
+        _diag_log(logger, f"Agent.__init__ start agent_type={agent_type}, device={device}")
+        try:
+            torch.manual_seed(0)
+            _diag_log(logger, "torch.manual_seed done")
 
-        self.optimizer = torch.optim.Adam(params=parameters, lr=initial_lr)
-        self.label_size_list = Config.LABEL_SIZE_LIST
-        self.legal_action_size = Config.LEGAL_ACTION_SIZE_LIST
-        self.logger = logger
-        self.monitor = monitor
-        self.preprocess = FeatureProcess(logger)
-        self.algorithm = Algorithm(self.model, self.optimizer, self.device, self.logger, self.monitor)
-        super().__init__(agent_type, device, logger, monitor)
+            self.device = device
+            self.model = Model(device)
+            _diag_log(logger, "Model constructed")
+            if self.device is not None:
+                self.model = self.model.to(self.device)
+                _diag_log(logger, f"Model moved to device={self.device}")
+            else:
+                _diag_log(logger, "Model stays on default device")
+
+            initial_lr = Config.INIT_LEARNING_RATE_START
+            parameters = list(self.model.parameters())
+            parameter_count = sum(parameter.numel() for parameter in parameters)
+            _diag_log(logger, f"Model parameter_count={parameter_count}, tensor_count={len(parameters)}")
+            if not parameters:
+                raise RuntimeError("PPO model has no registered parameters; check agent_ppo/model/model.py was uploaded")
+
+            self.optimizer = torch.optim.Adam(params=parameters, lr=initial_lr)
+            _diag_log(logger, f"Optimizer constructed lr={initial_lr}")
+            self.label_size_list = Config.LABEL_SIZE_LIST
+            self.legal_action_size = Config.LEGAL_ACTION_SIZE_LIST
+            self.logger = logger
+            self.monitor = monitor
+            self.preprocess = FeatureProcess(logger)
+            _diag_log(logger, "FeatureProcess constructed")
+            self.algorithm = Algorithm(self.model, self.optimizer, self.device, self.logger, self.monitor)
+            _diag_log(logger, "Algorithm constructed")
+            super().__init__(agent_type, device, logger, monitor)
+            _diag_log(logger, "BaseAgent initialized")
+        except Exception as err:
+            _diag_log(logger, f"Agent.__init__ failed: {type(err).__name__}: {err}")
+            _diag_log(logger, traceback.format_exc())
+            raise
 
     def reset(self, env_obs):
         self.preprocess.reset()

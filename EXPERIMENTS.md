@@ -409,6 +409,9 @@
   - P03 已确认不是 P01 空参数问题，也不是 P02 漏传片段样本修复。
   - trainer 在样本产生前已退出，因此继续调 PPO workflow 的样本发送节奏无法解释当前首个失败点。
   - 当前截图仍没有 trainer Python traceback；下一步必须获取平台 `trainer` 文件的 ERROR/ALL 日志，否则只能看到进程被杀，无法确认是平台资源、Reverb/replay 初始化、Torch 运行时还是 PPO agent 初始化中的具体异常。
+- 后续修复：
+  - 用户确认平台日志筛选只有 `aisrv`、`learner` 和 `env`，无法直接选择 trainer 文件。
+  - 已在 PPO 启动路径增加 `[PPO_DIAG]` 面包屑和 `faulthandler`，下一轮 P04 在 `learner` 日志中搜索 `[PPO_DIAG]` 和 `Fatal Python error`。
 
 ## 实验模板
 

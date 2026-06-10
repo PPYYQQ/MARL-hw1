@@ -300,7 +300,7 @@ PPO 首次平台切换 P01 未进入训练，learner 在创建 agent wrapper 时
 
 PPO 第二次平台重跑 P02 已越过空参数错误，但 learner trainer 子进程在启动约 5 秒后 `signal_killed`，aisrv 在 15 分钟内没有成功发送样本。后补代码包确认 P02 的 `agent_ppo/` 与 `ecc03cf` 一致，已包含 P01 空参数修复，但尚未包含 P02 之后的片段发送修复。由于截图没有 trainer Python traceback，当前只能先修复可观测的样本饥饿风险：PPO workflow 改为每 32 个决策 transition 发送一次片段样本，并用保留 transition 的 value 为片段末尾 bootstrap。下一轮 P03 应重点确认 `succ_cnt` 是否变为正数；若 trainer 仍被杀，需要补充平台 trainer ERROR 日志。
 
-PPO 第三次平台重跑 P03 已使用最新 `agent_ppo/`，代码包包含片段发送和 bootstrap 修复，但 trainer 仍在启动约 5 秒后 `signal_killed`，随后 aisrv workflow 退出。这说明当前失败点已经早于样本发送和策略训练，不能再靠调 workflow 片段长度判断。下一步必须获取平台 trainer ERROR/ALL 日志；若无法获取，应先回到 E06 Target-DQN 长训或正式评估。
+PPO 第三次平台重跑 P03 已使用最新 `agent_ppo/`，代码包包含片段发送和 bootstrap 修复，但 trainer 仍在启动约 5 秒后 `signal_killed`，随后 aisrv workflow 退出。这说明当前失败点已经早于样本发送和策略训练，不能再靠调 workflow 片段长度判断。由于平台日志筛选只有 `aisrv`、`learner` 和 `env`，后续已在 PPO 启动路径加入 `[PPO_DIAG]` 和 `faulthandler`；若 P04 仍无法输出有效 traceback，应先回到 E06 Target-DQN 长训或正式评估。
 
 建议先使用简单环境：
 

@@ -73,9 +73,10 @@ python tests/test_target_dqn_smoke.py
 2. 确认 `codebase/agent_ppo/` 已同步最新代码，尤其是 `agent.py`、`model/model.py`、`algorithm/algorithm.py`、`feature/definition.py`、`workflow/train_workflow.py`、`conf/conf.py` 和 `conf/monitor_builder.py`。P01 的平台错误 `optimizer got an empty parameter list` 优先说明 `agent_ppo/model/model.py` 或 `agent_ppo/agent.py` 没有同步到平台。
 3. P02 的平台现象是 trainer 5 秒后 `signal_killed`，且 15 分钟内 `learner_proxy send sample stat` 的 `succ_cnt=0`；当前代码已加入 `PPO_FRAGMENT_SIZE=32`，workflow 会周期性发送片段样本，并用保留 transition 的 value 做片段末尾 bootstrap，避免只等 episode 结束。
 4. 先跑 10-30 分钟短训，重点看 `learner_proxy send sample stat` 的 `succ_cnt` 是否大于 0，以及 `reward`、`policy_loss`、`value_loss`、`entropy_loss`、`model_grad_norm`、动作分布和平台 score。
-5. P03 已确认最新 `agent_ppo/` 仍在 trainer 启动约 5 秒后 `signal_killed`，且平台卡片提示 `learner exited, please check the log for details`；继续重跑前必须补充平台 `trainer` 文件的 ERROR/ALL 日志。
-6. 只看 aisrv/learner 汇总日志无法定位 Python traceback；若拿不到 trainer 细日志，优先回到 E06 Target-DQN 长训或正式评估。
-7. PPO 是 on-policy，平台分布式样本延迟可能影响效果；如果短训 loss 有限但 score 不升，先记录为对比实验，不要直接替换 Target-DQN 主线。
+5. P03 已确认最新 `agent_ppo/` 仍在 trainer 启动约 5 秒后 `signal_killed`，且平台卡片提示 `learner exited, please check the log for details`；如果平台能选 `trainer` 文件，必须补充 `trainer` 的 ERROR/ALL 日志。
+6. 如果平台只提供 `aisrv`、`learner` 和 `env` 日志，则使用 P04 诊断包重跑：在 `learner` 日志搜索 `[PPO_DIAG]` 和 `Fatal Python error`，最后一条 `[PPO_DIAG]` 表示 trainer 死前到达的初始化阶段。
+7. 只看 aisrv/learner 汇总日志无法定位 Python traceback；若 P04 仍没有 `[PPO_DIAG]` 或 fatal trace，优先回到 E06 Target-DQN 长训或正式评估。
+8. PPO 是 on-policy，平台分布式样本延迟可能影响效果；如果短训 loss 有限但 score 不升，先记录为对比实验，不要直接替换 Target-DQN 主线。
 
 ## 重点监控指标
 

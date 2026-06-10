@@ -197,14 +197,14 @@ PPO 备选线关键文件：
 - E06 平台一小时结果位于 `dqn6/`：任务 ID `208300`，2026-06-09 20:56:44 到 21:57:24 跑满 1h，`train_global_step≈87`，score 末段约 `1100`，平均延误末段约 `20`、等待约 `10`、排队约 `9`；这是当前最佳 Target-DQN 基线，phase 2 仍偏高但 phase 0/1/3 已恢复参与，下一步优先同包长训或正式评估。
 - P01 平台 PPO 首次切换结果位于 `ppo1/`：任务 ID `209360`，约 3min 后失败，首错为 learner `optimizer got an empty parameter list`，aisrv `list index out of range` 是连带异常；当前已将 PPO MLP 改成显式注册层，并让 optimizer 使用 materialized 参数列表和空参数断言。
 - P02 平台 PPO 重跑结果位于 `ppo2/`：任务 ID `209365`，约 15min 后失败；后补 `ppo2/code.zip` 确认平台包 `agent_ppo/` 与 `ecc03cf` 一致，已包含 P01 空参数修复但不包含 P02 片段样本发送修复；当前已加入 `PPO_FRAGMENT_SIZE=32`、周期性片段样本发送和片段末尾 value bootstrap，P03 应重点确认 `succ_cnt` 是否大于 0。
-- P03 平台 PPO 重跑结果位于 `ppo3/`：任务 ID `210257`，约 15min 后失败；代码包内 `agent_ppo/` 与当前本地一致，已排除 PPO 主线漏传，但 learner trainer 仍在约 5 秒后 `signal_killed`，下一步必须获取平台 `trainer` 文件 ERROR/ALL 日志。
+- P03 平台 PPO 重跑结果位于 `ppo3/`：任务 ID `210257`，约 15min 后失败；代码包内 `agent_ppo/` 与当前本地一致，已排除 PPO 主线漏传，但 learner trainer 仍在约 5 秒后 `signal_killed`；用户确认平台只显示 `aisrv`、`learner`、`env` 日志，因此已在 PPO 启动阶段加入 `[PPO_DIAG]` 和 `faulthandler` 诊断。
 
 仍需关注的问题：
 
 - E06 已验证 phase-bias 调参有效，短训指标明显改善；当前不建议立刻改代码，优先用同一 E06 包跑 2-3h 长训或正式评估，确认 score 是否稳定在 `1100+`、平均延误是否维持在 `20-25`。
 - 平台的平均信号变化惩罚为 `0` 不能单独证明策略完全不切相，因为当前动作最短 duration 已限制为 8 秒；必须结合 `phase_switch_cnt`、`phase_switch_rate` 和 `same_phase_ratio` 判断真实切相行为。
 - 平台文档中 `legal_action` 更像是否需要决策的标量门控；当前代码已按该语义处理通用 `legal_action`，但仍需在真实 observation 上确认是否存在显式相位级 mask 字段。
-- `agent_dqn`、`agent_diy` 仍基本保留模板状态，不是当前主线；`agent_ppo` 是备选线，P03 已确认最新 `agent_ppo/` 仍停在 learner trainer 启动阶段，继续处理前需要平台 `trainer` 细日志。
+- `agent_dqn`、`agent_diy` 仍基本保留模板状态，不是当前主线；`agent_ppo` 是备选线，P03 已确认最新 `agent_ppo/` 仍停在 learner trainer 启动阶段；如继续 PPO，应上传带 `[PPO_DIAG]` 的诊断包并看 learner 日志。
 - 当前状态特征包含占用/速度网格、当前相位、相位服务年龄、持续时间、剩余时间、相位压力、全局等待/延误统计、一帧交通趋势、4 帧滚动交通历史和逐车道车辆/排队/等待统计。
 - 作业文档定义了 `frame_state.lanes` 的 `lane_id`、`v_count`、`congestion`、`queue_length` 字段；当前已接入 lanes fallback，并兼容常见驼峰/别名字段，但仍需在真实 observation 上确认字段单位和是否存在 protobuf repeated wrapper 等特殊容器形态。
 - 当前列表字段解析支持 list、tuple、iterable、单条 dict 记录、dict-of-records 和单个非 dict 协议对象；dict 解析只在出现已知协议字段或值明显是记录/列表时展开，避免盲目把任意 dict 当作有效车辆。

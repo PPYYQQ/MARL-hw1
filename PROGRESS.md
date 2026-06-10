@@ -2036,3 +2036,22 @@
 - 下一步：
   - 暂停盲目重跑 PPO；必须在平台日志页选择 `trainer` 文件并导出或截图 ERROR/ALL 日志。
   - 如果拿不到 trainer 细日志，优先回到 E06 Target-DQN 做长训或正式评估，因为 PPO 当前仍停在 learner 启动阶段。
+
+### Step 130 - 增加 PPO 启动诊断日志
+
+- 状态：完成
+- Commit：待提交
+- 内容：
+  - 用户确认平台日志筛选只有 `aisrv`、`learner` 和 `env`，没有独立 `trainer` 文件，因此 P03 的 `signal_killed` 暂时无法通过平台页面直接看到 trainer traceback。
+  - 在 `agent_ppo/agent.py` 模块导入早期启用 `faulthandler.enable(file=sys.stderr, all_threads=True)`，用于捕捉 `SIGABRT` 等 native 崩溃时的 Python 栈。
+  - 增加 `[PPO_DIAG]` 启动面包屑日志，并同时写 stderr 和 logger：Torch 线程设置、模块导入、`Agent.__init__` 开始、模型构造、模型设备迁移、参数数量、optimizer、FeatureProcess、Algorithm 和 BaseAgent 初始化。
+  - 将 `self.model = Model(device).to(self.device)` 改为先构造模型、仅当 `device is not None` 时 `.to(device)`，减少启动阶段设备参数异常的不确定性。
+  - `Agent.__init__` 外层增加异常日志，若是 Python 异常会输出异常类型和完整 `traceback.format_exc()`。
+  - 更新 `tests/test_hyperparams_static.py`，锁定 PPO 启动诊断和参数数量日志。
+- 验证：
+  - 已运行 `python -m compileall agent_ppo tests/test_hyperparams_static.py`，通过。
+  - 已运行 `python tests/test_hyperparams_static.py`，通过。
+  - 已运行 `git diff --check`，未发现空白错误。
+  - 已运行 `./scripts/check_offline.sh`，通过；其中 `tests/test_target_dqn_smoke.py` 因本地缺少 `torch` 明确 skip。
+- 下一步：
+  - P04 如继续跑 PPO，在 `learner` 日志中搜索 `[PPO_DIAG]` 和 `Fatal Python error`；最后一条 `[PPO_DIAG]` 就是 trainer 死前走到的初始化阶段。

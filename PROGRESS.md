@@ -1974,7 +1974,7 @@
 ### Step 127 - 处理 PPO2 十五分钟失败
 
 - 状态：完成
-- Commit：待提交
+- Commit：`3d85235`
 - 内容：
   - 读取 `ppo2/` 四张平台日志截图，确认任务 `209365` 使用 PPO，约 15min 后失败。
   - P02 已越过 P01 的空参数错误；可见 learner 日志显示 trainer 子进程启动约 5 秒后 `signal_killed`，`exit_code=-6`。
